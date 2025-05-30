@@ -1,0 +1,13 @@
+#微信客户端通用对象
+#weChat.target=文件传输助手
+#息知通知地址
+#xiZhi.url=https://xizhi.qqoq.net/***.send
+#xiZhi.url=https://xizhi.qqoq.net/***.channel
+#是否转换录制的视频
+record.FlvToMp4=true
+#是否循环监听直播（直播结束后，重新监听）
+record.isLoop=true
+#监听间隔时长（秒）
+monitor.delayIntervalSec=10
+#B站的Cookie
+Bilibili.Cookie=

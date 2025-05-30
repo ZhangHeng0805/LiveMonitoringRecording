@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>cn.zhangheng.douyin</groupId>
+    <artifactId>LiveMonitoringRecording</artifactId>
+    <version>2.0</version>
+    <packaging>pom</packaging>
+    <description>抖音直播录屏</description>
+    <modules>
+        <module>douyin-start</module>
+        <module>bilibili-start</module>
+        <module>live-common</module>
+        <module>live-monitor-record</module>
+    </modules>
+
+    <properties>
+        <project.encoding>UTF-8</project.encoding>
+        <java.version>1.8</java.version>
+        <maven.compiler.source>8</maven.compiler.source>
+        <maven.compiler.target>8</maven.compiler.target>
+        <project.build.sourceEncoding>${project.encoding}</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>${project.encoding}</project.reporting.outputEncoding>
+        <maven.compiler.encoding>${project.encoding}</maven.compiler.encoding>
+        <maven.compiler.source>${java.version}</maven.compiler.source>
+        <maven.compiler.target>${java.version}</maven.compiler.target>
+    </properties>
+
+
+    <dependencies>
+
+        <!-- mvn install:install-file -Dfile=ZH_Utils.jar -DgroupId=com.zhangheng -DartifactId=ZH_Utils -Dversion=24.07.05 -Dpackaging=jar -->
+        <dependency>
+            <groupId>com.zhangheng</groupId>
+            <artifactId>ZH_Utils</artifactId>
+            <version>25.05.22</version>
+        </dependency>
+
+        <!-- Logback 作为 SLF4J 的实现 -->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>1.2.3</version>
+        </dependency>
+
+        <!-- Lombok 依赖 -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>1.18.28</version> <!-- 可以使用最新稳定版本 -->
+            <scope>provided</scope> <!-- provided 表示该依赖仅在编译和测试阶段有效 -->
+        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>org.bytedeco</groupId>-->
+<!--            <artifactId>javacv-platform</artifactId>-->
+<!--            <version>1.5.8</version>-->
+<!--        </dependency>-->
+    </dependencies>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <!-- 指定JDK编译版本 -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <configuration>
+                        <source>${java.version}</source>
+                        <target>${java.version}</target>
+                        <encoding>${project.encoding}</encoding>
+                    </configuration>
+                </plugin>
+
+            </plugins>
+        </pluginManagement>
+    </build>
+</project>
