@@ -31,7 +31,7 @@
 
     <dependencies>
 
-        <!-- mvn install:install-file -Dfile=ZH_Utils.jar -DgroupId=com.zhangheng -DartifactId=ZH_Utils -Dversion=24.07.05 -Dpackaging=jar -->
+        <!-- mvn install:install-file -Dfile=libs/ZH_Utils.jar -DgroupId=com.zhangheng -DartifactId=ZH_Utils -Dversion=25.05.22 -Dpackaging=jar -->
         <dependency>
             <groupId>com.zhangheng</groupId>
             <artifactId>ZH_Utils</artifactId>
@@ -49,14 +49,10 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.28</version> <!-- 可以使用最新稳定版本 -->
-            <scope>provided</scope> <!-- provided 表示该依赖仅在编译和测试阶段有效 -->
+            <version>1.18.28</version>
+            <scope>provided</scope>
         </dependency>
-<!--        <dependency>-->
-<!--            <groupId>org.bytedeco</groupId>-->
-<!--            <artifactId>javacv-platform</artifactId>-->
-<!--            <version>1.5.8</version>-->
-<!--        </dependency>-->
+
     </dependencies>
 
     <build>
