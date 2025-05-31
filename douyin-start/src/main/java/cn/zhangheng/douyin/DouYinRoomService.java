@@ -38,6 +38,7 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
         if (StrUtil.isBlank(cookieStr)) {
             try (HttpResponse execute = HttpRequest.get("https://live.douyin.com/")
                     .header("User-Agent", Constant.User_Agent)
+                    .timeout(30 * 1000)
                     .execute();) {
                 this.cookieStr = execute.getCookieStr();
             }
@@ -71,6 +72,7 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
         try (HttpResponse execute = HttpRequest.get("https://live.douyin.com/webcast/room/web/enter/")
                 .header("User-Agent", Constant.User_Agent)
                 .header("Cookie", cookieStr)
+                .timeout(30 * 1000)
                 .form(forms)
                 .execute()) {
             body = execute.body();

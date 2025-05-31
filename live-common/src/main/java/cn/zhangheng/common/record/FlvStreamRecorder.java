@@ -214,9 +214,9 @@ public class FlvStreamRecorder extends Task {
     private URLConnection getUrlConnection(String streamUrl) throws IOException {
         URL url = new URL(streamUrl);
         URLConnection conn = url.openConnection();
-
+        conn.setConnectTimeout(60000);
+        conn.setReadTimeout(30000);
         conn.setRequestProperty("User-Agent", Constant.User_Agent);
-        conn.setRequestProperty("Connection", "keep-alive");
         if (cookie != null) {
             conn.setRequestProperty("Cookie", cookie);
         }
@@ -226,8 +226,6 @@ public class FlvStreamRecorder extends Task {
         } else if (url.getHost().indexOf("douyin") > 0) {
             conn.setRequestProperty("Referer", Room.Platform.DouYin.getMainUrl());
         }
-        conn.setConnectTimeout(60000);
-        conn.setReadTimeout(15000);
         return conn;
     }
 

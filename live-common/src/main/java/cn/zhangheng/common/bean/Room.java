@@ -1,5 +1,6 @@
 package cn.zhangheng.common.bean;
 
+import cn.hutool.core.util.StrUtil;
 import com.zhangheng.util.SettingUtil;
 import lombok.Data;
 import lombok.Getter;
@@ -28,6 +29,11 @@ public abstract class Room {
     protected LinkedHashMap<String, String> streams;
 
     private String cookie;
+
+    public void setCookie(String cookie) {
+        if (StrUtil.isNotBlank(cookie))
+            this.cookie = cookie;
+    }
 
     public abstract void initSetting(SettingUtil settingUtil);
 

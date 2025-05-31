@@ -61,7 +61,11 @@ public class BilibiliService extends RoomService<BiliRoom> {
     }
 
     public boolean room_init_living() {
-        try (HttpResponse execute = HttpRequest.get("https://api.live.bilibili.com/room/v1/Room/room_init?id=" + room.getId()).header("User-Agent", Constant.User_Agent).execute()) {
+        HttpRequest header = HttpRequest.get("https://api.live.bilibili.com/room/v1/Room/room_init?id=" + room.getId()).header("User-Agent", Constant.User_Agent);
+        if (room.getCookie() != null) {
+            header = header.header("Cookie", room.getCookie());
+        }
+        try (HttpResponse execute = header.execute()) {
             String body = execute.body();
             if (JSONUtil.isTypeJSON(body)) {
                 JSONObject entries = JSONUtil.parseObj(body);
@@ -84,7 +88,14 @@ public class BilibiliService extends RoomService<BiliRoom> {
     }
 
     private void room_info() {
-        try (HttpResponse execute = HttpRequest.get("https://api.live.bilibili.com/room/v1/Room/get_info?id=" + room.getId()).header("User-Agent", Constant.User_Agent).execute()) {
+        HttpRequest header = HttpRequest.get("https://api.live.bilibili.com/room/v1/Room/get_info?id=" + room.getId())
+                .header("User-Agent", Constant.User_Agent)
+                .header("Referer", "https://live.bilibili.com/")
+                .timeout(30 * 1000);
+        if (room.getCookie() != null) {
+            header = header.header("Cookie", room.getCookie());
+        }
+        try (HttpResponse execute = header.execute()) {
             String body = execute.body();
             if (JSONUtil.isTypeJSON(body)) {
                 JSONObject entries = JSONUtil.parseObj(body);
@@ -114,7 +125,12 @@ public class BilibiliService extends RoomService<BiliRoom> {
     }
 
     private void user_info() {
-        try (HttpResponse execute = HttpRequest.get("https://api.live.bilibili.com/live_user/v1/Master/info?uid=" + room.getUid()).header("User-Agent", Constant.User_Agent).execute()) {
+        HttpRequest header = HttpRequest.get("https://api.live.bilibili.com/live_user/v1/Master/info?uid=" + room.getUid())
+                .header("User-Agent", Constant.User_Agent);
+        if (room.getCookie() != null) {
+            header = header.header("Cookie", room.getCookie());
+        }
+        try (HttpResponse execute = header.execute()) {
             String body = execute.body();
             if (JSONUtil.isTypeJSON(body)) {
                 JSONObject entries = JSONUtil.parseObj(body);
@@ -162,7 +178,7 @@ public class BilibiliService extends RoomService<BiliRoom> {
         HttpRequest header = HttpRequest.get("https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo?protocol=0&format=0&codec=0&qn=30000&room_id=" + room.getRoom_id())
                 .header("User-Agent", Constant.User_Agent)
                 .header("Referer", "https://live.bilibili.com/")
-                ;
+                .timeout(30 * 1000);
         if (room.getCookie() != null) {
             header = header.header("Cookie", room.getCookie());
         }

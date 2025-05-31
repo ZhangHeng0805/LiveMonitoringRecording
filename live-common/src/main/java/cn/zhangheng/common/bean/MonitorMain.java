@@ -77,7 +77,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             try {
                 roomMonitor.run(false);
             } catch (ExecutionException e) {
-                log.error("直播间监听出现异常" + ThrowableUtil.getAllCauseMessage(e));
+                log.error("直播间监听出现异常: {}", ThrowableUtil.getAllCauseMessage(e), e);
                 if (recorder != null) {
                     recorder.stop(false);
                 }
@@ -91,6 +91,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
     }
 
     private M.RoomListener<R> getRoomListener(R room, boolean isRecord) {
+        NotificationUtil notificationUtil = new NotificationUtil(setting);
         String owner = room.getPlatform().getName() + "直播间: " + room.getOwner() + " [" + room.getId() + "]";
         LogUtil[] logUtils = {null};
         return new M.RoomListener<R>() {
@@ -103,12 +104,13 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             @Override
             public void onStop() {
                 isRunning = false;
-                String msg = "监听结束！" + owner;
+                String msg = "直播监听结束！" + owner;
                 log.info(msg);
                 if (recorder != null) {
                     recorder.stop(false);
                 }
                 trayIconUtil.notifyMessage(msg);
+                notificationUtil.xiZhiSendMsg(Constant.Application, msg);
                 while (flvToMp4 != null && flvToMp4.isRunning()) {
                     try {
                         TimeUnit.SECONDS.sleep(1);
@@ -152,7 +154,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                         log.warn("统计日志产生异常：{}", ThrowableUtil.getAllCauseMessage(e));
                     }
                     if (isFirst) {
-                        NotificationUtil notificationUtil = new NotificationUtil(setting);
+
                         notificationUtil.xiZhiSendMsg(Constant.Application, msg);
                         notificationUtil.weChatSendMsg(msg);
                     }
@@ -238,8 +240,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
 
             @Override
             public void onError(Throwable throwable) {
-                throwable.printStackTrace();
-                log.error("录制出现异常：" + ThrowableUtil.getAllCauseMessage(throwable));
+                log.error("录制出现异常：{}", ThrowableUtil.getAllCauseMessage(throwable), throwable);
                 if (throwable instanceof InterruptedException) {
                     return;
                 }

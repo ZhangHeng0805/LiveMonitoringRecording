@@ -19,6 +19,7 @@
               <goal>shade</goal>
             </goals>
             <configuration>
+              <outputFile>${project.basedir}/../target/${project.artifactId}-${project.version}.jar</outputFile>
               <transformers>
                 <transformer>
                   <mainClass>cn.zhangheng.douyin.Main</mainClass>
