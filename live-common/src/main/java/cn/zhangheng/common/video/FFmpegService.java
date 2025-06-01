@@ -43,9 +43,9 @@ public abstract class FFmpegService {
             isRunning = true;
             commands.addAll(command);
             ProcessBuilder pb = new ProcessBuilder(commands);
-            String ffmpegCommand = TimeUtil.getNowTime()+ " - ffmpeg command: " + String.join(" ", pb.command());
+            String ffmpegCommand = "ffmpeg command: " + String.join(" ", pb.command());
             log.info(ffmpegCommand);
-            processResult(ffmpegCommand);
+            processResult(TimeUtil.getNowTime() + " - " + ffmpegCommand);
             // 捕获命令输出
             pb.redirectErrorStream(true);
             process = pb.start();

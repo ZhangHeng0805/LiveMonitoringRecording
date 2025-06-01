@@ -64,8 +64,6 @@ public class FlvDownload extends FFmpegService {
             commands.add("\"" + join + "\r\n\"");
         }
         commands.addAll(baseList);
-
-        ScheduledExecutorService executor = null;
         try {
             run(commands);
             logUtil.log("下载结束！" + file);
