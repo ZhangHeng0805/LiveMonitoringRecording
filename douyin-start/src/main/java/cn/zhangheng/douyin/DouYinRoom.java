@@ -31,6 +31,8 @@ public class DouYinRoom extends Room {
 
     @Override
     public void initSetting(SettingUtil settingUtil) {
+        if (settingUtil != null)
+            setCookie(settingUtil.getStr("DouYin.Cookie"));
     }
 
     public DouYinRoom(String id) {

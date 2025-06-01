@@ -1,6 +1,9 @@
 package cn.zhangheng.common.bean;
 
+import cn.hutool.core.util.StrUtil;
+import cn.zhangheng.common.record.FFmpegFlvRecorder;
 import cn.zhangheng.common.record.FlvStreamRecorder;
+import cn.zhangheng.common.record.Recorder;
 import cn.zhangheng.common.util.LogUtil;
 import cn.zhangheng.common.util.NotificationUtil;
 import cn.zhangheng.common.util.TrayIconUtil;
@@ -37,11 +40,13 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
 
     protected final TrayIconUtil trayIconUtil;
     protected final SettingUtil setting;
-    protected FlvStreamRecorder recorder;
+    protected Recorder recorder;
     protected int delayIntervalSec;
     protected boolean isRunning;
     protected boolean recordFlag = true;
     protected final boolean isConvert;
+    //0-FlvStreamRecorder,1-FFmpegFlvRecorder
+    protected final int recorderType;
     protected R room;
     protected FlvToMp4 flvToMp4;
     private M roomMonitor;
@@ -52,8 +57,13 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         this.setting = setting;
         delayIntervalSec = setting != null && setting.getInt("monitor.delayIntervalSec") != null ? setting.getInt("monitor.delayIntervalSec") > 0 ? setting.getInt("monitor.delayIntervalSec") : 10 : 10;
         isConvert = setting != null && setting.getBool("record.FlvToMp4") == Boolean.TRUE;
+        recorderType = setting != null && setting.getInt("record.type") != null ? setting.getInt("record.type") : 0;
         if (isConvert) {
-            flvToMp4 = new FlvToMp4();
+            try {
+                flvToMp4 = new FlvToMp4();
+            } catch (IllegalArgumentException e) {
+                log.warn(e.getMessage());
+            }
         }
     }
 
@@ -66,8 +76,8 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
     protected abstract M getRoomMonitor(R room);
 
     public void start(R room, boolean isRecord) {
-        this.room = room;
         room.initSetting(setting);
+        this.room = room;
         roomMonitor = getRoomMonitor(room);
         Thread.currentThread().setName(room.getOwner() + "-main-" + Thread.currentThread().getId());
         RoomMonitor.RoomListener<R> listener = getRoomListener(room, isRecord);
@@ -173,11 +183,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             public void onProgress(R r) {
                 String statistics = owner + "\n" + statistics(logUtils[0], r);
                 if (recorder != null && recorder.isRunning() && recorder.getStartTime() != null) {
-                    long totalMS = System.currentTimeMillis() - recorder.getStartTime();
-                    String tooltip = "【" + recorder.getDefinition() + "】已录制: "
-                            + TimeUtil.formatMSToCn((int) totalMS)
-                            + " / " + FileUtil.fileSizeStr(recorder.getTotalBytes())
-                            + " / " + FlvStreamRecorder.getBitrate(recorder.getTotalBytes(), totalMS) + " kbps";
+                    String tooltip = "【" + recorder.getDefinition() + "】" + recorder.getProgressMsg();
                     trayIconUtil.setToolTip(statistics + "\n" + tooltip);
                     log.info(tooltip);
                 } else {
@@ -192,45 +198,42 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
 
 //    protected abstract FlvStreamRecorder getRecord(R room, boolean isConvert);
 
-    protected FlvStreamRecorder getRecord(R room, boolean isConvert) {
+    protected Recorder getRecord(R room, boolean isConvert) {
         LinkedHashMap<String, String> streams = room.getStreams();
         Map.Entry<String, String> stream = streams.entrySet().iterator().next();
         String definition = stream.getKey();//清晰度
         String flvUrl = stream.getValue();
         String fileName = "【" + FileUtil.filterFileName(room.getOwner()) + "】" + room.getPlatform().getName() + "直播录制" + TimeUtil.toTime(new Date(), "yyyy-MM-dd HH-mm-ss") + "[" + FileUtil.filterFileName(room.getTitle()) + "].flv";
         String path = Paths.get(LogUtil.getBasePathStr(room), fileName).toFile().getPath();
-        FlvStreamRecorder flvStreamRecorder = new FlvStreamRecorder(flvUrl, path, 0, definition);
-        FlvStreamRecorder.ProgressCallback progressCallback = new FlvStreamRecorder.ProgressCallback() {
+        Recorder flvStreamRecorder;
+        switch (recorderType) {
+            case 0:
+                flvStreamRecorder = new FlvStreamRecorder(flvUrl, path, definition);
+                break;
+            case 1:
+                try {
+                    String ffmpegPath = setting != null && StrUtil.isNotBlank(setting.getStr("record.ffmpegPath")) ? setting.getStr("record.ffmpegPath") : null;
+                    flvStreamRecorder = new FFmpegFlvRecorder(flvUrl, path, definition, ffmpegPath);
+                } catch (IllegalArgumentException e) {
+                    log.warn(e.getMessage());
+                    flvStreamRecorder = new FlvStreamRecorder(flvUrl, path, definition);
+                }
+                break;
+            default:
+                flvStreamRecorder = new FlvStreamRecorder(flvUrl, path, definition);
+                break;
+        }
+        FlvStreamRecorder.ProgressCallback progressCallback = new Recorder.ProgressCallback() {
             @Override
-            public void onStart() {
-                FlvStreamRecorder.ProgressCallback.super.onStart();
-                log.info(path + " 开始录制：【" + definition + "】：" + flvUrl);
+            public void onStart(String url, String saveFilePath, String definition) {
+                Recorder.ProgressCallback.super.onStart(url, saveFilePath, definition);
                 trayIconUtil.setStartRecordStatue(true);
             }
 
-
             @Override
-            public void onComplete(long totalBytes, long totalDurationMS) {
-                FlvStreamRecorder.ProgressCallback.super.onComplete(totalBytes, totalDurationMS);
-                log.info("FLV录制结束，文件路径：" + path);
-                if (isConvert) {
-                    new Thread(() -> {
-                        String output = path.substring(0, path.lastIndexOf(".")) + ".mp4";
-                        boolean convert = flvToMp4.convert(path, output);
-                        if (convert) {
-                            Thread.currentThread().setName(room.getOwner() + "-FlvToMp4-" + Thread.currentThread().getId());
-                            try {
-                                log.debug("FlvToMp4视频转换完成！删除源文件：" + path);
-                                Files.deleteIfExists(Paths.get(path));
-                                trayIconUtil.notifyMessage("录制文件保存路径：" + output);
-                            } catch (IOException e) {
-                                log.error("FlvToMp4视频转换完成后删除源文件失败！" + ThrowableUtil.getAllCauseMessage(e));
-                            }
-                        }
-                    }).start();
-                } else {
-                    trayIconUtil.notifyMessage("录制文件保存路径：" + path);
-                }
+            public void onComplete(String saveFilePath, long totalBytes, long totalDurationMS) {
+                Recorder.ProgressCallback.super.onComplete(saveFilePath, totalBytes, totalDurationMS);
+                flvToMp4(path);
                 try {
                     TimeUnit.SECONDS.sleep(1);
                 } catch (InterruptedException ignored) {
@@ -240,7 +243,8 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
 
             @Override
             public void onError(Throwable throwable) {
-                log.error("录制出现异常：{}", ThrowableUtil.getAllCauseMessage(throwable), throwable);
+                Recorder.ProgressCallback.super.onError(throwable);
+                flvToMp4(path);
                 if (throwable instanceof InterruptedException) {
                     return;
                 }
@@ -255,17 +259,38 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         };
 
         flvStreamRecorder.setProgressCallback(progressCallback);
-        flvStreamRecorder.setCookie(room.getCookie());
+        flvStreamRecorder.setRoom(room);
         return flvStreamRecorder;
     }
 
+    private void flvToMp4(String path) {
+        if (isConvert && flvToMp4 != null) {
+            new Thread(() -> {
+                String output = path.substring(0, path.lastIndexOf(".")) + ".mp4";
+                boolean convert = flvToMp4.convert(path, output);
+                if (convert) {
+                    Thread.currentThread().setName(room.getOwner() + "-FlvToMp4-" + Thread.currentThread().getId());
+                    try {
+                        log.debug("FlvToMp4视频转换完成！删除源文件：" + path);
+                        Files.deleteIfExists(Paths.get(path));
+                        trayIconUtil.notifyMessage("录制文件保存路径：" + output);
+                    } catch (IOException e) {
+                        log.error("FlvToMp4视频转换完成后删除源文件失败！" + ThrowableUtil.getAllCauseMessage(e));
+                    }
+                }
+            }).start();
+        } else {
+            trayIconUtil.notifyMessage("录制文件保存路径：" + path);
+        }
+    }
 
-    private void tryRecord(R douYinRoom, boolean isConvert) {
+
+    private void tryRecord(R room, boolean isConvert) {
         trayIconUtil.setStartRecordStatue(false);
         if (isRunning && recordFlag) {
             recorder.stop(true);
             log.warn("直播尚未结束，继续录制！");
-            recorder = getRecord(douYinRoom, isConvert);
+            recorder = getRecord(room, isConvert);
             try {
                 recorder.run(true);
             } catch (ExecutionException e) {
@@ -322,7 +347,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
 
             @Override
             public void iconClick(ActionEvent e) {
-                if (recorder == null || recorder.getFlvPath() == null) {
+                if (recorder == null || recorder.getSaveFilePath() == null) {
                     String home = System.getProperty("user.dir");
                     Path path = Paths.get(home, Constant.Application, room.getPlatform().getName(), "[" + room.getOwner() + "]");
                     if (Files.exists(path)) {
@@ -331,7 +356,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                         openDirectory(home);
                     }
                 } else {
-                    openDirectory(Paths.get(recorder.getFlvPath()).getParent().toString());
+                    openDirectory(Paths.get(recorder.getSaveFilePath()).getParent().toString());
                 }
             }
 

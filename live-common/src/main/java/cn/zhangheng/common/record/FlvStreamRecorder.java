@@ -9,14 +9,10 @@ package cn.zhangheng.common.record;
  */
 
 import cn.zhangheng.common.bean.Constant;
-import cn.zhangheng.common.bean.Room;
 import cn.zhangheng.common.bean.Task;
-import cn.zhangheng.common.util.LogUtil;
 import com.zhangheng.file.FileUtil;
 import com.zhangheng.util.ThrowableUtil;
 import com.zhangheng.util.TimeUtil;
-import lombok.Getter;
-import lombok.Setter;
 
 import java.io.FileDescriptor;
 import java.io.FileOutputStream;
@@ -27,23 +23,15 @@ import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.channels.ReadableByteChannel;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Date;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class FlvStreamRecorder extends Task {
+public class FlvStreamRecorder extends Recorder {
     private static final int BufferSize = 512 * 1024;
     // 缓冲区队列容量
     private static final int QUEUE_CAPACITY = 10;
 
     private final AtomicLong totalBytes = new AtomicLong(0);
-
-    public long getTotalBytes() {
-        return totalBytes.get();
-    }
 
     static {
         System.setProperty("http.keepAlive", "true");
@@ -51,47 +39,10 @@ public class FlvStreamRecorder extends Task {
         System.setProperty("sun.net.client.defaultReadTimeout", "60000");
     }
 
-    @Getter
-    private String flvPath;
-    @Getter
-    private String flvUrl;
-    @Getter
-    private String definition;//清晰度
-
-    private int runCount = 0;
-
-    private Runnable runnable = null;
-    @Setter
-    private ProgressCallback progressCallback = null;
-    @Setter
-    private String cookie;
-
-    public FlvStreamRecorder(String flvUrl, String outputFile, int timeoutSeconds, String definition) {
-        initRunnable(flvUrl, outputFile, timeoutSeconds, definition);
+    public FlvStreamRecorder(String downloadUrl, String saveFilePath, String definition) {
+        super(downloadUrl, saveFilePath, definition);
     }
 
-    public void initRunnable(String flvUrl, String flvPath, int timeoutSeconds, String definition) {
-        this.flvUrl = flvUrl;
-        this.flvPath = flvPath;
-        this.definition = definition;
-        this.runnable = () -> {
-            try {
-                if (flvPath.indexOf("[") < flvPath.indexOf("]")) {
-                    String owner = flvPath.substring(flvPath.indexOf("[") + 1, flvPath.indexOf("]"));
-                    Thread.currentThread().setName(owner + "-recorder-" + Thread.currentThread().getId());
-                } else {
-                    Thread.currentThread().setName("recorder-" + Thread.currentThread().getId());
-                }
-                recordFlvStream(flvUrl, flvPath, timeoutSeconds);
-            } catch (Exception e) {
-                if (progressCallback != null) {
-                    progressCallback.onError(e);
-                } else {
-                    throw new RuntimeException(e);
-                }
-            }
-        };
-    }
 
     public void start() {
         try {
@@ -101,132 +52,60 @@ public class FlvStreamRecorder extends Task {
         }
     }
 
-    /**
-     * 异步调用结束时需手动调用stop方法停止
-     *
-     * @param isAsync
-     * @throws ExecutionException
-     */
+
     @Override
-    public void run(boolean isAsync) throws ExecutionException {
-        runCount++;
-        if (runCount > 1) {
-            reset();
-//            initRunnable(flvUrl,flvPath, timeoutSeconds);
-        }
-        if (mainExecutors.isShutdown() || mainExecutors.isTerminated()) {
-            mainExecutors = Executors.newFixedThreadPool(1);
-        }
-        Future<?> future = mainExecutors.submit(runnable);
-        if (!isAsync) {
-            try {
-                future.get();
-            } catch (InterruptedException e) {
-                Task.log.error("FLV录制主任务中断：" + ThrowableUtil.getAllCauseMessage(e));
-            } finally {
-                isRunning.set(false);
-            }
-        }
-        mainExecutors.shutdown();
-    }
-
-    public void stop(boolean force) {
-        isRunning.set(false);
-        if (force) {
-            mainExecutors.shutdownNow();
+    public long getTimeMs() {
+        if (endTime != null) {
+            return endTime - startTime;
         } else {
-            mainExecutors.shutdown();
+            return System.currentTimeMillis() - startTime;
         }
     }
 
-    private void reset() {
-        totalBytes.set(0);
-        startTime = null;
-        endTime = null;
+    @Override
+    public long getDownloadSize() {
+        return totalBytes.get();
     }
 
-    public static Path getFlvFilePath(Room roomInfo) {
-        String prefix = "【" + FileUtil.filterFileName(roomInfo.getOwner()) + "】直播录制";
-        String fileName = prefix + TimeUtil.toTime(roomInfo.getStartTime(), "yyyy-MM-dd HH-mm-ss") + ".flv";
-        Path basePath = LogUtil.getBasePath(roomInfo);
-        if (!Files.exists(basePath)) {
-            try {
-                Files.createDirectories(basePath);
-            } catch (IOException e) {
-                Task.log.error("创建文件夹失败：" + ThrowableUtil.getAllCauseMessage(e));
-            }
-        }
-        Path path = Paths.get(basePath.toString(), fileName);
-        if (Files.exists(path)) {
-            fileName = prefix + TimeUtil.toTime(new Date(), "yyyy-MM-dd HH-mm-ss") + ".flv";
-            return Paths.get(basePath.toString(), fileName);
-        }
-        return path;
+    @Override
+    public String getProgressMsg() {
+        long totalMS = getTimeMs();
+        return "已录制: "
+                + TimeUtil.formatMSToCn((int) totalMS)
+                + " / " + FileUtil.fileSizeStr(getDownloadSize())
+                + " / " + FlvStreamRecorder.getBitrate(getDownloadSize(), totalMS) + " kbps";
     }
+
+    @Override
+    public void download() throws Exception {
+        recordFlvStream(getDownloadUrl(), getSaveFilePath());
+    }
+
 
     /**
      * 录制FLV直播流到本地文件
      *
-     * @param streamUrl      FLV直播流地址
-     * @param outputFile     输出文件路径
-     * @param timeoutSeconds 超时时间(秒)，0表示不超时
+     * @param streamUrl  FLV直播流地址
+     * @param outputFile 输出文件路径
      * @throws IOException 当发生IO错误时抛出
      */
-    private void recordFlvStream(String streamUrl, String outputFile, int timeoutSeconds)
+    private void recordFlvStream(String streamUrl, String outputFile)
             throws IOException {
-        isRunning.set(true);
-        ScheduledExecutorService executor = null;
-        // 设置超时控制
-        if (timeoutSeconds > 0) {
-            executor = Executors.newSingleThreadScheduledExecutor();
-            executor.schedule(() -> {
-                isRunning.set(false);
-                if (progressCallback != null) {
-                    progressCallback.onTimeout();
-                }
-            }, timeoutSeconds, TimeUnit.SECONDS);
-        }
-
-        URLConnection conn = getUrlConnection(streamUrl);
-        try (ReadableByteChannel inChannel = Channels.newChannel(conn.getInputStream());
-             FileOutputStream fos = new FileOutputStream(outputFile)) {
-
-            startTime = System.currentTimeMillis();
-
-            if (progressCallback != null) {
-                progressCallback.onStart();
-            }
-
-            long totalBytes = asyncReadWrite(fos, inChannel);
-
-            if (progressCallback != null) {
-                progressCallback.onComplete(totalBytes, endTime - startTime);
-            }
-
-        } finally {
-            if (executor != null) {
-                executor.shutdownNow();
-            }
-            isRunning.set(false);
-        }
-    }
-
-    private URLConnection getUrlConnection(String streamUrl) throws IOException {
         URL url = new URL(streamUrl);
         URLConnection conn = url.openConnection();
         conn.setConnectTimeout(60000);
         conn.setReadTimeout(30000);
         conn.setRequestProperty("User-Agent", Constant.User_Agent);
-        if (cookie != null) {
-            conn.setRequestProperty("Cookie", cookie);
+        if (room != null) {
+            conn.setRequestProperty("Referer", room.getPlatform().getMainUrl() + room.getId());
+            if (room.getCookie() != null) {
+                conn.setRequestProperty("Cookie", room.getCookie());
+            }
         }
-        if (url.getHost().indexOf("bili") > 0) {
-            //bilibili需要加header
-            conn.setRequestProperty("Referer", Room.Platform.Bili.getMainUrl());
-        } else if (url.getHost().indexOf("douyin") > 0) {
-            conn.setRequestProperty("Referer", Room.Platform.DouYin.getMainUrl());
+        try (ReadableByteChannel inChannel = Channels.newChannel(conn.getInputStream());
+             FileOutputStream fos = new FileOutputStream(outputFile)) {
+            asyncReadWrite(fos, inChannel);
         }
-        return conn;
     }
 
     /**
@@ -237,47 +116,47 @@ public class FlvStreamRecorder extends Task {
      * @return
      * @throws IOException
      */
-    private long readWrite(FileOutputStream fos, ReadableByteChannel inChannel) throws IOException {
-        long totalBytes = 0;
-        try (FileChannel outChannel = fos.getChannel()) {
-            FileDescriptor fd = fos.getFD();
-            ByteBuffer buffer = ByteBuffer.allocateDirect(BufferSize); // 缓冲区
-            long lastReportTime = startTime;
-
-            // 主录制循环
-            while (isRunning.get()) {
-                int bytesRead = inChannel.read(buffer);
-                if (bytesRead == -1) {
-                    break; // 流结束
-                }
-                buffer.flip();
-                while (buffer.hasRemaining()) {
-                    outChannel.write(buffer);
-                }
-                totalBytes += bytesRead;
-                buffer.clear();
-
-                // 进度报告
-                long currentTime = System.currentTimeMillis();
-                if (progressCallback != null && currentTime - lastReportTime > 1000) {
-                    long durationMS = currentTime - startTime;
-                    progressCallback.onProgress(totalBytes, durationMS, currentTime);
-                    lastReportTime = currentTime;
-                    // 定期同步磁盘，平衡性能和数据安全性
-                    if ((int) (durationMS / 1000) % 10 == 0) {
-                        fd.sync();
-                    }
-                }
-            }
-            fd.sync();
-            endTime = System.currentTimeMillis();
-        } catch (IOException e) {
-            Task.log.error("readWrite发生异常：" + ThrowableUtil.getAllCauseMessage(e));
-            Thread.currentThread().interrupt();
-            isRunning.set(false);
-        }
-        return totalBytes;
-    }
+//    private long readWrite(FileOutputStream fos, ReadableByteChannel inChannel) throws IOException {
+//        long totalBytes = 0;
+//        try (FileChannel outChannel = fos.getChannel()) {
+//            FileDescriptor fd = fos.getFD();
+//            ByteBuffer buffer = ByteBuffer.allocateDirect(BufferSize); // 缓冲区
+//            long lastReportTime = startTime;
+//
+//            // 主录制循环
+//            while (isRunning.get()) {
+//                int bytesRead = inChannel.read(buffer);
+//                if (bytesRead == -1) {
+//                    break; // 流结束
+//                }
+//                buffer.flip();
+//                while (buffer.hasRemaining()) {
+//                    outChannel.write(buffer);
+//                }
+//                totalBytes += bytesRead;
+//                buffer.clear();
+//
+//                // 进度报告
+//                long currentTime = System.currentTimeMillis();
+//                if (progressCallback != null && currentTime - lastReportTime > 1000) {
+//                    long durationMS = currentTime - startTime;
+//                    progressCallback.onProgress(totalBytes, durationMS, currentTime);
+//                    lastReportTime = currentTime;
+//                    // 定期同步磁盘，平衡性能和数据安全性
+//                    if ((int) (durationMS / 1000) % 10 == 0) {
+//                        fd.sync();
+//                    }
+//                }
+//            }
+//            fd.sync();
+//            endTime = System.currentTimeMillis();
+//        } catch (IOException e) {
+//            Task.log.error("readWrite发生异常：" + ThrowableUtil.getAllCauseMessage(e));
+//            Thread.currentThread().interrupt();
+//            isRunning.set(false);
+//        }
+//        return totalBytes;
+//    }
 
     /**
      * 异步读写 读写同时进行
@@ -303,7 +182,7 @@ public class FlvStreamRecorder extends Task {
             // 启动读取线程
             Future<?> future = executor.submit(() -> {
                 try {
-                    readTask(inChannel, readQueue, writeQueue, totalBytes);
+                    readTask(inChannel, readQueue, writeQueue);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -335,7 +214,7 @@ public class FlvStreamRecorder extends Task {
     }
 
 
-    private void readTask(ReadableByteChannel inChannel, BlockingQueue<ByteBuffer> readQueue, BlockingQueue<ByteBuffer> writeQueue, AtomicLong totalBytes) throws InterruptedException {
+    private void readTask(ReadableByteChannel inChannel, BlockingQueue<ByteBuffer> readQueue, BlockingQueue<ByteBuffer> writeQueue) throws InterruptedException {
         try {
             while (isRunning.get()) {
                 try {
@@ -361,7 +240,6 @@ public class FlvStreamRecorder extends Task {
                         buffer.flip();
                         // 将满缓冲区放入读队列
                         readQueue.put(buffer);
-                        totalBytes.addAndGet(bytesRead);
                     } else {
                         // 没有数据可读，归还缓冲区
                         writeQueue.put(buffer);
@@ -395,7 +273,7 @@ public class FlvStreamRecorder extends Task {
 
                 // 写入数据
                 while (buffer.hasRemaining()) {
-                    outChannel.write(buffer);
+                    totalBytes.addAndGet(outChannel.write(buffer));
                 }
                 // 归还空缓冲区到写队列
                 buffer.clear();
@@ -404,13 +282,6 @@ public class FlvStreamRecorder extends Task {
                 if (totalBytes.get() % (BufferSize * 10) == 0) {
                     fd.sync();
                 }
-                // 进度报告 暂时不需要主动回调
-//                long currentTime = System.currentTimeMillis();
-//                if (progressCallback != null && currentTime - lastReportTime > 1000) {
-//                    long durationMS = currentTime - startTime;
-//                    progressCallback.onProgress(totalBytes.get(), durationMS, currentTime);
-//                    lastReportTime = currentTime;
-//                }
             }
             fd.sync();
         } catch (IOException e) {
@@ -421,38 +292,6 @@ public class FlvStreamRecorder extends Task {
         }
     }
 
-
-    /**
-     * 进度回调接口
-     */
-    public interface ProgressCallback {
-        default void onStart() {
-            Task.log.info("FLV录制已启动!");
-        }
-
-        default void onProgress(long bytesReceived, long durationMS, long timeStamp) {
-            Task.log.info(
-                    "已录制: " + FileUtil.fileSizeStr(bytesReceived)
-                            + ", 时长: " + TimeUtil.formatMSToCn((int) durationMS)
-                            + ", 码率: " + getBitrate(bytesReceived, durationMS) + " kbps");
-        }
-
-        default void onComplete(long totalBytes, long totalDurationMS) {
-            long bitrate = getBitrate(totalBytes, totalDurationMS);
-            Task.log.info(
-                    "FLV录制完成! 总计: " + FileUtil.fileSizeStr(totalBytes)
-                            + ", 时长: " + TimeUtil.formatMSToCn((int) totalDurationMS)
-                            + ", 平均码率: " + bitrate + " kbps");
-        }
-
-        default void onTimeout() {
-            Task.log.info("FLV录制超时，已自动停止!");
-        }
-
-        default void onError(Throwable throwable) {
-            Task.log.error(throwable);
-        }
-    }
 
     /**
      * 计算码率kbps
@@ -467,17 +306,16 @@ public class FlvStreamRecorder extends Task {
 
     // 示例用法
     public static void main(String[] args) {
-//        String flvUrl = "https://cn-jxnc-cm-01-39.bilivideo.com/live-bvc/216120/live_299648350_1208456_2500.flv?expires=1748192108&pt=web&deadline=1748192108&len=0&oi=1866233469&platform=web&qn=250&trid=100029dad3c9ede4ddc27b3ca4bdc668333d&uipk=100&uipv=100&nbs=1&uparams=cdn,deadline,len,oi,platform,qn,trid,uipk,uipv,nbs&cdn=cn-gotcha01&upsig=7fd07bd2fdc883af01b7631d221aa24f&site=0993ad965240cb1511816ecdc558c540&free_type=0&mid=520318232&sche=ban&sid=cn-jxnc-cm-01-39&chash=1&bmt=1&sg=lr&trace=73&isp=cm&rg=Central&pv=Hubei&p2p_type=1&info_source=cache&origin_bitrate=380225&strategy_ids=57&sl=1&deploy_env=prod&strategy_types=2&hot_cdn=0&hdr_type=0&sk=0480b9d2936c72ddd70c94947b704c65&source=puv3_onetier&score=1&codec=0&pp=srt&suffix=2500&vd=nc&zoneid_l=151388163&sid_l=stream_name_cold&src=puv3&order=1";
-        String flvUrl = "https://cn-jxnc-cm-01-16.bilivideo.com/live-bvc/432721/live_500017420_15183310.flv?expires=1748284865&pt=web&deadline=1748284865&len=0&oi=1866233469&platform=web&qn=10000&trid=1000400883854e2df31835d0e2aa156834a7&uipk=100&uipv=100&nbs=1&uparams=cdn,deadline,len,oi,platform,qn,trid,uipk,uipv,nbs&cdn=cn-gotcha01&upsig=b2d2aced0e2120906d4ddb2c58398a55&site=7310aec9bcd34257c712215ccb1f79f3&free_type=0&mid=0&sche=ban&sid=cn-jxnc-cm-01-16&chash=0&bmt=1&sg=lr&trace=73&isp=cm&rg=Central&pv=Hubei&codec=0&sk=6168ccbdb616af3bb097fa85095bded8&pp=srt&p2p_type=1&sl=1&hdr_type=0&deploy_env=prod&origin_bitrate=836517&hot_cdn=0&score=1&suffix=origin&info_source=origin&source=puv3_onetier&vd=nc&zoneid_l=151388163&sid_l=stream_name_cold&src=puv3&order=1";
-//        String flvUrl = "https://cn-hbwh-cm-01-11.bilivideo.com/live-bvc/328453/live_21144080_bs_4998535_bluray.flv?expires=1748284669&pt=&deadline=1748284669&len=0&oi=1866233469&platform=&qn=10000&trid=1000d9fc3909916e44a6a10da769e69d7982&uipk=100&uipv=100&nbs=1&uparams=cdn,deadline,len,oi,platform,qn,trid,uipk,uipv,nbs&cdn=cn-gotcha01&upsig=9c94f65e887176a70af1fadefbc48b2d&sk=1d25f4da1575fcb927b5b789251233f8&p2p_type=0&sl=2&free_type=0&mid=0&sid=cn-hbwh-cm-01-11&chash=0&bmt=1&sche=ban&score=18&pp=rtmp&source=one&trace=8c1&site=fb36216e847afe8545a5c221df4d1c7d&zoneid_l=151388163&sid_l=live_21144080_bs_4998535_bluray&order=1";
+        String flvUrl = "https://pull-flv-l26.douyincdn.com/stage/stream-7510992371950078760_or4.flv?arch_hrchy=h1&exp_hrchy=h1&expire=6845c418&major_anchor_level=common&sign=a3f11bfb3a0f7da42112bc72bf92c2ef&t_id=037-20250602011047DE5DAE6B3E4CC10A3E24-rqU2Dx&unique_id=stream-7510992371950078760_139_flv_or4&abr_pts=-800";
         String outputPath = TimeUtil.getNowUnix() + ".flv";
 
         try {
             System.out.println("开始录制FLV流...");
-            FlvStreamRecorder flvStreamRecorder = new FlvStreamRecorder(flvUrl, outputPath, 60, "原画");
-            flvStreamRecorder.setProgressCallback(new ProgressCallback() {
+            Recorder flvStreamRecorder = new FlvStreamRecorder(flvUrl, outputPath, "原画");
+            flvStreamRecorder.setTimeoutSeconds(60);
+            flvStreamRecorder.setProgressCallback(new Recorder.ProgressCallback() {
             });
-            flvStreamRecorder.start();
+            flvStreamRecorder.run(false);
         } catch (Exception e) {
             System.err.println("录制过程中出错: " + e.getMessage());
             e.printStackTrace();

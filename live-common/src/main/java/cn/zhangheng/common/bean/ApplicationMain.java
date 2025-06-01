@@ -126,7 +126,6 @@ public abstract class ApplicationMain<R extends Room> {
                 }
             }
             isLoop = settingUtil != null && settingUtil.getBool("record.isLoop") == Boolean.TRUE;
-            room.initSetting(settingUtil);
             getMonitorMain(settingUtil, room).start(room, isRecord);
         } while (isLoop);
     }
