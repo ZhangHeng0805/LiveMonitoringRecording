@@ -13,12 +13,12 @@ public class Main extends ApplicationMain<Room> {
     }
 
     @Override
-    protected MonitorMain getMonitorMain(SettingUtil settingUtil, Room room) {
+    protected MonitorMain getMonitorMain(Setting setting, Room room) {
         switch (room.getPlatform()) {
             case DouYin:
-                return new DouYinMain(settingUtil);
+                return new DouYinMain(setting);
             case Bili:
-                return new BiliMain(settingUtil);
+                return new BiliMain(setting);
             default:
                 throw new IllegalArgumentException("参数错误platform");
         }

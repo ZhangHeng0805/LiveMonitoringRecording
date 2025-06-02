@@ -3,6 +3,7 @@ package cn.zhangheng.bilibili;
 import cn.zhangheng.bilibili.bean.BiliRoom;
 import cn.zhangheng.bilibili.service.BiliMonitor;
 import cn.zhangheng.common.bean.MonitorMain;
+import cn.zhangheng.common.bean.Setting;
 import cn.zhangheng.common.util.LogUtil;
 import com.zhangheng.util.SettingUtil;
 import com.zhangheng.util.ThrowableUtil;
@@ -19,7 +20,7 @@ import java.io.IOException;
 public class BiliMain extends MonitorMain<BiliRoom, BiliMonitor> {
 
 
-    public BiliMain(SettingUtil setting) {
+    public BiliMain(Setting setting) {
         super(setting);
     }
 

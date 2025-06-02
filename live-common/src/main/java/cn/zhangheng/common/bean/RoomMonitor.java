@@ -132,7 +132,7 @@ public abstract class RoomMonitor<R extends Room, S extends RoomService<R>> exte
         ;
     }
 
-    public interface RoomListener<T extends Room> {
+    public interface RoomListener<R extends Room> {
         //开始监听
         void onStart();
 
@@ -140,9 +140,9 @@ public abstract class RoomMonitor<R extends Room, S extends RoomService<R>> exte
         void onStop();
 
         //直播间状态改变（未开播/已开播）
-        void onChange(State state, T room);
+        void onChange(State state, R room);
 
         //开播时的直播间信息（根据delayIntervalSec设置的频率回调）
-        void onProgress(T room);
+        void onProgress(R room);
     }
 }

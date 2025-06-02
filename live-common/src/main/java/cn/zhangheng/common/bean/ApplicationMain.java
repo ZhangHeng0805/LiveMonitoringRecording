@@ -3,7 +3,6 @@ package cn.zhangheng.common.bean;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.log.Log;
 import cn.hutool.log.LogFactory;
-import com.zhangheng.util.SettingUtil;
 import com.zhangheng.util.ThrowableUtil;
 
 import java.util.Scanner;
@@ -17,7 +16,7 @@ import java.util.Scanner;
  */
 public abstract class ApplicationMain<R extends Room> {
     private static final Log log = LogFactory.get();
-    protected SettingUtil settingUtil;
+    protected Setting setting;
 
     private static final String banner = "\n" +
             "            ***************       ***       ***\n" +
@@ -35,8 +34,8 @@ public abstract class ApplicationMain<R extends Room> {
             "*****   作者GitHub主页：https://github.com/ZhangHeng0805";
 
 
-    public void start(SettingUtil settingUtil, String[] args) {
-        this.settingUtil = settingUtil;
+    public void start(Setting setting, String[] args) {
+        this.setting = setting;
         System.out.println(banner);
         Room.Platform[] platforms = supportedPlatforms();
         String platformsStr = supportedPlatformsStr(platforms);
@@ -92,15 +91,15 @@ public abstract class ApplicationMain<R extends Room> {
         }
     }
 
-    protected abstract MonitorMain<R, ?> getMonitorMain(SettingUtil settingUtil, R room);
+    protected abstract MonitorMain<R, ?> getMonitorMain(Setting settingUtil, R room);
 
     protected abstract R getRoom(Room.Platform platform, String id);
 
     protected abstract Room.Platform[] supportedPlatforms();
 
-    private String supportedPlatformsStr() {
-        return supportedPlatformsStr(supportedPlatforms());
-    }
+//    private String supportedPlatformsStr() {
+//        return supportedPlatformsStr(supportedPlatforms());
+//    }
 
     private String supportedPlatformsStr(Room.Platform[] platforms) {
         StringBuilder notic = new StringBuilder();
@@ -118,15 +117,15 @@ public abstract class ApplicationMain<R extends Room> {
         //是否循环监听
         boolean isLoop;
         do {
-            if (settingUtil == null) {
+            if (setting == null) {
                 try {
-                    settingUtil = new SettingUtil(Constant.Setting_Name);
+                    setting = new Setting();
                 } catch (Exception e) {
                     log.warn("读取配置文件异常：" + ThrowableUtil.getAllCauseMessage(e));
                 }
             }
-            isLoop = settingUtil != null && settingUtil.getBool("record.isLoop") == Boolean.TRUE;
-            getMonitorMain(settingUtil, room).start(room, isRecord);
+            isLoop = setting.isLoop();
+            getMonitorMain(setting, room).start(room, isRecord);
         } while (isLoop);
     }
 }

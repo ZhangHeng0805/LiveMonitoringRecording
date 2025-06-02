@@ -1,7 +1,9 @@
 package cn.zhangheng.douyin;
 
 
+import cn.hutool.core.util.StrUtil;
 import cn.zhangheng.common.bean.Room;
+import cn.zhangheng.common.bean.Setting;
 import com.zhangheng.util.SettingUtil;
 import lombok.Getter;
 import lombok.Setter;
@@ -30,9 +32,10 @@ public class DouYinRoom extends Room {
     private List<String> coverList;
 
     @Override
-    public void initSetting(SettingUtil settingUtil) {
-        if (settingUtil != null)
-            setCookie(settingUtil.getStr("DouYin.Cookie"));
+    public void initSetting(Setting setting) {
+        String cookieDouYin = setting.getCookieDouYin();
+        if (StrUtil.isNotBlank(cookieDouYin))
+            setCookie(cookieDouYin);
     }
 
     public DouYinRoom(String id) {

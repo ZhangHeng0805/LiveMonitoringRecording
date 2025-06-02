@@ -4,6 +4,7 @@ import cn.zhangheng.bilibili.bean.BiliRoom;
 import cn.zhangheng.common.bean.ApplicationMain;
 import cn.zhangheng.common.bean.MonitorMain;
 import cn.zhangheng.common.bean.Room;
+import cn.zhangheng.common.bean.Setting;
 import com.zhangheng.util.SettingUtil;
 
 public class Main extends ApplicationMain<BiliRoom> {
@@ -14,8 +15,8 @@ public class Main extends ApplicationMain<BiliRoom> {
     }
 
     @Override
-    protected MonitorMain<BiliRoom, ?> getMonitorMain(SettingUtil settingUtil, BiliRoom room) {
-        return new BiliMain(settingUtil);
+    protected MonitorMain<BiliRoom, ?> getMonitorMain(Setting setting, BiliRoom room) {
+        return new BiliMain(setting);
     }
 
     @Override

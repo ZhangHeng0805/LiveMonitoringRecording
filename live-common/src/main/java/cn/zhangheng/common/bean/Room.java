@@ -23,7 +23,7 @@ public abstract class Room {
     protected boolean living;
     //开始时间
     protected Date startTime;
-    protected Date updateTime;
+//    protected Date updateTime;
     protected String cover;
     //直播流不同清晰度地址
     protected LinkedHashMap<String, String> streams;
@@ -35,7 +35,7 @@ public abstract class Room {
             this.cookie = cookie;
     }
 
-    public abstract void initSetting(SettingUtil settingUtil);
+    public abstract void initSetting(Setting setting);
 
     public Room(String id) {
         this.id = id;
@@ -43,13 +43,13 @@ public abstract class Room {
 
     public abstract Platform getPlatform();
 
-    public String getFlvUrl() {
-        if (streams != null && !streams.isEmpty()) {
-            return getStreams().entrySet().iterator().next().getValue();
-        } else {
-            return null;
-        }
-    }
+//    public String getFlvUrl() {
+//        if (streams != null && !streams.isEmpty()) {
+//            return getStreams().entrySet().iterator().next().getValue();
+//        } else {
+//            return null;
+//        }
+//    }
 
     public String getRoomUrl() {
         return getPlatform().getMainUrl() + getId();

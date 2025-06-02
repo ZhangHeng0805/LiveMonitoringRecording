@@ -1,4 +1,5 @@
 import cn.zhangheng.common.bean.Constant;
+import cn.zhangheng.common.bean.Setting;
 import cn.zhangheng.douyin.DouYinMain;
 import cn.zhangheng.douyin.DouYinRoom;
 import com.zhangheng.util.SettingUtil;
@@ -12,13 +13,9 @@ import com.zhangheng.util.SettingUtil;
  */
 public class DouYinTest1 {
     public static void main(String[] args) {
-        SettingUtil settingUtil;
-        try {
-            settingUtil = new SettingUtil(Constant.Setting_Name);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-        DouYinMain douYinMain = new DouYinMain(settingUtil);
+        Setting setting=new Setting();
+
+        DouYinMain douYinMain = new DouYinMain(setting);
 
         //主播直播间ID
         //小兰花-622216334529

@@ -12,10 +12,10 @@ Java编写的直播监控录制工具，可以监控直播间的数据（观看�
 ### 配置文件xxxr.setting
 ```properties
 #微信客户端通用对象（需配置消息发送快捷键Ctrl+Enter）
-#weChat.target=文件传输助手
+#notice.weChat.target文件传输助手
 #息知通知地址（可以微信公众号发通知）详情查看：https://xz.qqoq.net/
-#xiZhi.url=https://xizhi.qqoq.net/***.send
-#xiZhi.url=https://xizhi.qqoq.net/***.channel
+#notice.xiZhi.url=https://xizhi.qqoq.net/***.send
+#notice.xiZhi.url=https://xizhi.qqoq.net/***.channel
 #是否转换录制的视频
 record.FlvToMp4=true
 #录制类型：0-使用java编写的录制，1-使用ffmpeg工具录制
@@ -27,9 +27,9 @@ record.isLoop=true
 #监听间隔时长（秒）
 monitor.delayIntervalSec=10
 #B站的Cookie(可以录制更清晰的直播画面)
-Bilibili.Cookie=
+Cookie.Bilibili=
 #抖音的Cookie
-DouYin.Cookie=
+Cookie.DouYin=
 ```
 ### 运行启动
 > JDK1.8+

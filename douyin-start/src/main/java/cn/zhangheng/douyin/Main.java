@@ -3,6 +3,7 @@ package cn.zhangheng.douyin;
 import cn.zhangheng.common.bean.ApplicationMain;
 import cn.zhangheng.common.bean.MonitorMain;
 import cn.zhangheng.common.bean.Room;
+import cn.zhangheng.common.bean.Setting;
 import com.zhangheng.util.SettingUtil;
 
 /**
@@ -19,8 +20,8 @@ public class Main extends ApplicationMain<DouYinRoom> {
     }
 
     @Override
-    protected MonitorMain<DouYinRoom, ?> getMonitorMain(SettingUtil settingUtil, DouYinRoom room) {
-        return new DouYinMain(settingUtil);
+    protected MonitorMain<DouYinRoom, ?> getMonitorMain(Setting setting, DouYinRoom room) {
+        return new DouYinMain(setting);
     }
 
     @Override

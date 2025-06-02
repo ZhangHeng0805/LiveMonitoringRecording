@@ -83,12 +83,12 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
                     room.setOwner(data.getJSONObject("user").getStr("nickname"));
                 }
                 if (room.isLiving()) {
+                    if (room.getStartTime() == null) {
+                        room.setStartTime(new Date());
+                    }
                     JSONObject data1 = data.getJSONArray("data").getJSONObject(0);
                     if (StrUtil.isBlank(room.getTitle())) {
                         room.setTitle(data1.getStr("title", ""));
-                    }
-                    if (room.getStartTime() == null) {
-                        room.setStartTime(new Date());
                     }
                     if (room.getCoverList() == null) {
                         room.setCoverList(data1.getJSONObject("cover").getBeanList("url_list", String.class));
@@ -101,7 +101,6 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
                     room.setTotalUserStr(stats.getStr("total_user_str"));
                     room.setUserCountStr(stats.getStr("user_count_str"));
                     room.setLikeCount(data1.getInt("like_count"));
-                    room.setUpdateTime(new Date());
                 }
             }
         } catch (Exception e) {

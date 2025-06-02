@@ -1,6 +1,8 @@
 package cn.zhangheng.bilibili.bean;
 
+import cn.hutool.core.util.StrUtil;
 import cn.zhangheng.common.bean.Room;
+import cn.zhangheng.common.bean.Setting;
 import com.zhangheng.util.SettingUtil;
 import lombok.Getter;
 import lombok.Setter;
@@ -23,9 +25,10 @@ public class BiliRoom extends Room {
     private int followers;
 
     @Override
-    public void initSetting(SettingUtil settingUtil) {
-        if (settingUtil != null)
-            setCookie(settingUtil.getStr("Bilibili.Cookie"));
+    public void initSetting(Setting setting) {
+        String cookieBili = setting.getCookieBili();
+        if (StrUtil.isNotBlank(cookieBili))
+            setCookie(cookieBili);
     }
 
     public BiliRoom(String id) {

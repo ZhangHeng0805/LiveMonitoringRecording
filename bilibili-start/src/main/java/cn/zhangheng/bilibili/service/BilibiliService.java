@@ -77,7 +77,6 @@ public class BilibiliService extends RoomService<BiliRoom> {
                         room.setRoom_id(data.getStr("room_id"));
                         room.setUid(data.getStr("uid"));
                     }
-                    room.setUpdateTime(new Date());
                     return isLiving;
                 } else {
                     log.warn("room_init_living失败：" + entries.getStr("message"));
@@ -112,15 +111,19 @@ public class BilibiliService extends RoomService<BiliRoom> {
                         room.setTitle(data.getStr("title"));
                     }
                     if (isLiving) {
-                        room.setStartTime(TimeUtil.toDate(data.getStr("live_time")));
+                        if (room.getStartTime() == null) {
+                            try {
+                                room.setStartTime(TimeUtil.toDate(data.getStr("live_time")));
+                            } catch (ParseException e) {
+                                room.setStartTime(new Date());
+                            }
+                        }
                         room.setViewers(data.getInt("online"));
                     }
                 } else {
                     log.warn("room_info失败：" + entries.getStr("message"));
                 }
             }
-        } catch (ParseException e) {
-            if (room.isLiving()) room.setStartTime(new Date());
         }
     }
 
@@ -146,33 +149,33 @@ public class BilibiliService extends RoomService<BiliRoom> {
         }
     }
 
-    private void room_stream1() {
-        try (HttpResponse execute = HttpRequest.get("https://api.live.bilibili.com/room/v1/Room/playUrl?quality=4&cid=" + room.getRoom_id()).header("User-Agent", Constant.User_Agent).execute()) {
-            String body = execute.body();
-            if (JSONUtil.isTypeJSON(body)) {
-                JSONObject entries = JSONUtil.parseObj(body);
-                if (entries.getInt("code") == 0) {
-                    JSONObject data = entries.getJSONObject("data");
-                    Integer currentQuality = data.getInt("current_quality");
-                    String desc = "原画";
-                    for (int i = 0; i < data.getJSONArray("quality_description").size(); i++) {
-                        JSONObject entries1 = data.getJSONArray("quality_description").getJSONObject(i);
-                        if (entries1.getInt("qn").equals(currentQuality)) {
-                            desc = entries1.getStr("desc");
-                        }
-                    }
-                    LinkedHashMap<String, String> streams = new LinkedHashMap<>();
-                    for (int i = 0; i < data.getJSONArray("durl").size(); i++) {
-                        JSONObject entries1 = data.getJSONArray("durl").getJSONObject(i);
-                        streams.put(desc + entries1.getInt("order"), entries1.getStr("url"));
-                    }
-                    room.setStreams(streams);
-                } else {
-                    log.warn("room_stream失败：" + entries.getStr("message"));
-                }
-            }
-        }
-    }
+//    private void room_stream1() {
+//        try (HttpResponse execute = HttpRequest.get("https://api.live.bilibili.com/room/v1/Room/playUrl?quality=4&cid=" + room.getRoom_id()).header("User-Agent", Constant.User_Agent).execute()) {
+//            String body = execute.body();
+//            if (JSONUtil.isTypeJSON(body)) {
+//                JSONObject entries = JSONUtil.parseObj(body);
+//                if (entries.getInt("code") == 0) {
+//                    JSONObject data = entries.getJSONObject("data");
+//                    Integer currentQuality = data.getInt("current_quality");
+//                    String desc = "原画";
+//                    for (int i = 0; i < data.getJSONArray("quality_description").size(); i++) {
+//                        JSONObject entries1 = data.getJSONArray("quality_description").getJSONObject(i);
+//                        if (entries1.getInt("qn").equals(currentQuality)) {
+//                            desc = entries1.getStr("desc");
+//                        }
+//                    }
+//                    LinkedHashMap<String, String> streams = new LinkedHashMap<>();
+//                    for (int i = 0; i < data.getJSONArray("durl").size(); i++) {
+//                        JSONObject entries1 = data.getJSONArray("durl").getJSONObject(i);
+//                        streams.put(desc + entries1.getInt("order"), entries1.getStr("url"));
+//                    }
+//                    room.setStreams(streams);
+//                } else {
+//                    log.warn("room_stream失败：" + entries.getStr("message"));
+//                }
+//            }
+//        }
+//    }
 
     private void room_stream() {
         HttpRequest header = HttpRequest.get("https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo?protocol=0&format=0&codec=0&qn=30000&room_id=" + room.getRoom_id())
@@ -192,10 +195,15 @@ public class BilibiliService extends RoomService<BiliRoom> {
                     String desc = qn.get(codec.getInt("current_qn", 10000));
                     String base_url = codec.getStr("base_url");
                     LinkedHashMap<String, String> streams = new LinkedHashMap<>();
-                    for (int i = 0; i < codec.getJSONArray("url_info").size(); i++) {
+                    int size = codec.getJSONArray("url_info").size();
+                    for (int i = 0; i < size; i++) {
                         JSONObject urls = codec.getJSONArray("url_info").getJSONObject(i);
                         String url = urls.getStr("host") + base_url + urls.getStr("extra");
-                        streams.put(desc + (i + 1), url);
+                        if (size > 1) {
+                            streams.put(desc + (i + 1), url);
+                        } else {
+                            streams.put(desc, url);
+                        }
                     }
                     room.setStreams(streams);
                 } else {

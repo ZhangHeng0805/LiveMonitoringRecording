@@ -45,10 +45,11 @@ public class FFmpegFlvRecorder extends Recorder {
     @Override
     public String getProgressMsg() {
         FlvDownload.FFmpegProgress ffmpegProgress = flvDownload.getFfmpegProgress();
-        return "已录制: " + FileUtil.fileSizeStr(ffmpegProgress.getSize()) + " / "
+        return "已录制: "
                 + TimeUtil.formatMSToCn((int) ffmpegProgress.getTimeMs()) + " / "
-                + ffmpegProgress.getBitrate() + "kbits/s / "
+                + FileUtil.fileSizeStr(ffmpegProgress.getSize()) + " / "
                 + ffmpegProgress.getFps() + "fps / "
+                + ffmpegProgress.getBitrate() + "kbits/s"
                 ;
     }
 

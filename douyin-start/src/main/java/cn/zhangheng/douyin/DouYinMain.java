@@ -1,6 +1,7 @@
 package cn.zhangheng.douyin;
 
 import cn.zhangheng.common.bean.MonitorMain;
+import cn.zhangheng.common.bean.Setting;
 import cn.zhangheng.common.util.LogUtil;
 import com.zhangheng.util.SettingUtil;
 import com.zhangheng.util.ThrowableUtil;
@@ -17,7 +18,7 @@ import java.io.IOException;
  */
 public class DouYinMain extends MonitorMain<DouYinRoom, DouYinRoomMonitor> {
 
-    public DouYinMain(SettingUtil setting) {
+    public DouYinMain(Setting setting) {
         super(setting);
     }
 

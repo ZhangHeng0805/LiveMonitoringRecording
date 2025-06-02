@@ -7,6 +7,7 @@ import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import cn.hutool.log.Log;
 import cn.hutool.log.LogFactory;
+import cn.zhangheng.common.bean.Setting;
 import com.zhangheng.util.SettingUtil;
 import com.zhangheng.util.ThrowableUtil;
 
@@ -23,14 +24,10 @@ import java.awt.*;
 public class NotificationUtil {
 
     private static final Log log = LogFactory.get();
+    private final Setting setting;
 
-    private final SettingUtil setting;
 
-    public SettingUtil getSetting() {
-        return setting;
-    }
-
-    public NotificationUtil(SettingUtil setting) {
+    public NotificationUtil(Setting setting) {
         this.setting = setting;
     }
 
@@ -41,10 +38,11 @@ public class NotificationUtil {
      * @param content
      */
     public void xiZhiSendMsg(String title, String content) {
-        if (setting == null || StrUtil.isBlank(setting.getStr("xiZhi.url"))) {
+        String xiZhiUrl = setting.getXiZhiUrl();
+        if (StrUtil.isBlank(xiZhiUrl)) {
             return;
         }
-        HttpResponse execute = HttpRequest.post(setting.getStr("xiZhi.url"))
+        HttpResponse execute = HttpRequest.post(xiZhiUrl)
                 .form("title", title)
                 .form("content", content)
                 .execute();
@@ -71,11 +69,12 @@ public class NotificationUtil {
      * @throws AWTException
      */
     public void weChatSendMsg(String msg) {
-        if (setting == null || StrUtil.isBlank(setting.getStr("weChat.target"))) {
+        String weChatTarget = setting.getWeChatTarget();
+        if (StrUtil.isBlank(weChatTarget)) {
             return;
         }
         try {
-            ShortcutKeys.wechatSendMsg(new Robot(), setting.getStr("weChat.target"), msg);
+            ShortcutKeys.wechatSendMsg(new Robot(), weChatTarget, msg);
         } catch (AWTException e) {
             log.error("微信客户端发送信息失败：" + ThrowableUtil.getAllCauseMessage(e));
         }

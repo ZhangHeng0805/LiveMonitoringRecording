@@ -1,6 +1,5 @@
 package cn.zhangheng.common.bean;
 
-import cn.hutool.core.util.StrUtil;
 import cn.zhangheng.common.record.FFmpegFlvRecorder;
 import cn.zhangheng.common.record.FlvStreamRecorder;
 import cn.zhangheng.common.record.Recorder;
@@ -9,7 +8,6 @@ import cn.zhangheng.common.util.NotificationUtil;
 import cn.zhangheng.common.util.TrayIconUtil;
 import cn.zhangheng.common.video.FlvToMp4;
 import com.zhangheng.file.FileUtil;
-import com.zhangheng.util.SettingUtil;
 import com.zhangheng.util.ThrowableUtil;
 import com.zhangheng.util.TimeUtil;
 import org.slf4j.Logger;
@@ -39,7 +37,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
     protected final Logger log = LoggerFactory.getLogger(getClass());
 
     protected final TrayIconUtil trayIconUtil;
-    protected final SettingUtil setting;
+    protected final Setting setting;
     protected Recorder recorder;
     protected int delayIntervalSec;
     protected boolean isRunning;
@@ -52,12 +50,12 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
     private M roomMonitor;
 
 
-    public MonitorMain(SettingUtil setting) {
+    public MonitorMain(Setting setting) {
         this.trayIconUtil = new TrayIconUtil(Constant.Application);
         this.setting = setting;
-        delayIntervalSec = setting != null && setting.getInt("monitor.delayIntervalSec") != null ? setting.getInt("monitor.delayIntervalSec") > 0 ? setting.getInt("monitor.delayIntervalSec") : 10 : 10;
-        isConvert = setting != null && setting.getBool("record.FlvToMp4") == Boolean.TRUE;
-        recorderType = setting != null && setting.getInt("record.type") != null ? setting.getInt("record.type") : 0;
+        delayIntervalSec = setting.getDelayIntervalSec();
+        isConvert = setting.isConvertFlvToMp4();
+        recorderType = setting.getRecordType();
         if (isConvert) {
             try {
                 flvToMp4 = new FlvToMp4();
@@ -130,7 +128,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             }
 
             @Override
-            public void onChange(M.State state, R douYinRoom) {
+            public void onChange(M.State state, R room) {
                 if (state == M.State.NOT_LIVING) {
                     //未开播
                     String msg = owner + "\n未开播，直播间监听中...";
@@ -164,7 +162,6 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                         log.warn("统计日志产生异常：{}", ThrowableUtil.getAllCauseMessage(e));
                     }
                     if (isFirst) {
-
                         notificationUtil.xiZhiSendMsg(Constant.Application, msg);
                         notificationUtil.weChatSendMsg(msg);
                     }
@@ -205,22 +202,19 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         String flvUrl = stream.getValue();
         String fileName = "【" + FileUtil.filterFileName(room.getOwner()) + "】" + room.getPlatform().getName() + "直播录制" + TimeUtil.toTime(new Date(), "yyyy-MM-dd HH-mm-ss") + "[" + FileUtil.filterFileName(room.getTitle()) + "].flv";
         String path = Paths.get(LogUtil.getBasePathStr(room), fileName).toFile().getPath();
-        Recorder flvStreamRecorder;
+        Recorder streamRecorder;
         switch (recorderType) {
-            case 0:
-                flvStreamRecorder = new FlvStreamRecorder(flvUrl, path, definition);
-                break;
             case 1:
                 try {
-                    String ffmpegPath = setting != null && StrUtil.isNotBlank(setting.getStr("record.ffmpegPath")) ? setting.getStr("record.ffmpegPath") : null;
-                    flvStreamRecorder = new FFmpegFlvRecorder(flvUrl, path, definition, ffmpegPath);
+                    String ffmpegPath = setting.getFfmpegPath();
+                    streamRecorder = new FFmpegFlvRecorder(flvUrl, path, definition, ffmpegPath);
                 } catch (IllegalArgumentException e) {
                     log.warn(e.getMessage());
-                    flvStreamRecorder = new FlvStreamRecorder(flvUrl, path, definition);
+                    streamRecorder = new FlvStreamRecorder(flvUrl, path, definition);
                 }
                 break;
             default:
-                flvStreamRecorder = new FlvStreamRecorder(flvUrl, path, definition);
+                streamRecorder = new FlvStreamRecorder(flvUrl, path, definition);
                 break;
         }
         FlvStreamRecorder.ProgressCallback progressCallback = new Recorder.ProgressCallback() {
@@ -258,9 +252,9 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             }
         };
 
-        flvStreamRecorder.setProgressCallback(progressCallback);
-        flvStreamRecorder.setRoom(room);
-        return flvStreamRecorder;
+        streamRecorder.setProgressCallback(progressCallback);
+        streamRecorder.setRoom(room);
+        return streamRecorder;
     }
 
     private void flvToMp4(String path) {
