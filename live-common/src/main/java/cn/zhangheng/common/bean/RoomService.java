@@ -1,5 +1,7 @@
 package cn.zhangheng.common.bean;
 
+import cn.hutool.http.HttpRequest;
+
 /**
  * @author: ZhangHeng
  * @email: zhangheng_0805@163.com
@@ -17,5 +19,16 @@ public abstract class RoomService<T extends Room> {
     public void refresh() {
         refresh(false);
     }
+
     public abstract void refresh(boolean force);
+
+    public HttpRequest get(String url) {
+        return HttpRequest.get(url)
+                .timeout(30_000)
+                .header("User-Agent", Constant.User_Agent)
+                .header("Referer", room.getPlatform().getMainUrl())
+                ;
+    }
+
+
 }

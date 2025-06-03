@@ -1,7 +1,6 @@
 import cn.zhangheng.bilibili.BiliMain;
 import cn.zhangheng.bilibili.bean.BiliRoom;
-import cn.zhangheng.common.bean.Constant;
-import com.zhangheng.util.SettingUtil;
+import cn.zhangheng.common.bean.Setting;
 
 /**
  * @author: ZhangHeng
@@ -12,8 +11,8 @@ import com.zhangheng.util.SettingUtil;
  */
 public class BiliTest1 {
     public static void main(String[] args) throws Exception {
-        SettingUtil setting = new SettingUtil(Constant.Setting_Name);
-        BiliMain biliMain = new BiliMain(setting);
+
+        BiliMain biliMain = new BiliMain(new Setting());
 
         //小兰花2号-1842356262
         //哔哩哔哩王者荣耀赛事-55

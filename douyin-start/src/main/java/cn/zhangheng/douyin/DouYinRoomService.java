@@ -6,7 +6,6 @@ import cn.hutool.http.HttpResponse;
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
-import cn.zhangheng.common.bean.Constant;
 import cn.zhangheng.common.bean.RoomService;
 
 import java.util.*;
@@ -36,10 +35,7 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
 
     private void init() {
         if (StrUtil.isBlank(cookieStr)) {
-            try (HttpResponse execute = HttpRequest.get("https://live.douyin.com/")
-                    .header("User-Agent", Constant.User_Agent)
-                    .timeout(30 * 1000)
-                    .execute();) {
+            try (HttpResponse execute = get("https://live.douyin.com/").execute()) {
                 this.cookieStr = execute.getCookieStr();
             }
         }
@@ -69,12 +65,10 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
             init();
         }
         String body = "";
-        try (HttpResponse execute = HttpRequest.get("https://live.douyin.com/webcast/room/web/enter/")
-                .header("User-Agent", Constant.User_Agent)
+        HttpRequest request = get("https://live.douyin.com/webcast/room/web/enter/")
                 .header("Cookie", cookieStr)
-                .timeout(30 * 1000)
-                .form(forms)
-                .execute()) {
+                .form(forms);
+        try (HttpResponse execute = request.execute()) {
             body = execute.body();
             if (JSONUtil.isTypeJSON(body)) {
                 JSONObject data = JSONUtil.parseObj(body).getJSONObject("data");
