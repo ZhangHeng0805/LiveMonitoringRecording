@@ -11,6 +11,8 @@ Java编写的直播监控录制工具，可以监控直播间的数据（观看�
 
 ### 配置文件xxxr.setting
 ```properties
+#FLV播放器服务-端口号
+server.flvPlayer.port=8000
 #微信客户端通用对象（需配置消息发送快捷键Ctrl+Enter）
 #notice.weChat.target文件传输助手
 #息知通知地址（可以微信公众号发通知）详情查看：https://xz.qqoq.net/
