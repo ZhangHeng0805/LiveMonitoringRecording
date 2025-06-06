@@ -28,7 +28,7 @@ public class TrayIconUtil {
     @Getter
     private final PopupMenu pop = new PopupMenu();//创建弹出式菜单
     @Getter
-    private MenuItem startRecordMenu, stopRecordMenu, closeMenu, openWebMenu;
+    private MenuItem startRecordMenu, stopRecordMenu, closeMenu, openWebMenu, playVideo;
     @Setter
     private ClickListener clickListener;
     private final String title;
@@ -55,9 +55,6 @@ public class TrayIconUtil {
             throw new RuntimeException(e);
         }
         addActionListener();
-        pop.add(closeMenu);
-        pop.add(openWebMenu);
-
 
     }
 
@@ -78,6 +75,11 @@ public class TrayIconUtil {
         stopRecordMenu = new MenuItem("Stop Recording");
         closeMenu = new MenuItem("Exit");
         openWebMenu = new MenuItem("Open Web");
+        playVideo = new MenuItem("Play Video");
+
+        pop.add(closeMenu);
+        pop.add(openWebMenu);
+        pop.add(playVideo);
         startRecordMenu.addActionListener(e -> {
             if (clickListener == null || clickListener.startRecordClick(e)) {
                 log.debug("点击事件: 开始录制");
@@ -101,6 +103,15 @@ public class TrayIconUtil {
                 String url = clickListener.openWebClick(e);
                 if (url != null) {
                     log.debug("点击事件: 打开网页>" + url);
+                    openWebpage(url);
+                }
+            }
+        });
+        playVideo.addActionListener(e -> {
+            if (clickListener != null) {
+                String url = clickListener.playVideo(e);
+                if (url != null) {
+                    log.debug("点击事件: 播放视频>" + url);
                     openWebpage(url);
                 }
             }
@@ -199,6 +210,10 @@ public class TrayIconUtil {
         }
 
         default String openWebClick(ActionEvent e) {
+            return null;
+        }
+
+        default String playVideo(ActionEvent e) {
             return null;
         }
 

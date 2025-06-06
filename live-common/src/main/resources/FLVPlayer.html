@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="img/favicon.ico" type="image/x-icon">
+    <title>【星曦向荣】FLV 播放器</title>
+    <script src="js/flv.min.js"></script>
+    <link href="css/font-awesome.min.css" rel="stylesheet">
+    <script src="js/tailwindcss-3.4.16.js"></script>
+
+    <!-- 配置Tailwind自定义颜色和字体 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#10B981',
+                        danger: '#EF4444',
+                        dark: '#1E293B',
+                        light: '#F8FAFC'
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+
+    <!-- 自定义工具类 -->
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+
+            .card-shadow {
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            }
+
+            .gradient-bg {
+                background: linear-gradient(135deg, #f5f7fa 0%, #e4e5e6 100%);
+            }
+
+            .tab-active {
+                @apply border-b-2 border-primary text-primary;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen font-inter text-gray-800">
+<div class="container mx-auto px-4 py-8 max-w-4xl">
+    <!-- 标题区域 -->
+    <div class="text-center mb-8">
+        <h1 class="text-[clamp(1.75rem,4vw,2.5rem)] font-bold text-gray-800 mb-2">
+            <i class="fa fa-play-circle text-primary mr-2"></i>FLV 播放器
+        </h1>
+        <p class="text-gray-600">播放本地或在线 FLV 视频文件</p>
+    </div>
+
+    <!-- 主卡片 -->
+    <div class="bg-white rounded-xl overflow-hidden card-shadow transition-all duration-300 hover:shadow-xl">
+        <!-- 标签页切换 -->
+        <div class="border-b border-gray-200">
+            <div class="flex space-x-8 px-6">
+                <button id="localTab"
+                        class="tab-active py-4 px-1 text-sm font-medium focus:outline-none transition-colors duration-200">
+                    <i class="fa fa-file-video-o mr-1"></i> 本地文件
+                </button>
+                <button id="onlineTab"
+                        class="py-4 px-1 text-sm font-medium text-gray-500 focus:outline-none transition-colors duration-200">
+                    <i class="fa fa-link mr-1"></i> 在线视频
+                </button>
+            </div>
+        </div>
+
+        <!-- 本地文件选择区域 -->
+        <div id="localSection" class="p-6">
+            <div class="flex flex-col md:flex-row items-center gap-4">
+                <div class="flex-1">
+                    <label for="fileInput" class="block text-sm font-medium text-gray-700 mb-1">
+                        选择 FLV 文件
+                    </label>
+                    <div class="relative">
+                        <input type="file" id="fileInput" accept=".flv"
+                               class="hidden"
+                               onchange="this.nextElementSibling.textContent = this.files[0]?.name || '未选择文件'">
+                        <label for="fileInput"
+                               class="flex items-center px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors duration-200">
+                            <i class="fa fa-file-video-o text-primary mr-2"></i>
+                            <span>浏览文件</span>
+                        </label>
+                        <span id="fileName" class="ml-2 text-sm text-gray-500 truncate max-w-xs">未选择文件</span>
+                    </div>
+                </div>
+                <button id="playLocalBtn" disabled
+                        class="px-6 py-2 bg-primary/70 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary transition-colors duration-200 flex items-center justify-center">
+                    <i class="fa fa-play mr-2"></i>
+                    <span>播放</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 在线视频输入区域 -->
+        <div id="onlineSection" class="p-6 hidden">
+            <div class="flex flex-col md:flex-row items-center gap-4">
+                <div class="flex-1">
+                    <label for="urlInput" class="block text-sm font-medium text-gray-700 mb-1">
+                        FLV 视频 URL
+                    </label>
+                    <div class="relative">
+                        <input type="url" id="urlInput" placeholder="https://example.com/video.flv"
+                               class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all duration-200">
+                    </div>
+                </div>
+                <button id="playUrlBtn" disabled
+                        class="px-6 py-2 bg-primary/70 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary transition-colors duration-200 flex items-center justify-center">
+                    <i class="fa fa-play mr-2"></i>
+                    <span>播放</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 状态显示 -->
+        <div id="statusContainer" class="px-6 pb-4">
+            <p id="status" class="text-sm text-gray-600 flex items-center">
+                <i class="fa fa-info-circle mr-2 text-primary"></i>
+                <span>请选择 FLV 文件或输入在线视频 URL...</span>
+            </p>
+        </div>
+
+        <!-- 视频播放区域 -->
+        <div class="relative bg-gray-900">
+            <div id="videoContainer" class="aspect-video w-full bg-black flex items-center justify-center">
+                <video id="videoElement" class="max-w-full max-h-full" controls></video>
+
+                <!-- 加载动画 (默认隐藏) -->
+                <div id="loadingOverlay" class="absolute inset-0 bg-black/50 flex items-center justify-center hidden">
+                    <div class="flex flex-col items-center">
+                        <div class="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                        <p class="mt-3 text-white text-sm">加载中...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 播放器信息 -->
+        <div class="p-4 bg-gray-50 text-xs text-gray-500 flex justify-between">
+            <div>
+                <span class="font-medium">GitHub</span> : <a target="_blank"
+                                                             href="https://github.com/ZhangHeng0805/LiveMonitoringRecording">LiveMonitoringRecording</a>
+            </div>
+            <div>
+                <span class="font-medium">支持格式:</span> FLV (H.264 + AAC/MP3)
+            </div>
+        </div>
+    </div>
+
+    <!-- 功能说明 -->
+    <div class="mt-8 bg-white rounded-lg p-6 card-shadow">
+        <h3 class="text-lg font-semibold text-gray-800 mb-3">使用说明</h3>
+        <ul class="list-disc pl-5 space-y-2 text-gray-600 text-sm">
+            <li>支持播放本地 FLV 格式视频文件和在线 FLV 视频地址</li>
+            <li>视频编码要求：H.264</li>
+            <li>音频编码要求：AAC 或 MP3</li>
+            <li>浏览器需支持 Media Source Extensions (MSE)</li>
+            <li>推荐使用 Chrome、Firefox 或 Edge 浏览器</li>
+            <li>在线播放时，请确保视频服务器支持跨域访问 (CORS)</li>
+            <li>可通过 URL 参数直接播放视频：http://yourdomain.com/player.html?url=http://example.com/video.flv</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+    const fileInput = document.getElementById('fileInput');
+    const urlInput = document.getElementById('urlInput');
+    const videoElement = document.getElementById('videoElement');
+    const playLocalBtn = document.getElementById('playLocalBtn');
+    const playUrlBtn = document.getElementById('playUrlBtn');
+    const localTab = document.getElementById('localTab');
+    const onlineTab = document.getElementById('onlineTab');
+    const localSection = document.getElementById('localSection');
+    const onlineSection = document.getElementById('onlineSection');
+    const status = document.getElementById('status');
+    const statusContainer = document.getElementById('statusContainer');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    let flvPlayer = null;
+    let currentBlobUrl = null;
+
+    // 初始化
+    function init() {
+        // 验证浏览器支持
+        if (!flvjs.isSupported()) {
+            showStatus('错误：当前浏览器不支持 FLV 播放', 'danger');
+            return;
+        }
+
+        // 检查URL参数
+        const urlParams = new URLSearchParams(window.location.search);
+        const videoUrl = urlParams.get('url');
+
+        if (videoUrl) {
+            // 自动切换到在线播放标签页
+            switchTab('online');
+
+            // 填充URL输入框
+            urlInput.value = videoUrl;
+            playUrlBtn.disabled = false;
+
+            // 延迟播放，确保界面加载完成
+            setTimeout(() => {
+                playFLV(videoUrl);
+            }, 500);
+        }
+
+        // 标签页切换
+        localTab.addEventListener('click', function () {
+            switchTab('local');
+        });
+
+        onlineTab.addEventListener('click', function () {
+            switchTab('online');
+        });
+
+        // 文件选择事件
+        fileInput.addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // 验证文件类型
+            if (!file.name.endsWith('.flv')) {
+                showStatus('错误：请选择 FLV 格式的文件', 'danger');
+                playLocalBtn.disabled = true;
+                return;
+            }
+
+            showStatus(`已选择：${file.name} (${formatFileSize(file.size)})`, 'success');
+            playLocalBtn.disabled = false;
+        });
+
+        // URL 输入事件
+        urlInput.addEventListener('input', function () {
+            const url = this.value.trim();
+            playUrlBtn.disabled = !url || !(url.indexOf('.flv') > 0);
+        });
+
+        // 播放本地文件按钮点击事件
+        playLocalBtn.addEventListener('click', function () {
+            if (!fileInput.files.length) return;
+            playFLV(fileInput.files[0]);
+        });
+
+        // 播放在线视频按钮点击事件
+        playUrlBtn.addEventListener('click', function () {
+            const url = urlInput.value.trim();
+            if (!url || !(url.indexOf('.flv') > 0)) {
+                showStatus('错误：请输入有效的 FLV 视频 URL', 'danger');
+                return;
+            }
+            playFLV(url);
+        });
+
+        // 视频元数据加载完成
+        videoElement.addEventListener('loadedmetadata', function () {
+            // 检查视频时长是否有效
+            const duration = videoElement.duration;
+            if (isNaN(duration) || duration === Infinity) {
+                showStatus(`视频信息: ${videoElement.videoWidth}x${videoElement.videoHeight}px, 时长未知`, 'info');
+            } else {
+                showStatus(`视频信息: ${videoElement.videoWidth}x${videoElement.videoHeight}px, ${formatDuration(duration)}`, 'info');
+            }
+        });
+
+        // 页面卸载时清理资源
+        window.addEventListener('unload', releaseResources);
+    }
+
+    // 切换标签页
+    function switchTab(tab) {
+        if (tab === 'local') {
+            localTab.classList.add('tab-active');
+            localTab.classList.remove('text-gray-500');
+            onlineTab.classList.remove('tab-active');
+            onlineTab.classList.add('text-gray-500');
+            localSection.classList.remove('hidden');
+            onlineSection.classList.add('hidden');
+            showStatus('请选择 FLV 文件...', 'info');
+        } else {
+            onlineTab.classList.add('tab-active');
+            onlineTab.classList.remove('text-gray-500');
+            localTab.classList.remove('tab-active');
+            localTab.classList.add('text-gray-500');
+            onlineSection.classList.remove('hidden');
+            localSection.classList.add('hidden');
+            showStatus('请输入在线 FLV 视频 URL...', 'info');
+        }
+    }
+
+    // 播放 FLV 视频
+    function playFLV(source) {
+        showStatus('正在加载视频...', 'info');
+        loadingOverlay.classList.remove('hidden');
+
+        // 释放之前的资源
+        releaseResources();
+
+        try {
+            if (typeof source === 'string') {
+                // 在线 URL
+                showStatus(`正在加载在线视频: ${source}`, 'info');
+
+                // 创建 FLV 播放器
+                flvPlayer = flvjs.createPlayer({
+                    type: 'flv',
+                    url: source
+                });
+            } else {
+                // 本地文件
+                showStatus(`正在加载本地视频: ${source.name}`, 'info');
+
+                // 创建 Blob URL
+                currentBlobUrl = URL.createObjectURL(source);
+
+                // 创建 FLV 播放器
+                flvPlayer = flvjs.createPlayer({
+                    type: 'flv',
+                    // headers: {Referer: "https://live.bilibili.com/"},
+                    url: currentBlobUrl
+                });
+            }
+
+            // 监听播放器事件
+            flvPlayer.on(flvjs.Events.ERROR, (errorType, errorDetail, error) => {
+                showStatus(`播放错误: ${errorType} - ${errorDetail} > [${error.code}]${error.msg}`, 'danger');
+                loadingOverlay.classList.add('hidden');
+                console.error('FLV 错误:', errorType, errorDetail, code);
+            });
+
+            flvPlayer.on(flvjs.Events.LOADING_COMPLETE, () => {
+                showStatus('加载完成', 'success');
+                loadingOverlay.classList.add('hidden');
+            });
+
+            flvPlayer.on(flvjs.Events.METADATA_PARSED, () => {
+                // 检查视频时长是否有效
+                const duration = videoElement.duration;
+                if (isNaN(duration) || duration === Infinity) {
+                    showStatus(`视频信息: ${videoElement.videoWidth}x${videoElement.videoHeight}px, 时长未知`, 'info');
+                } else {
+                    showStatus(`视频信息: ${videoElement.videoWidth}x${videoElement.videoHeight}px, ${formatDuration(duration)}`, 'info');
+                }
+            });
+
+            // 挂载播放器到视频元素
+            flvPlayer.attachMediaElement(videoElement);
+            flvPlayer.load();
+            flvPlayer.play();
+            loadingOverlay.classList.add('hidden');
+        } catch (error) {
+            showStatus(`播放错误: ${error.message}`, 'danger');
+            loadingOverlay.classList.add('hidden');
+            console.error('播放错误:', error);
+        }
+    }
+
+    // 清理资源
+    function releaseResources() {
+        if (flvPlayer) {
+            flvPlayer.unload();
+            flvPlayer.detachMediaElement();
+            flvPlayer.destroy();
+            flvPlayer = null;
+        }
+
+        if (currentBlobUrl) {
+            URL.revokeObjectURL(currentBlobUrl);
+            currentBlobUrl = null;
+        }
+    }
+
+    // 格式化文件大小
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    // 格式化视频时长
+    function formatDuration(seconds) {
+        if (!seconds || isNaN(seconds) || seconds === Infinity) return '时长未知';
+
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const secs = Math.floor(seconds % 60);
+
+        if (hours > 0) {
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    // 显示状态信息
+    function showStatus(message, type = 'info') {
+        const icons = {
+            info: 'fa-info-circle text-primary',
+            success: 'fa-check-circle text-secondary',
+            danger: 'fa-exclamation-circle text-danger'
+        };
+
+        const colors = {
+            info: 'bg-blue-50 border-l-4 border-blue-400',
+            success: 'bg-green-50 border-l-4 border-green-400',
+            danger: 'bg-red-50 border-l-4 border-red-400'
+        };
+
+        statusContainer.className = `px-6 pb-4 ${colors[type] || colors.info}`;
+        status.innerHTML = `<i class="fa ${icons[type] || icons.info} mr-2"></i><span>${message}</span>`;
+    }
+
+    // 初始化应用
+    document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

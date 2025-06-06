@@ -21,6 +21,11 @@ public class Setting {
     }
 
     /**
+     * FLV播放器服务-端口号
+     */
+    @PropertyValue("server.flvPlayer.port")
+    private int flvPlayerPort = 8000;
+    /**
      * 微信客户端通用对象
      */
     @PropertyValue("notice.weChat.target")

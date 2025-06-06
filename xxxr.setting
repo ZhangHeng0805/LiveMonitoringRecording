@@ -1,3 +1,4 @@
+server.flvPlayer.port=8000
 #微信客户端通用对象
 #notice.weChat.target=文件传输助手
 #息知通知地址

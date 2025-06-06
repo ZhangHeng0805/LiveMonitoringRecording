@@ -43,13 +43,13 @@ public abstract class Room {
 
     public abstract Platform getPlatform();
 
-//    public String getFlvUrl() {
-//        if (streams != null && !streams.isEmpty()) {
-//            return getStreams().entrySet().iterator().next().getValue();
-//        } else {
-//            return null;
-//        }
-//    }
+    public String getFlvUrl() {
+        if (streams != null && !streams.isEmpty()) {
+            return getStreams().entrySet().iterator().next().getValue();
+        } else {
+            return null;
+        }
+    }
 
     public String getRoomUrl() {
         return getPlatform().getMainUrl() + getId();

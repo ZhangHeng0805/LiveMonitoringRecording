@@ -7,7 +7,9 @@ import cn.zhangheng.common.util.LogUtil;
 import cn.zhangheng.common.util.NotificationUtil;
 import cn.zhangheng.common.util.TrayIconUtil;
 import cn.zhangheng.common.video.FlvToMp4;
+import cn.zhangheng.common.video.player.LocalServerFlvPlayer;
 import com.zhangheng.file.FileUtil;
+import com.zhangheng.util.NetworkUtil;
 import com.zhangheng.util.ThrowableUtil;
 import com.zhangheng.util.TimeUtil;
 import org.slf4j.Logger;
@@ -48,6 +50,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
     protected R room;
     protected FlvToMp4 flvToMp4;
     private M roomMonitor;
+    private final LocalServerFlvPlayer flvPlayer;
 
 
     public MonitorMain(Setting setting) {
@@ -56,11 +59,23 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         delayIntervalSec = setting.getDelayIntervalSec();
         isConvert = setting.isConvertFlvToMp4();
         recorderType = setting.getRecordType();
+        flvPlayer = new LocalServerFlvPlayer(setting.getFlvPlayerPort());
+        startFlvPlayer();
         if (isConvert) {
             try {
                 flvToMp4 = new FlvToMp4();
             } catch (IllegalArgumentException e) {
                 log.warn(e.getMessage());
+            }
+        }
+    }
+
+    private void startFlvPlayer() {
+        if (!flvPlayer.isRunning() && !NetworkUtil.isPortUsed(setting.getFlvPlayerPort())) {
+            try {
+                flvPlayer.run(true);
+            } catch (ExecutionException e) {
+                log.error("LocalServerFlvPlayer启动失败：" + ThrowableUtil.getAllCauseMessage(e), e);
             }
         }
     }
@@ -125,6 +140,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                     } catch (InterruptedException ignored) {
                     }
                 }
+                flvPlayer.stop(true);
             }
 
             @Override
@@ -328,6 +344,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
 
             @Override
             public boolean closeClick(ActionEvent e) {
+                flvPlayer.stop(false);
                 if (recorder != null && recorder.isRunning()) {
                     recordFlag = false;
                     recorder.stop(false);
@@ -357,6 +374,16 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             @Override
             public String openWebClick(ActionEvent e) {
                 return room.getRoomUrl();
+            }
+
+            @Override
+            public String playVideo(ActionEvent e) {
+                startFlvPlayer();
+                if (room.isLiving()) {
+                    return flvPlayer.getUrlFromUrl(room.getFlvUrl());
+                } else {
+                    return flvPlayer.getMainUrl();
+                }
             }
         };
     }
