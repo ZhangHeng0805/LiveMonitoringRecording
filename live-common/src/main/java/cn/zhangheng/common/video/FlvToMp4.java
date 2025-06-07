@@ -36,6 +36,10 @@ public class FlvToMp4 extends FFmpegService {
         super(Constant.FFmpegExePath);
     }
 
+    public FlvToMp4(String ffmpegExePath) {
+        super(ffmpegExePath);
+    }
+
     public boolean convert(String input, String output) {
         Path inputPath = Paths.get(input);
         try {

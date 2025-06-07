@@ -65,7 +65,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         startFlvPlayer();
         if (isConvert) {
             try {
-                flvToMp4 = new FlvToMp4();
+                flvToMp4 = new FlvToMp4(setting.getFfmpegPath());
             } catch (IllegalArgumentException e) {
                 log.warn(e.getMessage());
             }

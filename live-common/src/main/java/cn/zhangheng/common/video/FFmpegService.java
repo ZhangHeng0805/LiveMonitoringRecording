@@ -30,7 +30,7 @@ public abstract class FFmpegService {
 
     public FFmpegService(String ffmpegExePath) {
         if (!Files.exists(Paths.get(ffmpegExePath))) {
-            throw new IllegalArgumentException("未找到ffmpeg.exe(Not Found ffmpeg.exe)");
+            throw new IllegalArgumentException("未找到"+ffmpegExePath+"(Not Found ffmpeg.exe)");
         }
         this.ffmpegExePath = ffmpegExePath;
         commands = new ArrayList<>();
