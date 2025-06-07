@@ -51,6 +51,8 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
     protected FlvToMp4 flvToMp4;
     private M roomMonitor;
     private final LocalServerFlvPlayer flvPlayer;
+    private int tryMonitorSec = 1;
+    private int tryRecordSec = 1;
 
 
     public MonitorMain(Setting setting) {
@@ -70,6 +72,9 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         }
     }
 
+    /**
+     * 启动FLV播放服务
+     */
     private void startFlvPlayer() {
         if (!flvPlayer.isRunning() && !NetworkUtil.isPortUsed(setting.getFlvPlayerPort())) {
             try {
@@ -99,14 +104,14 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         do {
             try {
                 roomMonitor.run(false);
-            } catch (ExecutionException e) {
+            } catch (Exception e) {
                 log.error("直播间监听出现异常: {}", ThrowableUtil.getAllCauseMessage(e), e);
-                if (recorder != null) {
-                    recorder.stop(false);
-                }
                 try {
-                    TimeUnit.SECONDS.sleep(6);
+                    TimeUnit.SECONDS.sleep(tryMonitorSec);
                 } catch (InterruptedException ignored) {
+                } finally {
+                    if (tryMonitorSec < 10)
+                        tryMonitorSec++;
                 }
             }
         } while (isRunning);
@@ -122,6 +127,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             public void onStart() {
                 log.info(Constant.Application + "开始监听! {}", owner);
                 isRunning = true;
+                tryMonitorSec = 1;
             }
 
             @Override
@@ -129,7 +135,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                 isRunning = false;
                 String msg = "直播监听结束！" + owner;
                 log.info(msg);
-                if (recorder != null) {
+                if (recorder != null && recorder.isRunning()) {
                     recorder.stop(false);
                 }
                 trayIconUtil.notifyMessage(msg);
@@ -238,6 +244,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             public void onStart(String url, String saveFilePath, String definition) {
                 Recorder.ProgressCallback.super.onStart(url, saveFilePath, definition);
                 trayIconUtil.setStartRecordStatue(true);
+
             }
 
             @Override
@@ -260,8 +267,14 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                 }
                 if (isRunning) {
                     try {
-                        TimeUnit.SECONDS.sleep(3);
+                        TimeUnit.SECONDS.sleep(tryRecordSec);
                     } catch (InterruptedException ignored) {
+                    } finally {
+                        if (tryRecordSec < 10) {
+                            tryRecordSec++;
+                        } else {
+                            tryRecordSec = 1;
+                        }
                     }
                 }
                 tryRecord(room, isConvert);
@@ -304,7 +317,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             try {
                 recorder.run(true);
             } catch (ExecutionException e) {
-                log.error("重新录制失败！" + ThrowableUtil.getAllCauseMessage(e));
+                log.error("重新录制失败！{}", ThrowableUtil.getAllCauseMessage(e), e);
             }
         } else {
             recorder.stop(false);

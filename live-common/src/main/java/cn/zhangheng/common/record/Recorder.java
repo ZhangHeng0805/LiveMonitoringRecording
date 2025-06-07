@@ -7,6 +7,8 @@ import com.zhangheng.util.ThrowableUtil;
 import com.zhangheng.util.TimeUtil;
 import lombok.Getter;
 import lombok.Setter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.*;
 
@@ -50,13 +52,7 @@ public abstract class Recorder extends Task {
         this.runnable = () -> {
             ScheduledExecutorService executor = null;
             try {
-                String threadName;
-                if (saveFilePath.indexOf("[") < saveFilePath.indexOf("]")) {
-                    String owner = saveFilePath.substring(saveFilePath.indexOf("[") + 1, saveFilePath.indexOf("]"));
-                    threadName = owner + "-recorder-" + Thread.currentThread().getId();
-                } else {
-                    threadName = "recorder-" + Thread.currentThread().getId();
-                }
+                String threadName = getThreadName();
                 Thread.currentThread().setName(threadName);
                 // 设置超时控制
                 if (timeoutSeconds > 0) {
@@ -89,6 +85,19 @@ public abstract class Recorder extends Task {
         };
     }
 
+    private String getThreadName() {
+        String threadName;
+        if (room != null) {
+            threadName = room.getOwner() + "-recorder-" + Thread.currentThread().getId();
+        } else if (saveFilePath.indexOf("[") < saveFilePath.indexOf("]")) {
+            String owner = saveFilePath.substring(saveFilePath.indexOf("[") + 1, saveFilePath.indexOf("]"));
+            threadName = owner + "-recorder-" + Thread.currentThread().getId();
+        } else {
+            threadName = "recorder-" + Thread.currentThread().getId();
+        }
+        return threadName;
+    }
+
     @Override
     public void run(boolean isAsync) throws ExecutionException {
         initRunnable();
@@ -97,7 +106,7 @@ public abstract class Recorder extends Task {
             try {
                 future.get();
             } catch (InterruptedException e) {
-                Task.log.error("录制主任务中断：" + ThrowableUtil.getAllCauseMessage(e));
+                log.error("录制主任务中断：{}", ThrowableUtil.getAllCauseMessage(e));
             } finally {
                 isRunning.set(false);
             }
@@ -116,17 +125,18 @@ public abstract class Recorder extends Task {
     }
 
     public interface ProgressCallback {
+        Logger log = LoggerFactory.getLogger(ProgressCallback.class);
+
         default void onStart(String url, String saveFilePath, String definition) {
-            Task.log.info("下载录制已开始! 【{}】{} >>> {}", definition, url, saveFilePath);
+            log.info("下载录制已开始! 【{}】{} >>> {}", definition, url, saveFilePath);
         }
 
         default void onComplete(String saveFilePath, long totalBytes, long totalDurationMS) {
-            Task.log.info("下载录制已结束! 用时:{},大小:{},位置:{}", TimeUtil.formatMSToCn((int) totalDurationMS), FileUtil.fileSizeStr(totalBytes), saveFilePath);
+            log.info("下载录制已结束! 用时:{},大小:{},位置:{}", TimeUtil.formatMSToCn((int) totalDurationMS), FileUtil.fileSizeStr(totalBytes), saveFilePath);
         }
 
         default void onError(Throwable throwable) {
-//            Task.log.error("下载录制发生异常! {}", ThrowableUtil.getAllCauseMessage(throwable), throwable);
-            Task.log.error(throwable);
+            log.error("下载录制发生异常! {}", ThrowableUtil.getAllCauseMessage(throwable), throwable);
         }
     }
 }

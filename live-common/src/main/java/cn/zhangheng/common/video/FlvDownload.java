@@ -66,10 +66,13 @@ public class FlvDownload extends FFmpegService {
         commands.addAll(baseList);
         try {
             run(commands);
+        } catch (InterruptedException e) {
+            log.error("视频下载失败: {}", ThrowableUtil.getAllCauseMessage(e));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } finally {
             logUtil.log("下载结束！" + file);
             logUtil.log(ffmpegProgress.toString());
-        } catch (IOException | InterruptedException e) {
-            log.error("视频下载失败: {}", ThrowableUtil.getAllCauseMessage(e));
         }
     }
 

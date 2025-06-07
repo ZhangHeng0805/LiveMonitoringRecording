@@ -1,7 +1,6 @@
 package cn.zhangheng.common.video.player;
 
 import cn.zhangheng.common.bean.Task;
-import cn.zhangheng.common.util.LogUtil;
 import com.sun.net.httpserver.HttpServer;
 import com.zhangheng.util.NetworkUtil;
 import lombok.Getter;
@@ -77,8 +76,7 @@ public class LocalServerFlvPlayer extends Task {
         if (!isAsync) {
             try {
                 future.get();
-            } catch (InterruptedException e) {
-                log.error(e);
+            } catch (InterruptedException ignored) {
             }
         }
         mainExecutors.shutdown();

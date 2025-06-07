@@ -92,10 +92,10 @@ public abstract class RoomMonitor<R extends Room, S extends RoomService<R>> exte
             }
             //直播结束，结束监听
             state = State.END;
+            isRunning.set(false);
             if (listener != null) {
                 listener.onStop();
             }
-            isRunning.set(false);
         });
         //开始监听
         if (listener != null) {

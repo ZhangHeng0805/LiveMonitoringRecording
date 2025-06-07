@@ -93,10 +93,14 @@ public class LogUtil {
         Files.write(logPath, lines, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
     }
 
-    public void log(String info) throws IOException {
+    public void log(String info)  {
         String line = TimeUtil.getNowTime() + " : " + info;
         System.out.println(line);
-        log(Collections.singleton(line));
+        try {
+            log(Collections.singleton(line));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
 

@@ -1,17 +1,12 @@
 package cn.zhangheng.common.video.player;
 
 import cn.hutool.core.map.MapUtil;
-import cn.hutool.core.stream.StreamUtil;
 import com.sun.net.httpserver.HttpExchange;
-import com.sun.xml.internal.ws.util.StreamUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Map;
 
 /**

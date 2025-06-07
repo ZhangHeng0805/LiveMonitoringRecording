@@ -12,16 +12,16 @@
     <groupId>cn.zhangheng.common</groupId>
     <artifactId>live-common</artifactId>
     <dependencies>
-        <dependency>
-            <groupId>uk.co.caprica</groupId>
-            <artifactId>vlcj</artifactId>
-            <version>3.10.1</version>
-        </dependency>
-        <dependency>
-            <groupId>org.openjfx</groupId>
-            <artifactId>javafx-web</artifactId>
-            <version>17.0.2</version>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>uk.co.caprica</groupId>-->
+<!--            <artifactId>vlcj</artifactId>-->
+<!--            <version>3.10.1</version>-->
+<!--        </dependency>-->
+<!--        <dependency>-->
+<!--            <groupId>org.openjfx</groupId>-->
+<!--            <artifactId>javafx-web</artifactId>-->
+<!--            <version>17.0.2</version>-->
+<!--        </dependency>-->
     </dependencies>
 
     <properties>

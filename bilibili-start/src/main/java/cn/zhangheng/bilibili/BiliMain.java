@@ -35,7 +35,7 @@ public class BiliMain extends MonitorMain<BiliRoom, BiliMonitor> {
             String info = "关注数：" + room.getFollowers() + "，观看人数：" + room.getViewers();
             try {
                 logUtil.log(info);
-            } catch (IOException e) {
+            } catch (Exception e) {
                 log.warn("统计日志产生异常：{}", ThrowableUtil.getAllCauseMessage(e));
             }
             return info;

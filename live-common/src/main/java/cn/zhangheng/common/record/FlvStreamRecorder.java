@@ -245,7 +245,7 @@ public class FlvStreamRecorder extends Recorder {
                         writeQueue.put(buffer);
                     }
                 } catch (IOException e) {
-                    Task.log.error("录制中网络读取发生异常：" + ThrowableUtil.getAllCauseMessage(e));
+                    log.error("录制中网络读取发生异常：{}", ThrowableUtil.getAllCauseMessage(e), e);
                     Thread.currentThread().interrupt();
                     isRunning.set(false);
                 }

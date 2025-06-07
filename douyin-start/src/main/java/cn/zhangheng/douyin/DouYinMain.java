@@ -33,7 +33,7 @@ public class DouYinMain extends MonitorMain<DouYinRoom, DouYinRoomMonitor> {
             String info = "在线人数：" + room.getUserCountStr() + "，点赞数：" + room.getLikeCount() + "，总观看人数：" + room.getTotalUserStr();
             try {
                 logUtil.log(info);
-            } catch (IOException e) {
+            } catch (Exception e) {
                 log.warn("统计日志产生异常：{}", ThrowableUtil.getAllCauseMessage(e));
             }
             return info;

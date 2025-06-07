@@ -3,6 +3,8 @@ package cn.zhangheng.common.bean;
 import cn.hutool.log.Log;
 import cn.hutool.log.LogFactory;
 import lombok.Getter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -18,7 +20,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public abstract class Task {
 
-    protected static final Log log = LogFactory.get();
+    protected final Logger log = LoggerFactory.getLogger(getClass());
     protected final AtomicBoolean isRunning = new AtomicBoolean(false);
     @Getter
     protected Long startTime;
