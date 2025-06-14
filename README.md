@@ -38,3 +38,6 @@ Cookie.DouYin=
 * 通过 java -jar 的命令直接运行jar包，然后命令行按照提示输入
 * 通过 java -jar live-monitor-record-x.x.jar [直播间ID,是否录制,直播平台]  接参数的形式直接运行开始
   * 例：java -jar live-monitor-record-2.0.jar 直播间ID true DouYin/Bili
+
+### 结束运行
+> 结束运行程序建议通过```任务栏图标右键```退出，程序运行时任务栏会有对应的图标，右键图标可以选择对应的操作
