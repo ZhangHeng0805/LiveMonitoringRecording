@@ -1,9 +1,14 @@
 package cn.zhangheng.common.bean;
 
+import cn.hutool.core.util.StrUtil;
 import cn.zhangheng.common.setting.ConfigLoader;
 import cn.zhangheng.common.setting.PropertiesConfig;
 import cn.zhangheng.common.setting.PropertyValue;
+import com.zhangheng.file.FileUtil;
 import lombok.Data;
+
+import java.io.File;
+import java.nio.charset.StandardCharsets;
 
 /**
  * @author: ZhangHeng
@@ -68,9 +73,29 @@ public class Setting {
      */
     @PropertyValue("Cookie.Bilibili")
     private String cookieBili;
+
+    public String getCookieBili() {
+        return setCookie(cookieBili);
+    }
+
+    private String setCookie(String cookie) {
+        if (StrUtil.isNotBlank(cookie)) {
+            if (cookie.startsWith("file:")) {
+                cookie = FileUtil.readString(new File(cookie.substring(5).trim()), StandardCharsets.UTF_8).trim();
+            }
+            return cookie;
+        }
+        return null;
+    }
+
+
     /**
      * 抖音的Cookie
      */
     @PropertyValue("Cookie.DouYin")
     private String cookieDouYin;
+
+    public String getCookieDouYin() {
+        return setCookie(cookieDouYin);
+    }
 }

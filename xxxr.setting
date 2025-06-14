@@ -14,7 +14,7 @@ record.ffmpegPath=bin/ffmpeg.exe
 record.isLoop=true
 #监听间隔时长（秒）
 monitor.delayIntervalSec=10
-#B站的Cookie
+#B站的Cookie 可以指定文件file:Bili.cookie
 Cookie.Bilibili=
 #抖音的Cookie
 Cookie.DouYin=
