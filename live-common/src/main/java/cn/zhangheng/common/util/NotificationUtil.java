@@ -8,7 +8,6 @@ import cn.hutool.json.JSONUtil;
 import cn.hutool.log.Log;
 import cn.hutool.log.LogFactory;
 import cn.zhangheng.common.bean.Setting;
-import com.zhangheng.util.SettingUtil;
 import com.zhangheng.util.ThrowableUtil;
 
 import java.awt.*;
@@ -57,6 +56,7 @@ public class NotificationUtil {
             log.error("息知API消息发送失败：" + body);
         }
     }
+
 
     /**
      * 动作模拟操作微信电脑客户端，需要配置通知的对象昵称

@@ -19,12 +19,17 @@ import java.util.LinkedHashMap;
 public abstract class Room {
     protected String id;
     protected String title;
-    protected String owner;
+//    protected String owner;
+    protected String nickname;
     protected boolean living;
     //开始时间
     protected Date startTime;
 //    protected Date updateTime;
+    //直播封面
     protected String cover;
+    //用户头像
+    protected String avatar;
+
     //直播流不同清晰度地址
     protected LinkedHashMap<String, String> streams;
 

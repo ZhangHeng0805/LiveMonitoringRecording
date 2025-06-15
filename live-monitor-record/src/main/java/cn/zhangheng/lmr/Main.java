@@ -5,7 +5,6 @@ import cn.zhangheng.bilibili.bean.BiliRoom;
 import cn.zhangheng.common.bean.*;
 import cn.zhangheng.douyin.DouYinMain;
 import cn.zhangheng.douyin.DouYinRoom;
-import com.zhangheng.util.SettingUtil;
 
 public class Main extends ApplicationMain<Room> {
     public static void main(String[] args) {

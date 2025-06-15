@@ -9,6 +9,7 @@ import cn.zhangheng.common.util.TrayIconUtil;
 import cn.zhangheng.common.video.FlvToMp4;
 import cn.zhangheng.common.video.player.LocalServerFlvPlayer;
 import com.zhangheng.file.FileUtil;
+import com.zhangheng.util.EncryptUtil;
 import com.zhangheng.util.NetworkUtil;
 import com.zhangheng.util.ThrowableUtil;
 import com.zhangheng.util.TimeUtil;
@@ -20,9 +21,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Date;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
@@ -97,7 +96,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         room.initSetting(setting);
         this.room = room;
         roomMonitor = getRoomMonitor(room);
-        Thread.currentThread().setName(room.getOwner() + "-main-" + Thread.currentThread().getId());
+        Thread.currentThread().setName(room.getNickname() + "-main-" + Thread.currentThread().getId());
         RoomMonitor.RoomListener<R> listener = getRoomListener(room, isRecord);
         trayIconUtil.setClickListener(getClickListener());
         roomMonitor.setListener(listener);
@@ -120,7 +119,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
 
     private M.RoomListener<R> getRoomListener(R room, boolean isRecord) {
         NotificationUtil notificationUtil = new NotificationUtil(setting);
-        String owner = room.getPlatform().getName() + "直播间: " + room.getOwner() + " [" + room.getId() + "]";
+        String owner = room.getPlatform().getName() + "直播间: " + room.getNickname() + " [" + room.getId() + "]";
         LogUtil[] logUtils = {null};
         return new M.RoomListener<R>() {
             @Override
@@ -139,7 +138,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                     recorder.stop(false);
                 }
                 trayIconUtil.notifyMessage(msg);
-                notificationUtil.xiZhiSendMsg(Constant.Application, msg);
+                xiZhiSendMsg(notificationUtil, room);
                 while (flvToMp4 != null && flvToMp4.isRunning()) {
                     try {
                         TimeUnit.SECONDS.sleep(1);
@@ -184,7 +183,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                         log.warn("统计日志产生异常：{}", ThrowableUtil.getAllCauseMessage(e));
                     }
                     if (isFirst) {
-                        notificationUtil.xiZhiSendMsg(Constant.Application, msg);
+                        xiZhiSendMsg(notificationUtil, room);
                         notificationUtil.weChatSendMsg(msg);
                     }
                     if (isRecord) {
@@ -222,7 +221,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         Map.Entry<String, String> stream = streams.entrySet().iterator().next();
         String definition = stream.getKey();//清晰度
         String flvUrl = stream.getValue();
-        String fileName = "【" + FileUtil.filterFileName(room.getOwner()) + "】" + room.getPlatform().getName() + "直播录制" + TimeUtil.toTime(new Date(), "yyyy-MM-dd HH-mm-ss") + "[" + FileUtil.filterFileName(room.getTitle()) + "].flv";
+        String fileName = "【" + FileUtil.filterFileName(room.getNickname()) + "】" + room.getPlatform().getName() + "直播录制" + TimeUtil.toTime(new Date(), "yyyy-MM-dd HH-mm-ss") + "[" + FileUtil.filterFileName(room.getTitle()) + "].flv";
         String path = Paths.get(LogUtil.getBasePathStr(room), fileName).toFile().getPath();
         Recorder streamRecorder;
         switch (recorderType) {
@@ -292,7 +291,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                 String output = path.substring(0, path.lastIndexOf(".")) + ".mp4";
                 boolean convert = flvToMp4.convert(path, output);
                 if (convert) {
-                    Thread.currentThread().setName(room.getOwner() + "-FlvToMp4-" + Thread.currentThread().getId());
+                    Thread.currentThread().setName(room.getNickname() + "-FlvToMp4-" + Thread.currentThread().getId());
                     try {
                         log.debug("FlvToMp4视频转换完成！删除源文件：" + path);
                         Files.deleteIfExists(Paths.get(path));
@@ -373,7 +372,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             public void iconClick(ActionEvent e) {
                 if (recorder == null || recorder.getSaveFilePath() == null) {
                     String home = System.getProperty("user.dir");
-                    Path path = Paths.get(home, Constant.Application, room.getPlatform().getName(), "[" + room.getOwner() + "]");
+                    Path path = Paths.get(home, Constant.Application, room.getPlatform().getName(), "[" + room.getNickname() + "]");
                     if (Files.exists(path)) {
                         openDirectory(path.toString());
                     } else {
@@ -399,5 +398,29 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                 }
             }
         };
+    }
+
+
+    public void xiZhiSendMsg(NotificationUtil notificationUtil, Room room) {
+        String title = "**" + room.getNickname() + ", " + room.getPlatform().getName() + (room.isLiving() ? "开播了！ " + room.getTitle() : "下播了！") + "**\t\n";
+        String webUrl = room.isLiving() ? "- 直播间地址: [" + room.getRoomUrl() + "](" + room.getRoomUrl() + ")" : "";
+        String playUrl = "";
+        //B站请求头限制，无法在线播放
+        if (room.isLiving() && room.getPlatform() != Room.Platform.Bili) {
+            LinkedHashMap<String, String> streams = room.getStreams();
+            Iterator<Map.Entry<String, String>> iterator = streams.entrySet().iterator();
+            String qn, flvUrl;
+            Map.Entry<String, String> entry = iterator.next();
+            qn = entry.getKey();
+            flvUrl = entry.getValue().startsWith("http:") ? entry.getValue().replace("http:", "https:") : entry.getValue();
+            try {
+//                String encode = URLEncoder.encode(flvUrl, "UTF-8");
+                String encode = EncryptUtil.enBase64Str(flvUrl);
+                String url = "https://zhangheng0805.github.io/FLVPlayer/?url=" + encode;
+                playUrl = "\t\n- 播放地址: [" + qn + " 在线播放](" + url + ")";
+            } catch (Exception ignored) {
+            }
+        }
+        notificationUtil.xiZhiSendMsg(Constant.Application, title + webUrl + playUrl);
     }
 }

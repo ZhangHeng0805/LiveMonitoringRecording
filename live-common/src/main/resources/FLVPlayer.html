@@ -199,9 +199,15 @@
 
         // 检查URL参数
         const urlParams = new URLSearchParams(window.location.search);
-        const videoUrl = urlParams.get('url');
 
-        if (videoUrl) {
+        if (urlParams.get('url')) {
+            let videoUrl;
+            if (urlParams.get('url').startsWith("http")) {
+                videoUrl = decodeURIComponent(urlParams.get('url'));
+            } else {
+                videoUrl = atob(urlParams.get('url'));
+            }
+
             // 自动切换到在线播放标签页
             switchTab('online');
 

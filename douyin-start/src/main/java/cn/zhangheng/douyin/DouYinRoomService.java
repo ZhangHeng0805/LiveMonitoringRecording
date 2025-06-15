@@ -30,7 +30,7 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
     public static void main(String[] args) {
         DouYinRoom info = new DouYinRoom("648541186");
         DouYinRoomService douYinRoomService = new DouYinRoomService(info);
-        System.out.println(info);
+        System.out.println(info.getNickname()+":"+info.getAvatar());
     }
 
     private void init() {
@@ -73,8 +73,11 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
             if (JSONUtil.isTypeJSON(body)) {
                 JSONObject data = JSONUtil.parseObj(body).getJSONObject("data");
                 room.setLiving(data.getInt("room_status", -1) == 0);
-                if (StrUtil.isBlank(room.getOwner())) {
-                    room.setOwner(data.getJSONObject("user").getStr("nickname"));
+                if (StrUtil.isBlank(room.getNickname())) {
+                    room.setNickname(data.getJSONObject("user").getStr("nickname"));
+                }
+                if (room.getAvatar() == null) {
+                    room.setAvatar(data.getJSONObject("user").getJSONObject("avatar_thumb").getJSONArray("url_list").get(0, String.class));
                 }
                 if (room.isLiving()) {
                     if (room.getStartTime() == null) {
@@ -87,6 +90,7 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
                     if (room.getCoverList() == null) {
                         room.setCoverList(data1.getJSONObject("cover").getBeanList("url_list", String.class));
                     }
+
                     JSONObject stream_data = data1.getJSONObject("stream_url").getJSONObject("live_core_sdk_data").getJSONObject("pull_data");
                     if (force || room.getStreams() == null) {
                         room.setStreams(handleStream(stream_data));

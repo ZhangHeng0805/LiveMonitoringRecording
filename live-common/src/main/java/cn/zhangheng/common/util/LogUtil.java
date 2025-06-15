@@ -32,7 +32,7 @@ public class LogUtil {
 
     public static String getBasePathStr(Room room) {
         String nowTime = TimeUtil.toTime(room.getStartTime(), "yyyy-MM-dd");
-        return Constant.Application + "/" + room.getPlatform().getName() + "/[" + FileUtil.filterFileName(room.getOwner()) + "]/" + nowTime;
+        return Constant.Application + "/" + room.getPlatform().getName() + "/[" + FileUtil.filterFileName(room.getNickname()) + "]/" + nowTime;
     }
 
     public LogUtil(Room room, String fileName) throws IOException {
@@ -67,7 +67,7 @@ public class LogUtil {
         if (room.isLiving()) {
             init(room);
         } else {
-            log(room.getPlatform().getName() + "直播间: " + room.getOwner() + "[" + room.getId() + "],未开播！监听中...");
+            log(room.getPlatform().getName() + "直播间: " + room.getNickname() + "[" + room.getId() + "],未开播！监听中...");
         }
     }
 
@@ -77,7 +77,7 @@ public class LogUtil {
         }
         isInit = true;
         List<String> lines = new ArrayList<>();
-        lines.add("【" + room.getOwner() + "】 - " + room.getTitle());
+        lines.add("【" + room.getNickname() + "】 - " + room.getTitle());
         lines.add("直播流地址：");
         for (Map.Entry<String, String> entry : room.getStreams().entrySet()) {
             lines.add("【" + entry.getKey() + "】 " + entry.getValue());

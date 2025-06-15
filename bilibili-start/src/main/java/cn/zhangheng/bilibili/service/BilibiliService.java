@@ -29,6 +29,11 @@ public class BilibiliService extends RoomService<BiliRoom> {
 
     private final Map<Integer, String> qn = new HashMap<>();
 
+    public static void main(String[] args) {
+        BiliRoom biliRoom = new BiliRoom("55");
+        BilibiliService service = new BilibiliService(biliRoom);
+        System.out.println(biliRoom.getNickname() + ":" + biliRoom.getAvatar());
+    }
 
     public BilibiliService(BiliRoom room) {
         super(room);
@@ -63,7 +68,7 @@ public class BilibiliService extends RoomService<BiliRoom> {
         }
     }
 
-    public boolean room_init_living() {
+    public void room_init_living() {
         HttpRequest header = get("https://api.live.bilibili.com/room/v1/Room/room_init?id=" + room.getId());
         if (room.getCookie() != null) {
             header = header.header("Cookie", room.getCookie());
@@ -80,13 +85,11 @@ public class BilibiliService extends RoomService<BiliRoom> {
                         room.setRoom_id(data.getStr("room_id"));
                         room.setUid(data.getStr("uid"));
                     }
-                    return isLiving;
                 } else {
                     log.warn("room_init_living失败：" + entries.getStr("message"));
                 }
             }
         }
-        return false;
     }
 
     private void room_info() {
@@ -139,7 +142,8 @@ public class BilibiliService extends RoomService<BiliRoom> {
                 if (entries.getInt("code") == 0) {
                     JSONObject data = entries.getJSONObject("data");
                     JSONObject info = data.getJSONObject("info");
-                    room.setOwner(info.getStr("uname"));
+                    room.setNickname(info.getStr("uname"));
+                    room.setAvatar(info.getStr("face"));
                     room.setFollowers(data.getInt("follower_num", 0));
                 } else {
                     log.warn("user_info失败：" + entries.getStr("message"));
@@ -148,7 +152,7 @@ public class BilibiliService extends RoomService<BiliRoom> {
         }
     }
 
-//    private void room_stream1() {
+    //    private void room_stream1() {
 //        try (HttpResponse execute = HttpRequest.get("https://api.live.bilibili.com/room/v1/Room/playUrl?quality=4&cid=" + room.getRoom_id()).header("User-Agent", Constant.User_Agent).execute()) {
 //            String body = execute.body();
 //            if (JSONUtil.isTypeJSON(body)) {
@@ -175,10 +179,13 @@ public class BilibiliService extends RoomService<BiliRoom> {
 //            }
 //        }
 //    }
-
     private void room_stream() {
+        room_stream(true);
+    }
+
+    private void room_stream(boolean isCookie) {
         HttpRequest header = get("https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo?protocol=0&format=0&codec=0&qn=30000&room_id=" + room.getRoom_id());
-        if (room.getCookie() != null) {
+        if (room.getCookie() != null && isCookie) {
             header = header.header("Cookie", room.getCookie());
         }
         try (HttpResponse execute = header.execute()) {
@@ -190,18 +197,13 @@ public class BilibiliService extends RoomService<BiliRoom> {
                     JSONObject codec = data.getJSONObject("playurl_info").getJSONObject("playurl").getJSONArray("stream").getJSONObject(0).getJSONArray("format").getJSONObject(0).getJSONArray("codec").getJSONObject(0);
                     String desc = qn.get(codec.getInt("current_qn", 10000));
                     String base_url = codec.getStr("base_url");
-                    LinkedHashMap<String, String> streams = new LinkedHashMap<>();
-                    int size = codec.getJSONArray("url_info").size();
-                    for (int i = 0; i < size; i++) {
-                        JSONObject urls = codec.getJSONArray("url_info").getJSONObject(i);
-                        String url = urls.getStr("host") + base_url + urls.getStr("extra");
-                        if (size > 1) {
-                            streams.put(desc + (i + 1), url);
-                        } else {
-                            streams.put(desc, url);
-                        }
-                    }
+                    LinkedHashMap<String, String> streams = room.getStreams() != null ? room.getStreams() : new LinkedHashMap<>();
+                    JSONObject urls = codec.getJSONArray("url_info").getJSONObject(0);
+                    String url = urls.getStr("host") + base_url + urls.getStr("extra");
+                    streams.put(desc, url);
                     room.setStreams(streams);
+                    if (isCookie)
+                        room_stream(false);
                 } else {
                     log.warn("room_stream失败：" + entries.getStr("message"));
                 }

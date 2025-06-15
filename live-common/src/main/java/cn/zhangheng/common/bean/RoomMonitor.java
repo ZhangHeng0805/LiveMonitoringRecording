@@ -51,7 +51,7 @@ public abstract class RoomMonitor<R extends Room, S extends RoomService<R>> exte
             mainExecutors = Executors.newFixedThreadPool(1);
         }
         Future<?> future = mainExecutors.submit(() -> {
-            Thread.currentThread().setName(room.getOwner() + "-monitor-" + Thread.currentThread().getId());
+            Thread.currentThread().setName(room.getNickname() + "-monitor-" + Thread.currentThread().getId());
             isRunning.set(true);
             if (!room.isLiving()) {
                 state = State.NOT_LIVING;
@@ -65,7 +65,11 @@ public abstract class RoomMonitor<R extends Room, S extends RoomService<R>> exte
                     } catch (InterruptedException ignored) {
                         continue;
                     }
-                    roomService.refresh();
+                    try {
+                        roomService.refresh();
+                    } catch (Exception e) {
+                        log.error("直播监听刷新异常：{}", ThrowableUtil.getAllCauseMessage(e));
+                    }
                 } while (isRunning() && !room.isLiving());
             }
             if (room.isLiving()) {
@@ -80,7 +84,11 @@ public abstract class RoomMonitor<R extends Room, S extends RoomService<R>> exte
                     } catch (InterruptedException ignored) {
                         continue;
                     }
-                    roomService.refresh(RandomUtil.randomBoolean());
+                    try {
+                        roomService.refresh(RandomUtil.randomBoolean());
+                    } catch (Exception e) {
+                        log.error("直播监听刷新异常：{}", ThrowableUtil.getAllCauseMessage(e));
+                    }
 //                    if (RandomUtil.randomBoolean()) {
 //                        //模拟下播
 //                        room.setLiving(false);
