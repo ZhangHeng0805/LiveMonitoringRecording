@@ -10,7 +10,6 @@ import lombok.Getter;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -20,7 +19,7 @@ import java.util.stream.Collectors;
  * @email: zhangheng_0805@163.com
  * @date: 2025/06/01 星期日 14:15
  * @version: 1.0
- * @description:
+ * @description: FLV视频下载
  */
 public class FlvDownload extends FFmpegService {
     private static LogUtil logUtil = null;

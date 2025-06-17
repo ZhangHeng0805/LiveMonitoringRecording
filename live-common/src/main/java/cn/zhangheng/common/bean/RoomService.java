@@ -1,6 +1,8 @@
 package cn.zhangheng.common.bean;
 
 import cn.hutool.http.HttpRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author: ZhangHeng
@@ -10,6 +12,7 @@ import cn.hutool.http.HttpRequest;
  * @description:
  */
 public abstract class RoomService<T extends Room> {
+    protected final Logger log = LoggerFactory.getLogger(getClass());
     protected final T room;
 
     protected RoomService(T room) {

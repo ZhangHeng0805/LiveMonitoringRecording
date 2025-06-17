@@ -30,7 +30,7 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
     public static void main(String[] args) {
         DouYinRoom info = new DouYinRoom("648541186");
         DouYinRoomService douYinRoomService = new DouYinRoomService(info);
-        System.out.println(info.getNickname()+":"+info.getAvatar());
+        System.out.println(info.getNickname() + ":" + info.getAvatar());
     }
 
     private void init() {
@@ -71,34 +71,42 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
         try (HttpResponse execute = request.execute()) {
             body = execute.body();
             if (JSONUtil.isTypeJSON(body)) {
-                JSONObject data = JSONUtil.parseObj(body).getJSONObject("data");
-                room.setLiving(data.getInt("room_status", -1) == 0);
-                if (StrUtil.isBlank(room.getNickname())) {
-                    room.setNickname(data.getJSONObject("user").getStr("nickname"));
-                }
-                if (room.getAvatar() == null) {
-                    room.setAvatar(data.getJSONObject("user").getJSONObject("avatar_thumb").getJSONArray("url_list").get(0, String.class));
-                }
-                if (room.isLiving()) {
-                    if (room.getStartTime() == null) {
-                        room.setStartTime(new Date());
+                JSONObject entries = JSONUtil.parseObj(body);
+                JSONObject data = entries.getJSONObject("data");
+                Integer code = entries.getInt("status_code");
+                if (code == 0) {
+                    room.setLiving(data.getInt("room_status", -1) == 0);
+                    if (StrUtil.isBlank(room.getNickname())) {
+                        room.setNickname(data.getJSONObject("user").getStr("nickname"));
                     }
-                    JSONObject data1 = data.getJSONArray("data").getJSONObject(0);
-                    if (StrUtil.isBlank(room.getTitle())) {
-                        room.setTitle(data1.getStr("title", ""));
+                    if (room.getAvatar() == null) {
+                        room.setAvatar(data.getJSONObject("user").getJSONObject("avatar_thumb").getJSONArray("url_list").get(0, String.class));
                     }
-                    if (room.getCoverList() == null) {
-                        room.setCoverList(data1.getJSONObject("cover").getBeanList("url_list", String.class));
-                    }
+                    if (room.isLiving()) {
+                        if (room.getStartTime() == null) {
+                            room.setStartTime(new Date());
+                        }
+                        JSONObject data1 = data.getJSONArray("data").getJSONObject(0);
+                        if (StrUtil.isBlank(room.getTitle())) {
+                            room.setTitle(data1.getStr("title", ""));
+                        }
+                        if (room.getCoverList() == null) {
+                            room.setCoverList(data1.getJSONObject("cover").getBeanList("url_list", String.class));
+                        }
 
-                    JSONObject stream_data = data1.getJSONObject("stream_url").getJSONObject("live_core_sdk_data").getJSONObject("pull_data");
-                    if (force || room.getStreams() == null) {
-                        room.setStreams(handleStream(stream_data));
+                        JSONObject stream_data = data1.getJSONObject("stream_url").getJSONObject("live_core_sdk_data").getJSONObject("pull_data");
+                        if (force || room.getStreams() == null) {
+                            room.setStreams(handleStream(stream_data));
+                        }
+                        JSONObject stats = data1.getJSONObject("stats");
+                        room.setTotalUserStr(stats.getStr("total_user_str"));
+                        room.setUserCountStr(stats.getStr("user_count_str"));
+                        room.setLikeCount(data1.getInt("like_count"));
                     }
-                    JSONObject stats = data1.getJSONObject("stats");
-                    room.setTotalUserStr(stats.getStr("total_user_str"));
-                    room.setUserCountStr(stats.getStr("user_count_str"));
-                    room.setLikeCount(data1.getInt("like_count"));
+                }else {
+                    String msg = data.getStr("prompts");
+                    log.warn("refresh<" + room.getId() + ">: (" + code + ") " + msg);
+                    throw new RuntimeException(room.getPlatform().getName() + " [" + room.getId() + "]刷新异常：" + msg);
                 }
             }
         } catch (Exception e) {

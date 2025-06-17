@@ -20,7 +20,7 @@ import java.util.List;
  * @email: zhangheng_0805@163.com
  * @date: 2025/05/24 星期六 17:26
  * @version: 1.0
- * @description:
+ * @description: FLV转换位MP4
  */
 public class FlvToMp4 extends FFmpegService {
     private static final Logger log = LoggerFactory.getLogger(FlvToMp4.class);

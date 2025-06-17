@@ -13,9 +13,9 @@
     <artifactId>live-common</artifactId>
     <dependencies>
 <!--        <dependency>-->
-<!--            <groupId>com.squareup.okhttp3</groupId>-->
-<!--            <artifactId>okhttp</artifactId>-->
-<!--            <version>4.11.0</version>-->
+<!--            <groupId>org.seleniumhq.selenium</groupId>-->
+<!--            <artifactId>selenium-java</artifactId>-->
+<!--            <version>4.12.0</version>-->
 <!--        </dependency>-->
 <!--        <dependency>-->
 <!--            <groupId>uk.co.caprica</groupId>-->

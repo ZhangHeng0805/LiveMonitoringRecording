@@ -30,7 +30,7 @@ public abstract class FFmpegService {
 
     public FFmpegService(String ffmpegExePath) {
         if (!Files.exists(Paths.get(ffmpegExePath))) {
-            throw new IllegalArgumentException("未找到"+ffmpegExePath+"(Not Found ffmpeg.exe)");
+            throw new IllegalArgumentException("未找到" + ffmpegExePath + "(Not Found ffmpeg.exe)");
         }
         this.ffmpegExePath = ffmpegExePath;
         commands = new ArrayList<>();
@@ -59,25 +59,34 @@ public abstract class FFmpegService {
 
     public void stop(boolean force) {
         isRunning = false;
-        if (process != null) {
+        if (process != null && process.isAlive()) {
             if (force) {
                 process.destroyForcibly();
             } else {
                 process.destroy();
             }
+            try {
+                process.waitFor();
+            } catch (InterruptedException ignored) {
+            }
         }
     }
 
 
+    /**
+     * 输出每行日志结果
+     * @param logs
+     */
     protected abstract void processResult(String logs);
 
     private void processResult(Process process) throws IOException {
         // 读取输出信息
-        BufferedReader reader = new BufferedReader(
-                new InputStreamReader(process.getInputStream()));
-        String line;
-        while ((line = reader.readLine()) != null) {
-            processResult(line);
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(process.getInputStream()))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                processResult(line);
+            }
         }
     }
 

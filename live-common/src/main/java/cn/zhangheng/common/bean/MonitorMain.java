@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory;
 
 import java.awt.event.ActionEvent;
 import java.io.IOException;
+import java.net.URLEncoder;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -93,28 +94,31 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
     protected abstract M getRoomMonitor(R room);
 
     public void start(R room, boolean isRecord) {
-        room.initSetting(setting);
-        this.room = room;
-        roomMonitor = getRoomMonitor(room);
-        Thread.currentThread().setName(room.getNickname() + "-main-" + Thread.currentThread().getId());
-        RoomMonitor.RoomListener<R> listener = getRoomListener(room, isRecord);
-        trayIconUtil.setClickListener(getClickListener());
-        roomMonitor.setListener(listener);
-        do {
-            try {
-                roomMonitor.run(false);
-            } catch (Exception e) {
-                log.error("直播间监听出现异常: {}", ThrowableUtil.getAllCauseMessage(e), e);
+        try {
+            room.initSetting(setting);
+            this.room = room;
+            roomMonitor = getRoomMonitor(room);
+            Thread.currentThread().setName(room.getNickname() + "-main-" + Thread.currentThread().getId());
+            RoomMonitor.RoomListener<R> listener = getRoomListener(room, isRecord);
+            trayIconUtil.setClickListener(getClickListener());
+            roomMonitor.setListener(listener);
+            do {
                 try {
-                    TimeUnit.SECONDS.sleep(tryMonitorSec);
-                } catch (InterruptedException ignored) {
-                } finally {
-                    if (tryMonitorSec < 10)
-                        tryMonitorSec++;
+                    roomMonitor.run(false);
+                } catch (Exception e) {
+                    log.error("直播间监听出现异常: {}", ThrowableUtil.getAllCauseMessage(e), e);
+                    try {
+                        TimeUnit.SECONDS.sleep(tryMonitorSec);
+                    } catch (InterruptedException ignored) {
+                    } finally {
+                        if (tryMonitorSec < 10)
+                            tryMonitorSec++;
+                    }
                 }
-            }
-        } while (isRunning);
-        trayIconUtil.shutdown();
+            } while (isRunning);
+        } finally {
+            trayIconUtil.shutdown();
+        }
     }
 
     private M.RoomListener<R> getRoomListener(R room, boolean isRecord) {
@@ -421,6 +425,10 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             } catch (Exception ignored) {
             }
         }
-        notificationUtil.xiZhiSendMsg(Constant.Application, title + webUrl + playUrl);
+        try {
+            notificationUtil.xiZhiSendMsg(Constant.Application, URLEncoder.encode(title + webUrl + playUrl, "UTF-8"));
+        } catch (Exception e) {
+            log.error("xiZhiSendMsg发生异常：" + ThrowableUtil.getAllCauseMessage(e));
+        }
     }
 }

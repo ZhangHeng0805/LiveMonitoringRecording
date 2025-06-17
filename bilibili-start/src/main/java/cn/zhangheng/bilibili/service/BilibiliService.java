@@ -25,7 +25,7 @@ import java.util.Map;
  */
 public class BilibiliService extends RoomService<BiliRoom> {
 
-    private static final Logger log = LoggerFactory.getLogger(BilibiliService.class);
+
 
     private final Map<Integer, String> qn = new HashMap<>();
 
@@ -77,7 +77,8 @@ public class BilibiliService extends RoomService<BiliRoom> {
             String body = execute.body();
             if (JSONUtil.isTypeJSON(body)) {
                 JSONObject entries = JSONUtil.parseObj(body);
-                if (entries.getInt("code") == 0) {
+                Integer code = entries.getInt("code");
+                if (code == 0) {
                     JSONObject data = entries.getJSONObject("data");
                     boolean isLiving = data.getInt("live_status") != 0;
                     room.setLiving(isLiving);
@@ -86,7 +87,9 @@ public class BilibiliService extends RoomService<BiliRoom> {
                         room.setUid(data.getStr("uid"));
                     }
                 } else {
-                    log.warn("room_init_living失败：" + entries.getStr("message"));
+                    String msg = entries.getStr("message");
+                    log.warn("room_init_living失败<" + room.getId() + ">: (" + code + ") " + msg);
+                    throw new RuntimeException(room.getPlatform().getName() + " [" + room.getId() + "]刷新异常：" + msg);
                 }
             }
         }
