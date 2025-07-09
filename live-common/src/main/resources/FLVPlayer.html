@@ -304,6 +304,64 @@
         }
     }
 
+    // 自定义 Loader 类
+    class CustomLoader {
+        constructor(loaderConfig) {
+            this.loaderConfig = loaderConfig;
+            this.url = '';
+            this.aborted = false;
+            this.request = null;
+        }
+
+        open(dataSource, type, url) {
+            this.url = url;
+            this.load();
+        }
+
+        load() {
+            this.aborted = false;
+            this.request = new XMLHttpRequest();
+            let url = this.url;
+            this.request.open('GET', url, true);
+            this.request.responseType = 'arraybuffer';
+
+            // this.request.setRequestHeader('Authorization', 'Bearer YOUR_TOKEN_HERE');
+            // this.request.setRequestHeader('Custom-Header', 'Your Value');
+
+            // 监听进度和完成事件
+            this.request.onprogress = (e) => {
+                if (this.aborted) return;
+                if (e.lengthComputable) {
+                    this.loaderConfig.onProgress(e.loaded, e.total, e);
+                }
+            };
+
+            this.request.onload = () => {
+                if (this.aborted) return;
+                if (this.request.status >= 200 && this.request.status < 300) {
+                    this.loaderConfig.onSuccess(this.request.response, url, 0);
+                } else {
+                    this.loaderConfig.onError('NetworkError', this.request.statusText);
+                }
+            };
+
+            this.request.onerror = () => {
+                if (this.aborted) return;
+                this.loaderConfig.onError('NetworkError', 'Network request failed');
+            };
+
+            this.request.send();
+        }
+
+        abort() {
+            this.aborted = true;
+            if (this.request) {
+                this.request.abort();
+                this.request = null;
+            }
+        }
+    }
+
     // 播放 FLV 视频
     function playFLV(source) {
         showStatus('正在加载视频...', 'info');
@@ -320,8 +378,12 @@
                 // 创建 FLV 播放器
                 flvPlayer = flvjs.createPlayer({
                     type: 'flv',
-                    url: source
-                });
+                    url: source,
+                    isLive: true,  // 是否为直播流
+                    enableStashBuffer: false,  // 减少延迟
+                }
+                // , {customLoader: CustomLoader}
+                );
             } else {
                 // 本地文件
                 showStatus(`正在加载本地视频: ${source.name}`, 'info');

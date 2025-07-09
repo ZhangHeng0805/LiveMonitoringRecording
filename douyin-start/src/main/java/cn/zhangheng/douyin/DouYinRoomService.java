@@ -28,9 +28,9 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
     }
 
     public static void main(String[] args) {
-        DouYinRoom info = new DouYinRoom("648541186");
+        DouYinRoom info = new DouYinRoom("208823316033");
         DouYinRoomService douYinRoomService = new DouYinRoomService(info);
-        System.out.println(info.getNickname() + ":" + info.getAvatar());
+        System.out.println(JSONUtil.toJsonPrettyStr(info));
     }
 
     private void init() {
@@ -73,7 +73,7 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
             if (JSONUtil.isTypeJSON(body)) {
                 JSONObject entries = JSONUtil.parseObj(body);
                 JSONObject data = entries.getJSONObject("data");
-                Integer code = entries.getInt("status_code");
+                Integer code = entries.getInt("status_code", -1);
                 if (code == 0) {
                     room.setLiving(data.getInt("room_status", -1) == 0);
                     if (StrUtil.isBlank(room.getNickname())) {
@@ -103,10 +103,12 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
                         room.setUserCountStr(stats.getStr("user_count_str"));
                         room.setLikeCount(data1.getInt("like_count"));
                     }
-                }else {
+                } else {
                     String msg = data.getStr("prompts");
                     log.warn("refresh<" + room.getId() + ">: (" + code + ") " + msg);
-                    throw new RuntimeException(room.getPlatform().getName() + " [" + room.getId() + "]刷新异常：" + msg);
+                    if (!code.equals(30003) || !"直播已结束".endsWith(msg)) {
+                        throw new RuntimeException(room.getPlatform().getName() + " [" + room.getId() + "]刷新异常：" + msg);
+                    }
                 }
             }
         } catch (Exception e) {

@@ -42,6 +42,7 @@ public class NotificationUtil {
             return;
         }
         HttpResponse execute = HttpRequest.post(xiZhiUrl)
+                .timeout(10_000)
                 .form("title", title)
                 .form("content", content)
                 .execute();

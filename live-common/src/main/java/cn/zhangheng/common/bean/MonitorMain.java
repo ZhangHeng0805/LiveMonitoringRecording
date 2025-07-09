@@ -141,8 +141,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                 if (recorder != null && recorder.isRunning()) {
                     recorder.stop(false);
                 }
-                trayIconUtil.notifyMessage(msg);
-                xiZhiSendMsg(notificationUtil, room);
+
                 while (flvToMp4 != null && flvToMp4.isRunning()) {
                     try {
                         TimeUnit.SECONDS.sleep(1);
@@ -150,6 +149,8 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                     }
                 }
                 flvPlayer.stop(true);
+                trayIconUtil.notifyMessage(msg);
+                xiZhiSendMsg(notificationUtil, room);
             }
 
             @Override
@@ -186,10 +187,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                     } catch (IOException e) {
                         log.warn("统计日志产生异常：{}", ThrowableUtil.getAllCauseMessage(e));
                     }
-                    if (isFirst) {
-                        xiZhiSendMsg(notificationUtil, room);
-                        notificationUtil.weChatSendMsg(msg);
-                    }
+
                     if (isRecord) {
                         msg += "\n已开启【" + recorder.getDefinition() + "】录制！";
                     } else {
@@ -198,6 +196,10 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                     }
                     trayIconUtil.notifyMessage(msg);
                     trayIconUtil.setToolTip(msg);
+                    if (isFirst) {
+                        xiZhiSendMsg(notificationUtil, room);
+                        notificationUtil.weChatSendMsg(msg);
+                    }
                 }
             }
 
@@ -426,7 +428,13 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             }
         }
         try {
-            notificationUtil.xiZhiSendMsg(Constant.Application, URLEncoder.encode(title + webUrl + playUrl, "UTF-8"));
+            String footer = "\t\n------\t\n"
+                    + "\t\n#### 个人链接\t\n"
+                    + "\t\n- 微信公众号: [星曦向荣](" + Constant.WeChatOfficialAccount + ")\t\n"
+                    + "\t\n- Bilibili: [星曦向荣](https://b23.tv/fmqmfNv)\t\n"
+//                    + "\t\n- 抖音: [星曦向荣](https://v.douyin.com/cubL5sg7sNE/)\t\n"
+                    ;
+            notificationUtil.xiZhiSendMsg(Constant.Application, URLEncoder.encode(title + webUrl + playUrl + footer, "UTF-8"));
         } catch (Exception e) {
             log.error("xiZhiSendMsg发生异常：" + ThrowableUtil.getAllCauseMessage(e));
         }

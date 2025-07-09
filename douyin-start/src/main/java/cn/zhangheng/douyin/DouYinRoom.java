@@ -45,7 +45,11 @@ public class DouYinRoom extends Room {
 
     @Override
     public String getCover() {
-        return coverList.get(0);
+        if (coverList != null && !coverList.isEmpty()) {
+            return coverList.get(0);
+        } else {
+            return null;
+        }
     }
 
     @Override

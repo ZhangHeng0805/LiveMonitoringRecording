@@ -7,8 +7,6 @@ import cn.hutool.json.JSONUtil;
 import cn.zhangheng.bilibili.bean.BiliRoom;
 import cn.zhangheng.common.bean.RoomService;
 import com.zhangheng.util.TimeUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.text.ParseException;
 import java.util.Date;
@@ -24,7 +22,6 @@ import java.util.Map;
  * @description:
  */
 public class BilibiliService extends RoomService<BiliRoom> {
-
 
 
     private final Map<Integer, String> qn = new HashMap<>();
@@ -58,12 +55,11 @@ public class BilibiliService extends RoomService<BiliRoom> {
 
     @Override
     public void refresh(boolean force) {
-        if (room.isLiving()) {
-            room_info();
-        } else {
+        if (!room.isLiving()){
             room_init_living();
         }
         if (room.isLiving()) {
+            room_info();
             if (force || room.getStreams() == null || room.getStreams().isEmpty()) room_stream();
         }
     }
@@ -205,8 +201,7 @@ public class BilibiliService extends RoomService<BiliRoom> {
                     String url = urls.getStr("host") + base_url + urls.getStr("extra");
                     streams.put(desc, url);
                     room.setStreams(streams);
-                    if (isCookie)
-                        room_stream(false);
+                    if (isCookie) room_stream(false);
                 } else {
                     log.warn("room_stream失败：" + entries.getStr("message"));
                 }

@@ -45,13 +45,15 @@ public class FlvDownload extends FFmpegService {
         }
         List<String> commands = new ArrayList<>();
         List<String> baseList = Arrays.asList(
-                "-y", "-re",
-                "-probesize", "32M",
-                "-rw_timeout", "20000000",
-                "-reconnect", "1",
-                "-reconnect_at_eof", "1",
-                "-reconnect_streamed", "1",
-                "-reconnect_delay_max", "40",
+                "-y",
+//                "-re",
+//                "-probesize", "32M",
+//                "-rw_timeout", "20000000",
+//                "-reconnect", "1",
+//                "-reconnect_at_eof", "1",
+//                "-reconnect_streamed", "1",
+//                "-reconnect_delay_max", "40",
+                "-fflags", "+igndts+genpts",  // 忽略错误时间戳，生成连续新时间戳
                 "-i", "\"" + url + "\"",
                 "-c", "copy",
                 file

@@ -59,6 +59,7 @@ public class FFmpegFlvRecorder extends Recorder {
         header.put("User-Agent", Constant.User_Agent);
         if (room != null) {
             header.put("Referer", room.getPlatform().getMainUrl() + room.getId());
+            header.put("Origin", room.getPlatform().getMainUrl());
             if (room.getCookie() != null) {
                 header.put("Cookie", room.getCookie());
             }
