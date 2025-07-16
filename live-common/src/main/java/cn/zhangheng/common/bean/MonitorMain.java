@@ -42,7 +42,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
     protected final Setting setting;
     protected Recorder recorder;
     protected int delayIntervalSec;
-    protected boolean isRunning;
+    protected volatile boolean isRunning;
     protected boolean recordFlag = true;
     protected final boolean isConvert;
     //0-FlvStreamRecorder,1-FFmpegFlvRecorder
@@ -315,7 +315,8 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
 
     private void tryRecord(R room, boolean isConvert) {
         trayIconUtil.setStartRecordStatue(false);
-        if (isRunning && recordFlag) {
+        roomMonitor.refresh(true);
+        if (room.isLiving() && isRunning && recordFlag) {
             recorder.stop(true);
             log.warn("直播尚未结束，继续录制！");
             recorder = getRecord(room, isConvert);
@@ -420,19 +421,18 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             qn = entry.getKey();
             flvUrl = entry.getValue().startsWith("http:") ? entry.getValue().replace("http:", "https:") : entry.getValue();
             try {
-//                String encode = URLEncoder.encode(flvUrl, "UTF-8");
-                String encode = EncryptUtil.enBase64Str(flvUrl);
+//                String encode = URLEncoder.encode(flvUrl, "UTF-8");//使用URLEncoder编码
+                String encode = EncryptUtil.enBase64Str(flvUrl);//使用Base64Encoder编码
                 String url = "https://zhangheng0805.github.io/FLVPlayer/?url=" + encode;
-                playUrl = "\t\n- 播放地址: [" + qn + " 在线播放](" + url + ")";
+                playUrl = "\t\n- 播放地址: [" + qn + " 纯享版在线观看](" + url + ")";
             } catch (Exception ignored) {
             }
         }
         try {
             String footer = "\t\n------\t\n"
-                    + "\t\n#### 个人链接\t\n"
-                    + "\t\n- 微信公众号: [星曦向荣](" + Constant.WeChatOfficialAccount + ")\t\n"
-                    + "\t\n- Bilibili: [星曦向荣](https://b23.tv/fmqmfNv)\t\n"
-//                    + "\t\n- 抖音: [星曦向荣](https://v.douyin.com/cubL5sg7sNE/)\t\n"
+                    + "\t\n **个人链接:**\t [微信公众号](" + Constant.WeChatOfficialAccount + ") / [Bilibili](https://b23.tv/fmqmfNv)"
+//                    + " / [抖音](https://v.douyin.com/cubL5sg7sNE/)"
+                    + " / [程序项目](https://github.com/ZhangHeng0805/LiveMonitoringRecording)"
                     ;
             notificationUtil.xiZhiSendMsg(Constant.Application, URLEncoder.encode(title + webUrl + playUrl + footer, "UTF-8"));
         } catch (Exception e) {

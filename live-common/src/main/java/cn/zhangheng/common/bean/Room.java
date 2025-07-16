@@ -21,7 +21,7 @@ public abstract class Room {
     protected String title;
 //    protected String owner;
     protected String nickname;
-    protected boolean living;
+    protected volatile boolean living;
     //开始时间
     protected Date startTime;
 //    protected Date updateTime;

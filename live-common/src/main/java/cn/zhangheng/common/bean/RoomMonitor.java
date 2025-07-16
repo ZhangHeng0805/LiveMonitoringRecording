@@ -41,11 +41,15 @@ public abstract class RoomMonitor<R extends Room, S extends RoomService<R>> exte
 
     protected abstract S getRoomService(R room);
 
+    public synchronized void refresh(boolean force) {
+        roomService.refresh(force);
+    }
+
     @Override
     public void run(boolean isAsync) throws ExecutionException {
         runCount++;
         if (runCount > 1) {
-            roomService.refresh();
+           refresh(false);
         }
         if (mainExecutors.isShutdown() || mainExecutors.isTerminated()) {
             mainExecutors = Executors.newFixedThreadPool(1);
@@ -66,7 +70,7 @@ public abstract class RoomMonitor<R extends Room, S extends RoomService<R>> exte
                         continue;
                     }
                     try {
-                        roomService.refresh();
+                        refresh(false);
                     } catch (Exception e) {
                         log.error("直播监听刷新异常：{}", ThrowableUtil.getAllCauseMessage(e));
                     }
@@ -85,7 +89,7 @@ public abstract class RoomMonitor<R extends Room, S extends RoomService<R>> exte
                         continue;
                     }
                     try {
-                        roomService.refresh(RandomUtil.randomBoolean());
+                        refresh(RandomUtil.randomBoolean());
                     } catch (Exception e) {
                         log.error("直播监听刷新异常：{}", ThrowableUtil.getAllCauseMessage(e));
                     }

@@ -4,11 +4,11 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>cn.zhangheng.douyin</groupId>
+    <groupId>cn.zhangheng.record</groupId>
     <artifactId>LiveMonitoringRecording</artifactId>
-    <version>2.0</version>
+    <version>2.1</version>
     <packaging>pom</packaging>
-    <description>抖音直播录屏</description>
+    <description>【星曦向荣】直播录屏工具</description>
     <modules>
         <module>douyin-start</module>
         <module>bilibili-start</module>
@@ -17,6 +17,7 @@
     </modules>
 
     <properties>
+        <xxxr.version>2.1</xxxr.version>
         <project.encoding>UTF-8</project.encoding>
         <java.version>1.8</java.version>
         <maven.compiler.source>8</maven.compiler.source>
@@ -28,9 +29,15 @@
         <maven.compiler.target>${java.version}</maven.compiler.target>
     </properties>
 
+    <developers>
+        <developer>
+            <name>星曦向荣</name>
+            <email>zhangheng_0805@163.com</email>
+            <url>https://github.com/ZhangHeng0805</url>
+        </developer>
+    </developers>
 
     <dependencies>
-
         <!-- mvn install:install-file -Dfile=libs/ZH_Utils.jar -DgroupId=com.zhangheng -DartifactId=ZH_Utils -Dversion=25.05.22 -Dpackaging=jar -->
         <dependency>
             <groupId>com.zhangheng</groupId>

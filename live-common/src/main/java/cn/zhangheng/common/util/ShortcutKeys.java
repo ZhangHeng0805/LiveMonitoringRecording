@@ -14,9 +14,10 @@ import java.awt.event.KeyEvent;
  */
 public class ShortcutKeys {
     public static void main(String[] args) throws AWTException {
-//        Robot robot = new Robot();
+        Robot robot = new Robot();
 //        startObsRecording(robot);
 //        stopObsRecording(robot);
+        wechatSendMsg(robot,"文件传输助手","123");
 
     }
 
