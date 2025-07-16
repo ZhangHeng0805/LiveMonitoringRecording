@@ -24,6 +24,10 @@
               <transformers>
                 <transformer>
                   <mainClass>cn.zhangheng.lmr.Main</mainClass>
+                  <manifestEntries>
+                    <Project-Version>${xxxr.version}</Project-Version>
+                    <Implementation-Version>${project.version}</Implementation-Version>
+                  </manifestEntries>
                 </transformer>
               </transformers>
             </configuration>

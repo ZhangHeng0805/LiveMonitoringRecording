@@ -57,6 +57,12 @@
                                 <transformer
                                         implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <mainClass>cn.zhangheng.lmr.Main</mainClass> <!-- 替换成你的主类 -->
+                                    <manifestEntries>
+                                        <!-- 自定义属性，存储项目版本 -->
+                                        <Project-Version>${xxxr.version}</Project-Version>
+                                        <!-- 也可以使用默认属性 -->
+                                        <Implementation-Version>${project.version}</Implementation-Version>
+                                    </manifestEntries>
                                 </transformer>
                             </transformers>
                         </configuration>

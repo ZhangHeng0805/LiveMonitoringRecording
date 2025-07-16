@@ -5,7 +5,10 @@ import cn.hutool.log.Log;
 import cn.hutool.log.LogFactory;
 import com.zhangheng.util.ThrowableUtil;
 
+import java.net.URL;
+import java.util.Objects;
 import java.util.Scanner;
+import java.util.jar.Manifest;
 
 /**
  * @author: ZhangHeng
@@ -18,25 +21,26 @@ public abstract class ApplicationMain<R extends Room> {
     private static final Log log = LogFactory.get();
     protected Setting setting;
 
-    private static final String banner = "\n" +
-            "            ***************       ***       ***\n" +
-            "            **************        ***       ***\n" +
-            "                    ***           ***       ***\n" +
-            "                  ***             *************\n" +
-            "                ***               *************\n" +
-            "              ***                 ***       ***\n" +
-            "            ***************       ***       ***\n" +
-            "           ****************       ***       ***\n" +
-            "\n" +
-            "*****   程序：" + Constant.Application + "\n" +
-            "*****   配置文件：" + Constant.Setting_Name + "\n" +
-            "*****   作者：星曦向荣   版本：V2.0       邮箱：zhangheng_0805@163.com\n" +
-            "*****   作者GitHub主页：https://github.com/ZhangHeng0805";
-
+    private String getBanner() {
+        return "\n" +
+                "            ***************       ***       ***\n" +
+                "            **************        ***       ***\n" +
+                "                    ***           ***       ***\n" +
+                "                  ***             *************\n" +
+                "                ***               *************\n" +
+                "              ***                 ***       ***\n" +
+                "            ***************       ***       ***\n" +
+                "           ****************       ***       ***\n" +
+                "\n" +
+                "*****   程序：" + Constant.Application + "\n" +
+                "*****   配置文件：" + Constant.Setting_Name + "\n" +
+                "*****   作者：星曦向荣   版本：V" + getProjectVersion() + "       邮箱：zhangheng_0805@163.com\n" +
+                "*****   作者GitHub主页：https://github.com/ZhangHeng0805";
+    }
 
     public void start(Setting setting, String[] args) {
         this.setting = setting;
-        System.out.println(banner);
+        System.out.println(getBanner());
         Room.Platform[] platforms = supportedPlatforms();
         String platformsStr = supportedPlatformsStr(platforms);
         System.out.println(Constant.Application + " - " + platformsStr);
@@ -102,15 +106,15 @@ public abstract class ApplicationMain<R extends Room> {
 //    }
 
     private String supportedPlatformsStr(Room.Platform[] platforms) {
-        StringBuilder notic = new StringBuilder();
+        StringBuilder notice = new StringBuilder();
         for (int i = 0; i < platforms.length; i++) {
             if (i == platforms.length - 1) {
-                notic.append(platforms[i].name()).append(":").append(platforms[i].getName());
+                notice.append(platforms[i].name()).append(":").append(platforms[i].getName());
             } else {
-                notic.append(platforms[i].name()).append(":").append(platforms[i].getName()).append(" / ");
+                notice.append(platforms[i].name()).append(":").append(platforms[i].getName()).append(" / ");
             }
         }
-        return notic.toString();
+        return notice.toString();
     }
 
     private void listen(R room, boolean isRecord) {
@@ -128,4 +132,32 @@ public abstract class ApplicationMain<R extends Room> {
             getMonitorMain(setting, room).start(room, isRecord);
         } while (isLoop);
     }
+
+    public String getProjectVersion() {
+        // 通过当前类的类加载器获取 MANIFEST.MF
+        try {
+            // 获取当前类所在的 JAR 包路径
+            String className = getClass().getName().replace('.', '/') + ".class";
+            String classPath = Objects.requireNonNull(getClass().getClassLoader().getResource(className)).toString();
+
+            // 仅在 JAR 包中有效（shade 打包后是一个独立 JAR）
+            if (classPath.startsWith("jar:")) {
+                // 截取 MANIFEST.MF 的路径
+                String manifestPath = classPath.substring(0, classPath.lastIndexOf('!') + 1) + "/META-INF/MANIFEST.MF";
+                Manifest manifest = new Manifest(new URL(manifestPath).openStream());
+
+                // 读取自定义的 Project-Version 属性
+                String version = manifest.getMainAttributes().getValue("Project-Version");
+                if (version == null) {
+                    // 备选：读取标准的 Implementation-Version
+                    version = manifest.getMainAttributes().getValue("Implementation-Version");
+                }
+                return version != null ? version : " ";
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return " ";
+    }
+
 }
