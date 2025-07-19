@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory;
 
 import java.awt.event.ActionEvent;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URLEncoder;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -124,7 +125,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
     private M.RoomListener<R> getRoomListener(R room, boolean isRecord) {
         NotificationUtil notificationUtil = new NotificationUtil(setting);
         String owner = room.getPlatform().getName() + "直播间: " + room.getNickname() + " [" + room.getId() + "]";
-        LogUtil[] logUtils = {null};
+        LogUtil logUtil = getRoomLogUtil(room);
         return new M.RoomListener<R>() {
             @Override
             public void onStart() {
@@ -138,10 +139,12 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                 isRunning = false;
                 String msg = "直播监听结束！" + owner;
                 log.info(msg);
+                trayIconUtil.notifyMessage(msg);
+                xiZhiSendMsg(notificationUtil, room);
                 if (recorder != null && recorder.isRunning()) {
                     recorder.stop(false);
                 }
-
+                if (logUtil != null) logUtil.close();
                 while (flvToMp4 != null && flvToMp4.isRunning()) {
                     try {
                         TimeUnit.SECONDS.sleep(1);
@@ -149,12 +152,11 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                     }
                 }
                 flvPlayer.stop(true);
-                trayIconUtil.notifyMessage(msg);
-                xiZhiSendMsg(notificationUtil, room);
             }
 
             @Override
             public void onChange(M.State state, R room) {
+
                 if (state == M.State.NOT_LIVING) {
                     //未开播
                     String msg = owner + "\n未开播，直播间监听中...";
@@ -174,20 +176,14 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                     }
                     String msg = owner + "，已开始直播了！";
                     log.info(msg);
-                    try {
-                        if (logUtils[0] == null) {
-                            try {
-                                logUtils[0] = new LogUtil(room);
-                            } catch (IOException e) {
-                                log.warn("统计日志生成异常：{}", ThrowableUtil.getAllCauseMessage(e));
-                            }
-                        }
-                        logUtils[0].log(msg);
-                        logUtils[0].init(room);
-                    } catch (IOException e) {
-                        log.warn("统计日志产生异常：{}", ThrowableUtil.getAllCauseMessage(e));
+                    if (isFirst) {
+                        xiZhiSendMsg(notificationUtil, room);
+                        notificationUtil.weChatSendMsg(msg);
                     }
-
+                    if (logUtil != null) {
+                        logUtil.log(msg);
+                        logUtil.init(room);
+                    }
                     if (isRecord) {
                         msg += "\n已开启【" + recorder.getDefinition() + "】录制！";
                     } else {
@@ -196,16 +192,12 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                     }
                     trayIconUtil.notifyMessage(msg);
                     trayIconUtil.setToolTip(msg);
-                    if (isFirst) {
-                        xiZhiSendMsg(notificationUtil, room);
-                        notificationUtil.weChatSendMsg(msg);
-                    }
                 }
             }
 
             @Override
             public void onProgress(R r) {
-                String statistics = owner + "\n" + statistics(logUtils[0], r);
+                String statistics = owner + "\n" + statistics(logUtil, r);
                 if (recorder != null && recorder.isRunning() && recorder.getStartTime() != null) {
                     String tooltip = "【" + recorder.getDefinition() + "】" + recorder.getProgressMsg();
                     trayIconUtil.setToolTip(statistics + "\n" + tooltip);
@@ -215,6 +207,16 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                 }
             }
         };
+    }
+
+    private LogUtil getRoomLogUtil(R room) {
+        LogUtil logUtil = null;
+        try {
+            logUtil = new LogUtil(room);
+        } catch (IOException e) {
+            log.warn("统计日志生成异常：{}", ThrowableUtil.getAllCauseMessage(e));
+        }
+        return logUtil;
     }
 
     protected abstract String statistics(LogUtil logUtil, R room);
@@ -255,7 +257,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             @Override
             public void onComplete(String saveFilePath, long totalBytes, long totalDurationMS) {
                 Recorder.ProgressCallback.super.onComplete(saveFilePath, totalBytes, totalDurationMS);
-                flvToMp4(path);
+                flvToMp4(saveFilePath);
                 try {
                     TimeUnit.SECONDS.sleep(1);
                 } catch (InterruptedException ignored) {
@@ -264,9 +266,9 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             }
 
             @Override
-            public void onError(Throwable throwable) {
-                Recorder.ProgressCallback.super.onError(throwable);
-                flvToMp4(path);
+            public void onError(Throwable throwable, String saveFilePath) {
+                Recorder.ProgressCallback.super.onError(throwable, saveFilePath);
+                flvToMp4(saveFilePath);
                 if (throwable instanceof InterruptedException) {
                     return;
                 }
@@ -292,21 +294,42 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
     }
 
     private void flvToMp4(String path) {
+        Path srcPath = Paths.get(path);
+        if (!Files.exists(srcPath) || Files.isDirectory(srcPath)) {
+            log.warn("{}文件不存在，或不是一个文件", path);
+            return;
+        }
+        long size = -1;
+        try {
+            size = Files.size(srcPath);
+            if (size <= 0) {
+                log.warn("{}录制文件大小为：{}B,", path, size);
+                if (size == 0) {
+                    Files.deleteIfExists(srcPath);
+                }
+                return;
+            }
+        } catch (IOException e) {
+            log.error(ThrowableUtil.getAllCauseMessage(e));
+        }
+        log.info("录制文件:{},大小:{}", path, FileUtil.fileSizeStr(size));
+
         if (isConvert && flvToMp4 != null) {
-            new Thread(() -> {
+            Thread thread = new Thread(() -> {
                 String output = path.substring(0, path.lastIndexOf(".")) + ".mp4";
                 boolean convert = flvToMp4.convert(path, output);
                 if (convert) {
                     Thread.currentThread().setName(room.getNickname() + "-FlvToMp4-" + Thread.currentThread().getId());
                     try {
                         log.debug("FlvToMp4视频转换完成！删除源文件：" + path);
-                        Files.deleteIfExists(Paths.get(path));
+                        Files.deleteIfExists(srcPath);
                         trayIconUtil.notifyMessage("录制文件保存路径：" + output);
                     } catch (IOException e) {
                         log.error("FlvToMp4视频转换完成后删除源文件失败！" + ThrowableUtil.getAllCauseMessage(e));
                     }
                 }
-            }).start();
+            });
+            thread.start();
         } else {
             trayIconUtil.notifyMessage("录制文件保存路径：" + path);
         }
@@ -432,8 +455,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             String footer = "\t\n------\t\n"
                     + "\t\n **个人链接:**\t [微信公众号](" + Constant.WeChatOfficialAccount + ") / [Bilibili](https://b23.tv/fmqmfNv)"
 //                    + " / [抖音](https://v.douyin.com/cubL5sg7sNE/)"
-                    + " / [程序项目](https://github.com/ZhangHeng0805/LiveMonitoringRecording)"
-                    ;
+                    + " / [程序项目](https://github.com/ZhangHeng0805/LiveMonitoringRecording)";
             notificationUtil.xiZhiSendMsg(Constant.Application, URLEncoder.encode(title + webUrl + playUrl + footer, "UTF-8"));
         } catch (Exception e) {
             log.error("xiZhiSendMsg发生异常：" + ThrowableUtil.getAllCauseMessage(e));

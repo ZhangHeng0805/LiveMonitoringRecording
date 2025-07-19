@@ -34,7 +34,7 @@ public class DouYinMain extends MonitorMain<DouYinRoom, DouYinRoomMonitor> {
             try {
                 logUtil.log(info);
             } catch (Exception e) {
-                log.warn("统计日志产生异常：{}", ThrowableUtil.getAllCauseMessage(e));
+                log.warn("{} #统计日志产生异常：{}", info, ThrowableUtil.getAllCauseMessage(e));
             }
             return info;
         }

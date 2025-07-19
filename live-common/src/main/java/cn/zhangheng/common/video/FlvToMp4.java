@@ -24,11 +24,11 @@ import java.util.List;
  */
 public class FlvToMp4 extends FFmpegService {
     private static final Logger log = LoggerFactory.getLogger(FlvToMp4.class);
-    private static LogUtil logUtil = null;
+    private LogUtil logUtil = null;
 
     public static void main(String[] args) {
-        String input = "D:\\直播录屏\\bin\\out.flv";
-        String output = "D:\\直播录屏\\bin\\out.mp4";
+        String input = "D:\\直播录屏\\live-monitor-record\\抖音\\【星曦向荣】直播监听工具\\抖音\\[小兰花]\\2025-07-17\\【小兰花】抖音直播录制2025-07-17 23-10-06[嘻嘻，晚上好！].flv";
+        String output = "D:\\直播录屏\\live-monitor-record\\抖音\\【星曦向荣】直播监听工具\\抖音\\[小兰花]\\2025-07-17\\【小兰花】抖音直播录制2025-07-17 23-10-06[嘻嘻，晚上好！].mp4";
         new FlvToMp4().convert(input, output);
     }
 
@@ -42,19 +42,19 @@ public class FlvToMp4 extends FFmpegService {
 
     public boolean convert(String input, String output) {
         Path inputPath = Paths.get(input);
+        if (logUtil == null) {
+            String parent = inputPath.getParent().toString();
+            try {
+                logUtil = new LogUtil(Paths.get(parent, "视频转换.log").toString());
+            } catch (IOException e) {
+                log.error("视频转换日志生成失败" + ThrowableUtil.getAllCauseMessage(e));
+            }
+        }
         try {
             if (!Files.exists(inputPath)) {
                 throw new FileNotFoundException("未找到输入文件(Not Found Input File):" + input);
             }
             Files.deleteIfExists(Paths.get(output));
-            if (logUtil == null) {
-                String parent = inputPath.getParent().toString();
-                try {
-                    logUtil = new LogUtil(Paths.get(parent, "视频转换.log").toString());
-                } catch (IOException e) {
-                    log.error("视频转换日志生成失败" + ThrowableUtil.getAllCauseMessage(e));
-                }
-            }
             // 构建FFmpeg命令
             List<String> command = Arrays.asList("-y",
                     "-i", input,// 输入文件
@@ -63,10 +63,12 @@ public class FlvToMp4 extends FFmpegService {
             );
             boolean run = run(command);
             String res = run ? "转换成功! " : "转换失败! ";
-            logUtil.log(res + output);
+            if (logUtil != null) logUtil.log(res + output);
             return run;
         } catch (IOException | InterruptedException e) {
             log.error("视频转换失败: {}", ThrowableUtil.getAllCauseMessage(e));
+        } finally {
+
         }
         return false;
     }
@@ -74,10 +76,7 @@ public class FlvToMp4 extends FFmpegService {
 
     @Override
     protected void processResult(String logs) {
-        try {
-            logUtil.log(Collections.singleton(logs));
-        } catch (IOException e) {
-            log.error("视频转换日志记录失败: {}", ThrowableUtil.getAllCauseMessage(e));
-        }
+        if (logUtil != null) logUtil.highLog(logs);
     }
+
 }

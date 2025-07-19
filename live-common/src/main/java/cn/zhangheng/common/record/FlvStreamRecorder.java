@@ -22,6 +22,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.channels.ReadableByteChannel;
+import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -94,12 +95,8 @@ public class FlvStreamRecorder extends Recorder {
         URLConnection conn = url.openConnection();
         conn.setConnectTimeout(60000);
         conn.setReadTimeout(30000);
-        conn.setRequestProperty("User-Agent", Constant.User_Agent);
-        if (room != null) {
-            conn.setRequestProperty("Referer", room.getPlatform().getMainUrl() + room.getId());
-            if (room.getCookie() != null) {
-                conn.setRequestProperty("Cookie", room.getCookie());
-            }
+        for (Map.Entry<String, String> entry : room.getRequestHead().entrySet()) {
+            conn.setRequestProperty(entry.getKey(), entry.getValue());
         }
         try (ReadableByteChannel inChannel = Channels.newChannel(conn.getInputStream());
              FileOutputStream fos = new FileOutputStream(outputFile)) {

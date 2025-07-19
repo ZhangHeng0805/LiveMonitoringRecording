@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
  * @description: FLV视频下载
  */
 public class FlvDownload extends FFmpegService {
-    private static LogUtil logUtil = null;
+    private LogUtil logUtil = null;
     @Getter
     private final FFmpegProgress ffmpegProgress = new FFmpegProgress();
 
@@ -43,37 +43,44 @@ public class FlvDownload extends FFmpegService {
                 log.error("视频下载日志生成失败" + ThrowableUtil.getAllCauseMessage(e));
             }
         }
-        List<String> commands = new ArrayList<>();
-        List<String> baseList = Arrays.asList(
-                "-y",
+        try {
+            List<String> commands = new ArrayList<>();
+            List<String> baseList = Arrays.asList(
+                    "-y",
 //                "-re",
-//                "-probesize", "32M",
+                    "-probesize", "32M",
 //                "-rw_timeout", "20000000",
 //                "-reconnect", "1",
 //                "-reconnect_at_eof", "1",
 //                "-reconnect_streamed", "1",
 //                "-reconnect_delay_max", "40",
-                "-fflags", "+igndts+genpts",  // 忽略错误时间戳，生成连续新时间戳
-                "-i", "\"" + url + "\"",
-                "-c", "copy",
-                file
-        );
-        if (headers != null && !headers.isEmpty()) {
-            List<String> headerList = headers.entrySet().stream().map(h -> h.getKey() + ": " + h.getValue()).collect(Collectors.toList());
-            commands.add("-headers");
-            String join = String.join("\r\n", headerList);
-            commands.add("\"" + join + "\r\n\"");
-        }
-        commands.addAll(baseList);
-        try {
+                    "-err_detect", "ignore_err", // 忽略部分编码错误
+                    "-fflags", "+igndts +discardcorrupt", // 忽略错误时间戳，丢弃损坏帧
+                    "-max_delay", "500000", // 最大延迟500ms，给足时间等待乱序帧
+//                "-fflags", "+igndts+genpts",  // 忽略错误时间戳，生成连续新时间戳
+                    "-i", "\"" + url + "\"",
+                    "-c:v", "copy",
+                    "-c:a", "copy",
+                    file
+            );
+            if (headers != null && !headers.isEmpty()) {
+                List<String> headerList = headers.entrySet().stream().map(h -> h.getKey() + ": " + h.getValue()).collect(Collectors.toList());
+                commands.add("-headers");
+                String join = String.join("\r\n", headerList);
+                commands.add("\"" + join + "\r\n\"");
+            }
+            commands.addAll(baseList);
             run(commands);
         } catch (InterruptedException e) {
             log.error("视频下载失败: {}", ThrowableUtil.getAllCauseMessage(e));
         } catch (IOException e) {
             throw new RuntimeException(e);
         } finally {
-            logUtil.log("下载结束！" + file);
-            logUtil.log(ffmpegProgress.toString());
+            if (logUtil != null) {
+                logUtil.log("下载结束！" + file);
+                logUtil.log(ffmpegProgress.toString());
+                logUtil.close();
+            }
         }
     }
 
@@ -82,11 +89,7 @@ public class FlvDownload extends FFmpegService {
         if (logs.startsWith("frame=")) {
             ffmpegProgress.parse(logs);
         } else {
-            try {
-                logUtil.log(Collections.singleton(logs));
-            } catch (IOException e) {
-                log.error("视频下载日志记录失败: {}", ThrowableUtil.getAllCauseMessage(e));
-            }
+            if (logUtil != null) logUtil.highLog(logs);
         }
     }
 
@@ -116,6 +119,7 @@ public class FlvDownload extends FFmpegService {
             if (line == null || !line.contains("frame=")) {
                 return;
             }
+
 
             // 解析 frame
             frame = parseLong(FRAME_PATTERN, line);

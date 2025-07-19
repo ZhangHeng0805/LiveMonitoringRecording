@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -24,7 +25,7 @@ public abstract class FFmpegService {
     protected static final Logger log = LoggerFactory.getLogger(FFmpegService.class);
     protected Process process;
     @Getter
-    private boolean isRunning;
+    private volatile boolean isRunning;
     protected final String ffmpegExePath;
     private final List<String> commands;
 
@@ -75,6 +76,7 @@ public abstract class FFmpegService {
 
     /**
      * 输出每行日志结果
+     *
      * @param logs
      */
     protected abstract void processResult(String logs);
@@ -82,7 +84,7 @@ public abstract class FFmpegService {
     private void processResult(Process process) throws IOException {
         // 读取输出信息
         try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(process.getInputStream()))) {
+                new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 processResult(line);

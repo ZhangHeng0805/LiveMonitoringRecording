@@ -1,12 +1,13 @@
 package cn.zhangheng.common.bean;
 
 import cn.hutool.core.util.StrUtil;
-import com.zhangheng.util.SettingUtil;
 import lombok.Data;
 import lombok.Getter;
 
 import java.util.Date;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * @author: ZhangHeng
@@ -73,6 +74,17 @@ public abstract class Room {
             this.name = name;
             this.mainUrl = mainUrl;
         }
+    }
+
+    public Map<String, String> getRequestHead() {
+        Map<String, String> header = new HashMap<>();
+        header.put("User-Agent", Constant.User_Agent);
+        header.put("Referer",getPlatform().getMainUrl() + getId());
+        header.put("Origin", getPlatform().getMainUrl());
+        if (getCookie() != null) {
+            header.put("Cookie", getCookie());
+        }
+        return header;
     }
 
 }

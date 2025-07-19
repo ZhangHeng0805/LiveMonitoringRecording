@@ -12,6 +12,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * @author: ZhangHeng
@@ -25,6 +27,8 @@ public class LogUtil {
 
     private final Path logPath;
     private boolean isInit;
+
+    private final AsyncBatchLogger logger;
 
     public static Path getBasePath(Room roomInfo) {
         return Paths.get(getBasePathStr(roomInfo));
@@ -42,10 +46,12 @@ public class LogUtil {
             Files.createDirectories(path);
         }
         this.logPath = Paths.get(basePath, fileName);
+        logger = new AsyncBatchLogger(logPath);
     }
 
     public LogUtil(String log_path) throws IOException {
         this.logPath = Paths.get(log_path);
+        logger = new AsyncBatchLogger(logPath);
         if (!Files.exists(logPath.getParent())) {
             Files.createDirectories(logPath.getParent());
         }
@@ -60,6 +66,7 @@ public class LogUtil {
             Files.createDirectories(path);
         }
         this.logPath = Paths.get(basePath, nowTime + "监听.log");
+        logger = new AsyncBatchLogger(logPath);
         Path coverPath = Paths.get(basePath, "cover.jpg");
         if (!Files.exists(coverPath)) {
             HttpUtil.downloadFile(room.getCover(), coverPath.toFile());
@@ -71,7 +78,7 @@ public class LogUtil {
         }
     }
 
-    public void init(Room room) throws IOException {
+    public void init(Room room) {
         if (isInit) {
             return;
         }
@@ -89,19 +96,26 @@ public class LogUtil {
         }
     }
 
-    public void log(Iterable<? extends CharSequence> lines) throws IOException {
-        Files.write(logPath, lines, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+    public void log(Iterable<? extends CharSequence> lines) {
+        logger.asyncLog(lines);
     }
 
-    public void log(String info)  {
+    public void highLog(String info) {
+        logger.highLog(info);
+    }
+
+    public void log(String info) {
+        if (info == null) return; // 过滤空日志
         String line = TimeUtil.getNowTime() + " : " + info;
+        logger.highLog(line);
         System.out.println(line);
-        try {
-            log(Collections.singleton(line));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
     }
 
+    /**
+     * 使用完毕后必须调用
+     */
+    public void close() {
+        logger.flushRemaining();
+    }
 
 }

@@ -72,7 +72,7 @@ public abstract class Recorder extends Task {
                     progressCallback.onComplete(getSaveFilePath(), getDownloadSize(), getTimeMs());
             } catch (Exception e) {
                 if (progressCallback != null) {
-                    progressCallback.onError(e);
+                    progressCallback.onError(e, getSaveFilePath());
                 } else {
                     throw new RuntimeException(e);
                 }
@@ -135,7 +135,7 @@ public abstract class Recorder extends Task {
             log.info("下载录制已结束! 用时:{},大小:{},位置:{}", TimeUtil.formatMSToCn((int) totalDurationMS), FileUtil.fileSizeStr(totalBytes), saveFilePath);
         }
 
-        default void onError(Throwable throwable) {
+        default void onError(Throwable throwable, String saveFilePath) {
             log.error("下载录制发生异常! {}", ThrowableUtil.getAllCauseMessage(throwable), throwable);
         }
     }

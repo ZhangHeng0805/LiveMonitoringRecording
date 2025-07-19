@@ -7,6 +7,8 @@ import com.zhangheng.util.SettingUtil;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.Map;
+
 /**
  * @author: ZhangHeng
  * @email: zhangheng_0805@163.com
@@ -39,6 +41,5 @@ public class BiliRoom extends Room {
     public Platform getPlatform() {
         return Platform.Bili;
     }
-
 
 }
