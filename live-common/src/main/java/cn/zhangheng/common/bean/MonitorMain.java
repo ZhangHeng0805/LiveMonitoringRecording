@@ -18,7 +18,6 @@ import org.slf4j.LoggerFactory;
 
 import java.awt.event.ActionEvent;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URLEncoder;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -26,6 +25,7 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static cn.zhangheng.common.util.TrayIconUtil.openDirectory;
 
@@ -43,8 +43,8 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
     protected final Setting setting;
     protected Recorder recorder;
     protected int delayIntervalSec;
-    protected volatile boolean isRunning;
-    protected boolean recordFlag = true;
+    protected AtomicBoolean isRunning = new AtomicBoolean(true);
+    protected AtomicBoolean recordFlag = new AtomicBoolean(true);
     protected final boolean isConvert;
     //0-FlvStreamRecorder,1-FFmpegFlvRecorder
     protected final int recorderType;
@@ -64,13 +64,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         recorderType = setting.getRecordType();
         flvPlayer = new LocalServerFlvPlayer(setting.getFlvPlayerPort());
         startFlvPlayer();
-        if (isConvert) {
-            try {
-                flvToMp4 = new FlvToMp4(setting.getFfmpegPath());
-            } catch (IllegalArgumentException e) {
-                log.warn(e.getMessage());
-            }
-        }
+
     }
 
     /**
@@ -87,7 +81,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
     }
 
     public void stop() {
-        if (isRunning) {
+        if (isRunning.get()) {
             roomMonitor.stop(false);
         }
     }
@@ -116,7 +110,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                             tryMonitorSec++;
                     }
                 }
-            } while (isRunning);
+            } while (isRunning.get());
         } finally {
             trayIconUtil.shutdown();
         }
@@ -130,13 +124,13 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             @Override
             public void onStart() {
                 log.info(Constant.Application + "开始监听! {}", owner);
-                isRunning = true;
+                isRunning.set(true);
                 tryMonitorSec = 1;
             }
 
             @Override
             public void onStop() {
-                isRunning = false;
+                isRunning.set(false);
                 String msg = "直播监听结束！" + owner;
                 log.info(msg);
                 trayIconUtil.notifyMessage(msg);
@@ -272,7 +266,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                 if (throwable instanceof InterruptedException) {
                     return;
                 }
-                if (isRunning) {
+                if (isRunning.get()) {
                     try {
                         TimeUnit.SECONDS.sleep(tryRecordSec);
                     } catch (InterruptedException ignored) {
@@ -314,7 +308,12 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         }
         log.info("录制文件:{},大小:{}", path, FileUtil.fileSizeStr(size));
 
-        if (isConvert && flvToMp4 != null) {
+        if (isConvert) {
+            try {
+                flvToMp4 = new FlvToMp4(setting.getFfmpegPath());
+            } catch (IllegalArgumentException e) {
+                log.warn(e.getMessage());
+            }
             Thread thread = new Thread(() -> {
                 String output = path.substring(0, path.lastIndexOf(".")) + ".mp4";
                 boolean convert = flvToMp4.convert(path, output);
@@ -339,7 +338,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
     private void tryRecord(R room, boolean isConvert) {
         trayIconUtil.setStartRecordStatue(false);
         roomMonitor.refresh(true);
-        if (room.isLiving() && isRunning && recordFlag) {
+        if (room.isLiving() && isRunning.get() && recordFlag.get()) {
             recorder.stop(true);
             log.warn("直播尚未结束，继续录制！");
             recorder = getRecord(room, isConvert);
@@ -359,7 +358,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             @Override
             public boolean startRecordClick(ActionEvent e) {
                 if (recorder == null || !recorder.isRunning()) {
-                    recordFlag = true;
+                    recordFlag.set(true);
                     if (recorder != null) {
                         recorder.stop(true);
                     }
@@ -377,7 +376,8 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             @Override
             public boolean stopRecordClick(ActionEvent e) {
                 if (recorder != null && recorder.isRunning()) {
-                    recordFlag = false;
+                    recordFlag.set(false);
+                    ;
                     recorder.stop(false);
                     return true;
                 }
@@ -388,7 +388,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             public boolean closeClick(ActionEvent e) {
                 flvPlayer.stop(false);
                 if (recorder != null && recorder.isRunning()) {
-                    recordFlag = false;
+                    recordFlag.set(false);
                     recorder.stop(false);
                     try {
                         TimeUnit.SECONDS.sleep(2);
