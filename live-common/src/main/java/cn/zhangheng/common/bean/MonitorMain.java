@@ -116,10 +116,10 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         }
     }
 
+    private LogUtil logUtil=null;
     private M.RoomListener<R> getRoomListener(R room, boolean isRecord) {
         NotificationUtil notificationUtil = new NotificationUtil(setting);
         String owner = room.getPlatform().getName() + "直播间: " + room.getNickname() + " [" + room.getId() + "]";
-        LogUtil logUtil = getRoomLogUtil(room);
         return new M.RoomListener<R>() {
             @Override
             public void onStart() {
@@ -173,6 +173,9 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                     if (isFirst) {
                         xiZhiSendMsg(notificationUtil, room);
                         notificationUtil.weChatSendMsg(msg);
+                    }
+                    if (logUtil==null){
+                        logUtil=getRoomLogUtil(room);
                     }
                     if (logUtil != null) {
                         logUtil.log(msg);

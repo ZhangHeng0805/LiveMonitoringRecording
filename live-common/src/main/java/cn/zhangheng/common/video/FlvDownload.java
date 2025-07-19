@@ -53,7 +53,7 @@ public class FlvDownload extends FFmpegService {
                     "-reconnect_streamed", "1",
 //                    "-reconnect_max", "10",
                     "-reconnect_delay_max", "5",
-                    "-timeout", "5000000",  // 单位微秒，5秒后未建立连接则超时
+                    "-timeout", "6000000",  // 单位微秒，5秒后未建立连接则超时
                     "-err_detect", "ignore_err", // 忽略部分编码错误
 //                    "-fflags", "+igndts +discardcorrupt", // 忽略错误时间戳，丢弃损坏帧
                     "-fflags", "+igndts+genpts",  // 忽略错误时间戳，生成连续新时间戳
