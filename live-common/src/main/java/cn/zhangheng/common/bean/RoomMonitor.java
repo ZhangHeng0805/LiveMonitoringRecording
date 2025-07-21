@@ -49,7 +49,7 @@ public abstract class RoomMonitor<R extends Room, S extends RoomService<R>> exte
     public void run(boolean isAsync) throws ExecutionException {
         runCount++;
         if (runCount > 1) {
-           refresh(false);
+            refresh(false);
         }
         if (mainExecutors.isShutdown() || mainExecutors.isTerminated()) {
             mainExecutors = Executors.newFixedThreadPool(1);

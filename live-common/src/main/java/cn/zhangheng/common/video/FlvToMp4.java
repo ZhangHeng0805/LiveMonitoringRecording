@@ -27,8 +27,8 @@ public class FlvToMp4 extends FFmpegService {
     private LogUtil logUtil = null;
 
     public static void main(String[] args) {
-        String input = "D:\\直播录屏\\live-monitor-record\\抖音\\【星曦向荣】直播监听工具\\抖音\\[小兰花]\\2025-07-17\\【小兰花】抖音直播录制2025-07-17 23-10-06[嘻嘻，晚上好！].flv";
-        String output = "D:\\直播录屏\\live-monitor-record\\抖音\\【星曦向荣】直播监听工具\\抖音\\[小兰花]\\2025-07-17\\【小兰花】抖音直播录制2025-07-17 23-10-06[嘻嘻，晚上好！].mp4";
+        String input = "D:\\直播录屏\\live-monitor-record\\【星曦向荣】直播监听工具\\Bilibili\\[哔哩哔哩王者荣耀赛事]\\2023-11-03\\【哔哩哔哩王者荣耀赛事】Bilibili直播录制2025-07-19 16-00-28[【直播】上海EDG.M vs 济南RW侠].flv";
+        String output = "D:\\直播录屏\\live-monitor-record\\【星曦向荣】直播监听工具\\Bilibili\\[哔哩哔哩王者荣耀赛事]\\2023-11-03\\【哔哩哔哩王者荣耀赛事】Bilibili直播录制2025-07-19 16-00-28[【直播】上海EDG.M vs 济南RW侠].mp4";
         new FlvToMp4().convert(input, output);
     }
 

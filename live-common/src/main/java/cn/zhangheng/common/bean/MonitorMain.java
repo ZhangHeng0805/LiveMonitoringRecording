@@ -1,8 +1,7 @@
 package cn.zhangheng.common.bean;
 
-import cn.zhangheng.common.record.FFmpegFlvRecorder;
-import cn.zhangheng.common.record.FlvStreamRecorder;
 import cn.zhangheng.common.record.Recorder;
+import cn.zhangheng.common.record.RecorderTask;
 import cn.zhangheng.common.util.LogUtil;
 import cn.zhangheng.common.util.NotificationUtil;
 import cn.zhangheng.common.util.TrayIconUtil;
@@ -12,7 +11,6 @@ import com.zhangheng.file.FileUtil;
 import com.zhangheng.util.EncryptUtil;
 import com.zhangheng.util.NetworkUtil;
 import com.zhangheng.util.ThrowableUtil;
-import com.zhangheng.util.TimeUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,10 +40,10 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
     protected final TrayIconUtil trayIconUtil;
     protected final Setting setting;
     protected Recorder recorder;
+    protected RecorderTask recorderTask;
     protected int delayIntervalSec;
     protected AtomicBoolean isRunning = new AtomicBoolean(true);
     protected AtomicBoolean recordFlag = new AtomicBoolean(true);
-    protected final boolean isConvert;
     //0-FlvStreamRecorder,1-FFmpegFlvRecorder
     protected final int recorderType;
     protected R room;
@@ -60,7 +58,6 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         this.trayIconUtil = new TrayIconUtil(Constant.Application);
         this.setting = setting;
         delayIntervalSec = setting.getDelayIntervalSec();
-        isConvert = setting.isConvertFlvToMp4();
         recorderType = setting.getRecordType();
         flvPlayer = new LocalServerFlvPlayer(setting.getFlvPlayerPort());
         startFlvPlayer();
@@ -116,7 +113,8 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         }
     }
 
-    private LogUtil logUtil=null;
+    private LogUtil logUtil = null;
+
     private M.RoomListener<R> getRoomListener(R room, boolean isRecord) {
         NotificationUtil notificationUtil = new NotificationUtil(setting);
         String owner = room.getPlatform().getName() + "直播间: " + room.getNickname() + " [" + room.getId() + "]";
@@ -135,17 +133,8 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                 log.info(msg);
                 trayIconUtil.notifyMessage(msg);
                 xiZhiSendMsg(notificationUtil, room);
-                if (recorder != null && recorder.isRunning()) {
-                    recorder.stop(false);
-                }
-                if (logUtil != null) logUtil.close();
-                while (flvToMp4 != null && flvToMp4.isRunning()) {
-                    try {
-                        TimeUnit.SECONDS.sleep(1);
-                    } catch (InterruptedException ignored) {
-                    }
-                }
-                flvPlayer.stop(true);
+                notificationUtil.weChatSendMsg(msg);
+                exit();
             }
 
             @Override
@@ -161,12 +150,8 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                     //已开播
                     boolean isFirst = recorder == null;
                     if (isRecord) {
-                        recorder = getRecord(room, isConvert);
-                        try {
-                            recorder.run(true);
-                        } catch (ExecutionException e) {
-                            log.error("FLV录制发生异常：" + ThrowableUtil.getAllCauseMessage(e));
-                        }
+                        recorderTask = getRecorderTask();
+                        recorderTask.run(room);
                     }
                     String msg = owner + "，已开始直播了！";
                     log.info(msg);
@@ -174,8 +159,8 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                         xiZhiSendMsg(notificationUtil, room);
                         notificationUtil.weChatSendMsg(msg);
                     }
-                    if (logUtil==null){
-                        logUtil=getRoomLogUtil(room);
+                    if (logUtil == null) {
+                        logUtil = getRoomLogUtil(room);
                     }
                     if (logUtil != null) {
                         logUtil.log(msg);
@@ -202,6 +187,11 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                 } else {
                     trayIconUtil.setToolTip(statistics);
                 }
+                if (recordFlag.get() && recorder != null && !recorder.isRunning()) {
+                    if (recorderTask != null) {
+                        recorderTask.run(r);
+                    }
+                }
             }
         };
     }
@@ -221,74 +211,74 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
 
 //    protected abstract FlvStreamRecorder getRecord(R room, boolean isConvert);
 
-    protected Recorder getRecord(R room, boolean isConvert) {
-        LinkedHashMap<String, String> streams = room.getStreams();
-        Map.Entry<String, String> stream = streams.entrySet().iterator().next();
-        String definition = stream.getKey();//清晰度
-        String flvUrl = stream.getValue();
-        String fileName = "【" + FileUtil.filterFileName(room.getNickname()) + "】" + room.getPlatform().getName() + "直播录制" + TimeUtil.toTime(new Date(), "yyyy-MM-dd HH-mm-ss") + "[" + FileUtil.filterFileName(room.getTitle()) + "].flv";
-        String path = Paths.get(LogUtil.getBasePathStr(room), fileName).toFile().getPath();
-        Recorder streamRecorder;
-        switch (recorderType) {
-            case 1:
-                try {
-                    String ffmpegPath = setting.getFfmpegPath();
-                    streamRecorder = new FFmpegFlvRecorder(flvUrl, path, definition, ffmpegPath);
-                } catch (IllegalArgumentException e) {
-                    log.warn(e.getMessage());
-                    streamRecorder = new FlvStreamRecorder(flvUrl, path, definition);
-                }
-                break;
-            default:
-                streamRecorder = new FlvStreamRecorder(flvUrl, path, definition);
-                break;
-        }
-        FlvStreamRecorder.ProgressCallback progressCallback = new Recorder.ProgressCallback() {
-            @Override
-            public void onStart(String url, String saveFilePath, String definition) {
-                Recorder.ProgressCallback.super.onStart(url, saveFilePath, definition);
-                trayIconUtil.setStartRecordStatue(true);
-
-            }
-
-            @Override
-            public void onComplete(String saveFilePath, long totalBytes, long totalDurationMS) {
-                Recorder.ProgressCallback.super.onComplete(saveFilePath, totalBytes, totalDurationMS);
-                flvToMp4(saveFilePath);
-                try {
-                    TimeUnit.SECONDS.sleep(1);
-                } catch (InterruptedException ignored) {
-                }
-                tryRecord(room, isConvert);
-            }
-
-            @Override
-            public void onError(Throwable throwable, String saveFilePath) {
-                Recorder.ProgressCallback.super.onError(throwable, saveFilePath);
-                flvToMp4(saveFilePath);
-                if (throwable instanceof InterruptedException) {
-                    return;
-                }
-                if (isRunning.get()) {
-                    try {
-                        TimeUnit.SECONDS.sleep(tryRecordSec);
-                    } catch (InterruptedException ignored) {
-                    } finally {
-                        if (tryRecordSec < 10) {
-                            tryRecordSec++;
-                        } else {
-                            tryRecordSec = 1;
-                        }
-                    }
-                }
-                tryRecord(room, isConvert);
-            }
-        };
-
-        streamRecorder.setProgressCallback(progressCallback);
-        streamRecorder.setRoom(room);
-        return streamRecorder;
-    }
+//    protected Recorder getRecord(R room, boolean isConvert) {
+//        LinkedHashMap<String, String> streams = room.getStreams();
+//        Map.Entry<String, String> stream = streams.entrySet().iterator().next();
+//        String definition = stream.getKey();//清晰度
+//        String flvUrl = stream.getValue();
+//        String fileName = "【" + FileUtil.filterFileName(room.getNickname()) + "】" + room.getPlatform().getName() + "直播录制" + TimeUtil.toTime(new Date(), "yyyy-MM-dd HH-mm-ss") + "[" + FileUtil.filterFileName(room.getTitle()) + "].flv";
+//        String path = Paths.get(LogUtil.getBasePathStr(room), fileName).toFile().getPath();
+//        Recorder streamRecorder;
+//        switch (recorderType) {
+//            case 1:
+//                try {
+//                    String ffmpegPath = setting.getFfmpegPath();
+//                    streamRecorder = new FFmpegFlvRecorder(flvUrl, path, definition, ffmpegPath);
+//                } catch (IllegalArgumentException e) {
+//                    log.warn(e.getMessage());
+//                    streamRecorder = new FlvStreamRecorder(flvUrl, path, definition);
+//                }
+//                break;
+//            default:
+//                streamRecorder = new FlvStreamRecorder(flvUrl, path, definition);
+//                break;
+//        }
+//        FlvStreamRecorder.ProgressCallback progressCallback = new Recorder.ProgressCallback() {
+//            @Override
+//            public void onStart(String url, String saveFilePath, String definition) {
+//                Recorder.ProgressCallback.super.onStart(url, saveFilePath, definition);
+//                trayIconUtil.setStartRecordStatue(true);
+//
+//            }
+//
+//            @Override
+//            public void onComplete(String saveFilePath, long totalBytes, long totalDurationMS) {
+//                Recorder.ProgressCallback.super.onComplete(saveFilePath, totalBytes, totalDurationMS);
+//                flvToMp4(saveFilePath);
+//                try {
+//                    TimeUnit.SECONDS.sleep(1);
+//                } catch (InterruptedException ignored) {
+//                }
+//                tryRecord(room, isConvert);
+//            }
+//
+//            @Override
+//            public void onError(Throwable throwable, String saveFilePath) {
+//                Recorder.ProgressCallback.super.onError(throwable, saveFilePath);
+//                flvToMp4(saveFilePath);
+//                if (throwable instanceof InterruptedException) {
+//                    return;
+//                }
+//                if (isRunning.get()) {
+//                    try {
+//                        TimeUnit.SECONDS.sleep(tryRecordSec);
+//                    } catch (InterruptedException ignored) {
+//                    } finally {
+//                        if (tryRecordSec < 10) {
+//                            tryRecordSec++;
+//                        } else {
+//                            tryRecordSec = 1;
+//                        }
+//                    }
+//                }
+//                tryRecord(room, isConvert);
+//            }
+//        };
+//
+//        streamRecorder.setProgressCallback(progressCallback);
+//        streamRecorder.setRoom(room);
+//        return streamRecorder;
+//    }
 
     private void flvToMp4(String path) {
         Path srcPath = Paths.get(path);
@@ -311,7 +301,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         }
         log.info("录制文件:{},大小:{}", path, FileUtil.fileSizeStr(size));
 
-        if (isConvert) {
+        if (setting.isConvertFlvToMp4()) {
             try {
                 flvToMp4 = new FlvToMp4(setting.getFfmpegPath());
             } catch (IllegalArgumentException e) {
@@ -337,21 +327,79 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         }
     }
 
+    private RecorderTask getRecorderTask() {
+        RecorderTask.ActionListener actionListener = new RecorderTask.ActionListener() {
+            @Override
+            public void recorderStart(String url, String saveFilePath, String definition) {
+                trayIconUtil.setStartRecordStatue(true);
+            }
 
-    private void tryRecord(R room, boolean isConvert) {
+            @Override
+            public void recorderComplete(String saveFilePath, long totalBytes, long totalDurationMS) {
+                flvToMp4(saveFilePath);
+                try {
+                    TimeUnit.SECONDS.sleep(1);
+                } catch (InterruptedException ignored) {
+                }
+                tryRecord(room);
+            }
+
+            @Override
+            public void recorderError(Throwable throwable, String saveFilePath) {
+                log.error("FLV录制中发生异常：" + ThrowableUtil.getAllCauseMessage(throwable));
+                flvToMp4(saveFilePath);
+                if (throwable instanceof InterruptedException) {
+                    return;
+                }
+                if (isRunning.get()) {
+                    try {
+                        TimeUnit.SECONDS.sleep(tryRecordSec);
+                    } catch (InterruptedException ignored) {
+                    } finally {
+                        if (tryRecordSec < 10) {
+                            tryRecordSec++;
+                        } else {
+                            tryRecordSec = 1;
+                        }
+                    }
+                }
+                tryRecord(room);
+            }
+
+            @Override
+            public void onFailure(Throwable e) {
+                log.error("FLV录制发生异常：" + ThrowableUtil.getAllCauseMessage(e), e);
+            }
+
+            @Override
+            public void onRecorderCreated(Recorder re) {
+                if (recorder != null) {
+                    recorder.stop(true);
+                }
+                recorder = re;
+            }
+        };
+        RecorderTask task = new RecorderTask(setting);
+        task.setActionListener(actionListener);
+        return task;
+    }
+
+
+    private void tryRecord(R room) {
         trayIconUtil.setStartRecordStatue(false);
-        roomMonitor.refresh(true);
+        try {
+            roomMonitor.refresh(true);
+        } catch (Exception e) {
+            log.error("直播监听刷新异常：" + ThrowableUtil.getAllCauseMessage(e), e);
+        }
         if (room.isLiving() && isRunning.get() && recordFlag.get()) {
-            recorder.stop(true);
-            log.warn("直播尚未结束，继续录制！");
-            recorder = getRecord(room, isConvert);
-            try {
-                recorder.run(true);
-            } catch (ExecutionException e) {
-                log.error("重新录制失败！{}", ThrowableUtil.getAllCauseMessage(e), e);
+            if (recorderTask != null) {
+                recorderTask.run(room);
             }
         } else {
-            recorder.stop(false);
+            if (recorder != null) {
+                recorder.stop(false);
+            }
         }
     }
 
@@ -360,17 +408,12 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         return new TrayIconUtil.ClickListener() {
             @Override
             public boolean startRecordClick(ActionEvent e) {
-                if (recorder == null || !recorder.isRunning()) {
+                if (recorderTask == null) {
+                    recorderTask = getRecorderTask();
+                }
+                if (room.isLiving() && (recorder == null || !recorder.isRunning())) {
                     recordFlag.set(true);
-                    if (recorder != null) {
-                        recorder.stop(true);
-                    }
-                    try {
-                        recorder = getRecord(room, isConvert);
-                        recorder.run(true);
-                    } catch (ExecutionException err) {
-                        log.error("开始录制失败！" + ThrowableUtil.getAllCauseMessage(err));
-                    }
+                    recorderTask.run(room);
                     return true;
                 }
                 return false;
@@ -380,7 +423,6 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             public boolean stopRecordClick(ActionEvent e) {
                 if (recorder != null && recorder.isRunning()) {
                     recordFlag.set(false);
-                    ;
                     recorder.stop(false);
                     return true;
                 }
@@ -389,15 +431,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
 
             @Override
             public boolean closeClick(ActionEvent e) {
-                flvPlayer.stop(false);
-                if (recorder != null && recorder.isRunning()) {
-                    recordFlag.set(false);
-                    recorder.stop(false);
-                    try {
-                        TimeUnit.SECONDS.sleep(2);
-                    } catch (InterruptedException ignored) {
-                    }
-                }
+                exit();
                 return true;
             }
 
@@ -433,6 +467,24 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         };
     }
 
+    public void exit() {
+        isRunning.set(false);
+        if (recorder != null && recorder.isRunning()) {
+            recordFlag.set(false);
+            recorder.stop(false);
+        }
+        if (recorderTask != null) {
+            recorderTask.shutdown();
+        }
+        while (flvToMp4 != null && flvToMp4.isRunning()) {
+            try {
+                TimeUnit.SECONDS.sleep(1);
+            } catch (InterruptedException ignored) {
+            }
+        }
+        if (logUtil != null) logUtil.close();
+        flvPlayer.stop(true);
+    }
 
     public void xiZhiSendMsg(NotificationUtil notificationUtil, Room room) {
         String title = "**" + room.getNickname() + ", " + room.getPlatform().getName() + (room.isLiving() ? "开播了！ " + room.getTitle() : "下播了！") + "**\t\n";
