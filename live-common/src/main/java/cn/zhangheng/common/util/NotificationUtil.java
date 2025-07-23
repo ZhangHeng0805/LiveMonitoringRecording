@@ -81,4 +81,29 @@ public class NotificationUtil {
         }
     }
 
+    /**
+     * 直播开始处理
+     */
+    public void livingStartHandle() {
+        try {
+            if (StrUtil.isBlank(setting.getLivingStartShortcut())) return;
+            ShortcutKeys.execute(setting.getLivingStartShortcut());
+        } catch (Exception e) {
+            log.error("直播开始处理失败：" + ThrowableUtil.getAllCauseMessage(e));
+        }
+    }
+
+    /**
+     * 直播结束处理
+     */
+    public void livingEndHandle() {
+        try {
+            if (StrUtil.isBlank(setting.getLivingEndShortcut())) return;
+            ShortcutKeys.execute(setting.getLivingEndShortcut());
+        } catch (Exception e) {
+            log.error("直播结束处理失败：" + ThrowableUtil.getAllCauseMessage(e));
+        }
+    }
+
+
 }

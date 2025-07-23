@@ -20,12 +20,12 @@ import java.util.Map;
 public abstract class Room {
     protected String id;
     protected String title;
-//    protected String owner;
+    //    protected String owner;
     protected String nickname;
     protected volatile boolean living;
     //开始时间
     protected Date startTime;
-//    protected Date updateTime;
+    //    protected Date updateTime;
     //直播封面
     protected String cover;
     //用户头像
@@ -79,7 +79,7 @@ public abstract class Room {
     public Map<String, String> getRequestHead() {
         Map<String, String> header = new HashMap<>();
         header.put("User-Agent", Constant.User_Agent);
-        header.put("Referer",getPlatform().getMainUrl() + getId());
+        header.put("Referer", getPlatform().getMainUrl() + getId());
         header.put("Origin", getPlatform().getMainUrl());
         if (getCookie() != null) {
             header.put("Cookie", getCookie());
@@ -87,4 +87,14 @@ public abstract class Room {
         return header;
     }
 
+    public void reset() {
+        setStartTime(null);
+        setCookie(null);
+        setCover(null);
+        setAvatar(null);
+        setStreams(null);
+        setTitle(null);
+        setNickname(null);
+        setLiving(false);
+    }
 }

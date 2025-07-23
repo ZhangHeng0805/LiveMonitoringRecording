@@ -134,6 +134,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                 trayIconUtil.notifyMessage(msg);
                 xiZhiSendMsg(notificationUtil, room);
                 notificationUtil.weChatSendMsg(msg);
+                notificationUtil.livingEndHandle();
                 exit();
             }
 
@@ -158,6 +159,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                     if (isFirst) {
                         xiZhiSendMsg(notificationUtil, room);
                         notificationUtil.weChatSendMsg(msg);
+                        notificationUtil.livingStartHandle();
                     }
                     if (logUtil == null) {
                         logUtil = getRoomLogUtil(room);

@@ -14,6 +14,10 @@ record.ffmpegPath=bin/ffmpeg.exe
 record.isLoop=true
 #监听间隔时长（秒）
 monitor.delayIntervalSec=10
+#直播开始时触发的快捷键(小写，多个组合之间逗号分割，例：alt+tab,ctrl+s)
+living.start.shortcut=
+#直播结束时触发的快捷键
+living.end.shortcut=
 #B站的Cookie 也可以指定文本文件file:Bili.txt
 Cookie.Bilibili=
 #抖音的Cookie

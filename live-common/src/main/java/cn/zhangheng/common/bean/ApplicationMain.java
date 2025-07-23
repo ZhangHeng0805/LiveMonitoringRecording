@@ -129,6 +129,7 @@ public abstract class ApplicationMain<R extends Room> {
                 }
             }
             isLoop = setting.isLoop();
+            room.reset();//重置直播间
             getMonitorMain(setting, room).start(room, isRecord);
         } while (isLoop);
     }

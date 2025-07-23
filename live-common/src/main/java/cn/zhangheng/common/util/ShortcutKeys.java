@@ -1,9 +1,14 @@
 package cn.zhangheng.common.util;
 
+import cn.hutool.core.util.StrUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.awt.*;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.KeyEvent;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author: ZhangHeng
@@ -13,17 +18,21 @@ import java.awt.event.KeyEvent;
  * @description: 快捷键操作
  */
 public class ShortcutKeys {
+
+    private static final Logger log = LoggerFactory.getLogger(ShortcutKeys.class);
+
     public static void main(String[] args) throws AWTException {
         Robot robot = new Robot();
 //        startObsRecording(robot);
 //        stopObsRecording(robot);
-        wechatSendMsg(robot,"文件传输助手","123");
-
+//        wechatSendMsg(robot,"文件传输助手","123");
+        execute("alt+tab,space,alt+tab,ctrl+alt+p");
     }
 
 
     /**
      * 关闭程序
+     *
      * @param robot
      * @throws AWTException
      */
@@ -39,6 +48,7 @@ public class ShortcutKeys {
 
     /**
      * 微信发消息
+     *
      * @param robot
      * @param user
      * @param msg
@@ -95,6 +105,7 @@ public class ShortcutKeys {
 
     /**
      * 打开obs软件
+     *
      * @param robot
      * @throws AWTException
      */
@@ -112,6 +123,7 @@ public class ShortcutKeys {
 
     /**
      * 开始obs录屏
+     *
      * @param robot
      * @throws AWTException
      */
@@ -123,17 +135,42 @@ public class ShortcutKeys {
         robot.keyRelease(KeyEvent.VK_1);
         robot.delay(200);
     }
+
     /**
      * 停止obs录屏
+     *
      * @param robot
-     * @throws AWTException
      */
-    public static void stopObsRecording(Robot robot) throws AWTException {
+    public static void stopObsRecording(Robot robot) {
         robot.keyPress(KeyEvent.VK_CONTROL);
         robot.keyPress(KeyEvent.VK_2);
         robot.delay(200);
         robot.keyRelease(KeyEvent.VK_CONTROL);
         robot.keyRelease(KeyEvent.VK_2);
         robot.delay(200);
+    }
+
+    /**
+     * 快捷键组合执行，多个组合之间逗号分割
+     * 例：ctrl+c,ctrl+v
+     *
+     * @param shortcutKeys
+     * @throws AWTException
+     */
+    public static void execute(String shortcutKeys) throws AWTException {
+        if (StrUtil.isBlank(shortcutKeys)) return;
+        log.info("执行快捷键：{}", shortcutKeys);
+        ShortcutExecutor executor = new ShortcutExecutor();
+        String[] keys = shortcutKeys.split(",");
+        for (int i = 0; i < keys.length; i++) {
+            executor.executeShortcut(keys[i]);
+            if (i < keys.length - 1) {
+                try {
+                    TimeUnit.MILLISECONDS.sleep(500);
+                } catch (InterruptedException ignored) {
+                }
+            }
+        }
+
     }
 }

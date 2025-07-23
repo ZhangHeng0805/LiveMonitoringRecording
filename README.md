@@ -28,6 +28,10 @@ record.ffmpegPath=bin/ffmpeg.exe
 record.isLoop=true
 #监听间隔时长（秒）
 monitor.delayIntervalSec=10
+#直播开始时触发的快捷键(英文小写，多个组合之间逗号分割，例：alt+tab,ctrl+s)
+living.start.shortcut=
+#直播结束时触发的快捷键
+living.end.shortcut=
 #B站的Cookie(可以录制更清晰的直播画面)
 #也可以将Cookie保存至指定文本文件，然后通过 file:文本文件路径 的形式设置
 Cookie.Bilibili=

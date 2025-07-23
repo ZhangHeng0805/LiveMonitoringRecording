@@ -69,6 +69,16 @@ public class Setting {
     @PropertyValue("monitor.delayIntervalSec")
     private int delayIntervalSec = 10;
     /**
+     * 直播开始时触发的快捷键
+     */
+    @PropertyValue("living.start.shortcut")
+    private String livingStartShortcut;
+    /**
+     * 直播结束时触发的快捷键
+     */
+    @PropertyValue("living.end.shortcut")
+    private String livingEndShortcut;
+    /**
      * B站的Cookie
      */
     @PropertyValue("Cookie.Bilibili")
