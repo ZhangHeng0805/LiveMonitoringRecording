@@ -6,7 +6,6 @@ import lombok.Getter;
 
 import java.util.Date;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -19,20 +18,29 @@ import java.util.Map;
 @Data
 public abstract class Room {
     protected String id;
-    protected String title;
+
+    public void setId(String id) {
+        if (StrUtil.isBlank(id)) {
+            throw new IllegalArgumentException("id不能为空！");
+        }
+        this.id = id.trim();
+    }
+
+    protected volatile String title;
     //    protected String owner;
-    protected String nickname;
+    protected volatile String nickname;
     protected volatile boolean living;
     //开始时间
-    protected Date startTime;
+    protected volatile Date startTime;
     //    protected Date updateTime;
     //直播封面
-    protected String cover;
+    protected volatile String cover;
     //用户头像
-    protected String avatar;
+    protected volatile String avatar;
 
     //直播流不同清晰度地址
-    protected LinkedHashMap<String, String> streams;
+    protected volatile Map<String, String> streams;
+
 
     private String cookie;
 
@@ -79,8 +87,6 @@ public abstract class Room {
     public Map<String, String> getRequestHead() {
         Map<String, String> header = new HashMap<>();
         header.put("User-Agent", Constant.User_Agent);
-        header.put("Referer", getPlatform().getMainUrl() + getId());
-        header.put("Origin", getPlatform().getMainUrl());
         if (getCookie() != null) {
             header.put("Cookie", getCookie());
         }

@@ -196,12 +196,12 @@ public class BilibiliService extends RoomService<BiliRoom> {
                     JSONObject codec = data.getJSONObject("playurl_info").getJSONObject("playurl").getJSONArray("stream").getJSONObject(0).getJSONArray("format").getJSONObject(0).getJSONArray("codec").getJSONObject(0);
                     String desc = qn.get(codec.getInt("current_qn", 10000));
                     String base_url = codec.getStr("base_url");
-                    LinkedHashMap<String, String> streams = room.getStreams() != null ? room.getStreams() : new LinkedHashMap<>();
+                    Map<String, String> streams = room.getStreams() != null ? room.getStreams() : new LinkedHashMap<>();
                     JSONObject urls = codec.getJSONArray("url_info").getJSONObject(0);
                     String url = urls.getStr("host") + base_url + urls.getStr("extra");
                     streams.put(desc, url);
                     room.setStreams(streams);
-                    if (isCookie) room_stream(false);
+//                    if (isCookie) room_stream(false);
                 } else {
                     log.warn("room_stream失败：" + entries.getStr("message"));
                 }

@@ -10,6 +10,7 @@ import lombok.Setter;
 import lombok.ToString;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author: ZhangHeng
@@ -57,4 +58,11 @@ public class DouYinRoom extends Room {
         return Platform.DouYin;
     }
 
+    @Override
+    public Map<String, String> getRequestHead() {
+        Map<String, String> header = super.getRequestHead();
+        header.put("Referer", getPlatform().getMainUrl() + getId());
+        header.put("Origin", getPlatform().getMainUrl());
+        return header;
+    }
 }

@@ -114,10 +114,12 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
     }
 
     private LogUtil logUtil = null;
+    private boolean isFliestStart;
 
     private M.RoomListener<R> getRoomListener(R room, boolean isRecord) {
         NotificationUtil notificationUtil = new NotificationUtil(setting);
         String owner = room.getPlatform().getName() + "直播间: " + room.getNickname() + " [" + room.getId() + "]";
+        isFliestStart = true;
         return new M.RoomListener<R>() {
             @Override
             public void onStart() {
@@ -148,15 +150,14 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                     trayIconUtil.setToolTip(msg);
                     log.info(msg);
                 } else {
-                    //已开播
-                    boolean isFirst = recorder == null;
                     if (isRecord) {
                         recorderTask = getRecorderTask();
                         recorderTask.run(room);
                     }
                     String msg = owner + "，已开始直播了！";
                     log.info(msg);
-                    if (isFirst) {
+                    if (isFliestStart) {
+                        isFliestStart = false;
                         xiZhiSendMsg(notificationUtil, room);
                         notificationUtil.weChatSendMsg(msg);
                         notificationUtil.livingStartHandle();
@@ -494,7 +495,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         String playUrl = "";
         //B站请求头限制，无法在线播放
         if (room.isLiving() && room.getPlatform() != Room.Platform.Bili) {
-            LinkedHashMap<String, String> streams = room.getStreams();
+            Map<String, String> streams = room.getStreams();
             Iterator<Map.Entry<String, String>> iterator = streams.entrySet().iterator();
             String qn, flvUrl;
             Map.Entry<String, String> entry = iterator.next();

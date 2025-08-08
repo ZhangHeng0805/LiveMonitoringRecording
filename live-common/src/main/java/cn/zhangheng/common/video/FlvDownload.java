@@ -49,20 +49,22 @@ public class FlvDownload extends FFmpegService {
                     "-y",
 //                "-re",
 //                "-reconnect_at_eof", "1",
-                    "-reconnect", "1",
-                    "-reconnect_streamed", "1",
+//                    "-reconnect", "1",
+//                    "-reconnect_streamed", "1",
 //                    "-reconnect_max", "10",
-                    "-reconnect_delay_max", "5",
-                    "-timeout", "6000000",  // 单位微秒，5秒后未建立连接则超时
-                    "-err_detect", "ignore_err", // 忽略部分编码错误
+//                    "-reconnect_delay_max", "5",
+//                    "-timeout", "5000000",  // 单位微秒，5秒后未建立连接则超时
+//                    "-err_detect", "ignore_err", // 忽略部分编码错误
+//                    "-fflags", "+igndts+genpts+nobuffer", //关键调整
 //                    "-fflags", "+igndts +discardcorrupt", // 忽略错误时间戳，丢弃损坏帧
-                    "-fflags", "+igndts+genpts",  // 忽略错误时间戳，生成连续新时间戳
-                    "-max_delay", "500000", // 最大延迟500ms，给足时间等待乱序帧
+//                    "-fflags", "+igndts+genpts",  // 忽略错误时间戳，生成连续新时间戳
+                    "-max_delay", "2000000", // 最大延迟3000ms，给足时间等待乱序帧
+//                    "-vsync", "vfr", // 可变帧率,控制同步方式
+                    "-probesize", "32M",
+                    "-rw_timeout", "15000000",
                     "-i", "\"" + url + "\"",
                     "-c:v", "copy",
                     "-c:a", "copy",
-                    "-probesize", "32M",
-//                    "-rw_timeout", "20000000",
                     file
             );
             if (headers != null && !headers.isEmpty()) {

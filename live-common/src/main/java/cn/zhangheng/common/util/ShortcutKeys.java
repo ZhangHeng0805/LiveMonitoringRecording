@@ -26,7 +26,7 @@ public class ShortcutKeys {
 //        startObsRecording(robot);
 //        stopObsRecording(robot);
 //        wechatSendMsg(robot,"文件传输助手","123");
-        execute("alt+tab,space,alt+tab,ctrl+alt+p");
+        execute("ctrl+2");
     }
 
 

@@ -1,5 +1,6 @@
 package cn.zhangheng.common.bean;
 
+import cn.hutool.http.Header;
 import cn.hutool.http.HttpRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,8 +29,8 @@ public abstract class RoomService<T extends Room> {
     public HttpRequest get(String url) {
         return HttpRequest.get(url)
                 .timeout(30_000)
-                .header("User-Agent", Constant.User_Agent)
-                .header("Referer", room.getPlatform().getMainUrl())
+                .header(Header.USER_AGENT, Constant.User_Agent)
+                .header(Header.REFERER, room.getPlatform().getMainUrl()+room.getId())
                 ;
     }
 

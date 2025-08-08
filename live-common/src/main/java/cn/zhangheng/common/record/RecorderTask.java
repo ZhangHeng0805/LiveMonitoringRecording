@@ -39,7 +39,7 @@ public class RecorderTask {
     }
 
     protected Recorder getRecorder(Room room, boolean isConvert) {
-        LinkedHashMap<String, String> streams = room.getStreams();
+        Map<String, String> streams = room.getStreams();
         if (streams == null || streams.isEmpty()) {
             throw new IllegalArgumentException("房间没有可用的流信息");
         }

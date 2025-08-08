@@ -3,7 +3,6 @@ package cn.zhangheng.bilibili.bean;
 import cn.hutool.core.util.StrUtil;
 import cn.zhangheng.common.bean.Room;
 import cn.zhangheng.common.bean.Setting;
-import com.zhangheng.util.SettingUtil;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -42,4 +41,11 @@ public class BiliRoom extends Room {
         return Platform.Bili;
     }
 
+    @Override
+    public Map<String, String> getRequestHead() {
+        Map<String, String> header = super.getRequestHead();
+        header.put("Referer", getPlatform().getMainUrl() + getId());
+        header.put("Origin", getPlatform().getMainUrl());
+        return header;
+    }
 }
