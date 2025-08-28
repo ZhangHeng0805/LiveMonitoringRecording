@@ -32,7 +32,7 @@ public class BiliMain extends MonitorMain<BiliRoom, BiliMonitor> {
     @Override
     protected String statistics(LogUtil logUtil, BiliRoom room) {
         if (room.isLiving()) {
-            String info = "关注数：" + room.getFollowers() + "，观看人数：" + room.getViewers();
+            String info = "粉丝数：" + room.getFollowers() + "，观看人数：" + room.getViewers();
             try {
                 logUtil.log(info);
             } catch (Exception e) {

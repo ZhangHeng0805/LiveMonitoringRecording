@@ -6,7 +6,7 @@
     <parent>
         <groupId>cn.zhangheng.record</groupId>
         <artifactId>LiveMonitoringRecording</artifactId>
-        <version>2.1</version>
+        <version>3.0</version>
     </parent>
 
     <groupId>cn.zhangheng.lmr</groupId>
@@ -35,6 +35,12 @@
             <groupId>cn.zhangheng.bilibili</groupId>
             <artifactId>bilibili-start</artifactId>
             <version>${xxxr.version}</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>cn.zhangheng.kuaishou</groupId>
+            <artifactId>kuaishou-start</artifactId>
+            <version>3.0</version>
             <scope>compile</scope>
         </dependency>
     </dependencies>

@@ -5,6 +5,8 @@ import cn.zhangheng.bilibili.bean.BiliRoom;
 import cn.zhangheng.common.bean.*;
 import cn.zhangheng.douyin.DouYinMain;
 import cn.zhangheng.douyin.DouYinRoom;
+import cn.zhangheng.kuaishou.bean.KuaiShouRoom;
+import cn.zhangheng.kuaishou.service.KuaiShouMain;
 
 public class Main extends ApplicationMain<Room> {
     public static void main(String[] args) {
@@ -18,6 +20,8 @@ public class Main extends ApplicationMain<Room> {
                 return new DouYinMain(setting);
             case Bili:
                 return new BiliMain(setting);
+            case KuaiShou:
+                return new KuaiShouMain(setting);
             default:
                 throw new IllegalArgumentException("参数错误platform");
         }
@@ -30,6 +34,8 @@ public class Main extends ApplicationMain<Room> {
                 return new DouYinRoom(id);
             case Bili:
                 return new BiliRoom(id);
+            case KuaiShou:
+                return new KuaiShouRoom(id);
             default:
                 throw new IllegalArgumentException("参数错误platform");
         }
@@ -37,6 +43,6 @@ public class Main extends ApplicationMain<Room> {
 
     @Override
     protected Room.Platform[] supportedPlatforms() {
-        return new Room.Platform[]{Room.Platform.DouYin, Room.Platform.Bili};
+        return Room.Platform.values();
     }
 }

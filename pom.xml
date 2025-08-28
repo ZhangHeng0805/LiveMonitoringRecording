@@ -6,7 +6,7 @@
 
     <groupId>cn.zhangheng.record</groupId>
     <artifactId>LiveMonitoringRecording</artifactId>
-    <version>2.1</version>
+    <version>3.0</version>
     <packaging>pom</packaging>
     <description>【星曦向荣】直播录屏工具</description>
     <modules>
@@ -14,10 +14,11 @@
         <module>bilibili-start</module>
         <module>live-common</module>
         <module>live-monitor-record</module>
+        <module>kuaishou-start</module>
     </modules>
 
     <properties>
-        <xxxr.version>2.1</xxxr.version>
+        <xxxr.version>3.0</xxxr.version>
         <project.encoding>UTF-8</project.encoding>
         <java.version>1.8</java.version>
         <maven.compiler.source>8</maven.compiler.source>

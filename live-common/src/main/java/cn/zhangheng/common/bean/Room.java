@@ -38,22 +38,25 @@ public abstract class Room {
     //用户头像
     protected volatile String avatar;
 
-    //直播流不同清晰度地址
+    //直播流不同清晰度地址（由高到低排序）
     protected volatile Map<String, String> streams;
 
 
     private String cookie;
+
+    private final String roomUrl;
 
     public void setCookie(String cookie) {
         if (StrUtil.isNotBlank(cookie))
             this.cookie = cookie;
     }
 
-    public abstract void initSetting(Setting setting);
-
     public Room(String id) {
         this.id = id;
+        roomUrl = initRoomUrl();
     }
+
+    public abstract void initSetting(Setting setting);
 
     public abstract Platform getPlatform();
 
@@ -65,14 +68,13 @@ public abstract class Room {
         }
     }
 
-    public String getRoomUrl() {
-        return getPlatform().getMainUrl() + getId();
-    }
+    public abstract String initRoomUrl();
 
     @Getter
     public enum Platform {
         DouYin("抖音", "https://live.douyin.com/"),
         Bili("Bilibili", "https://live.bilibili.com/"),
+        KuaiShou("快手", "https://live.kuaishou.cn/"),
         ;
 
         private final String name;

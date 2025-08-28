@@ -108,4 +108,14 @@ public class Setting {
     public String getCookieDouYin() {
         return setCookie(cookieDouYin);
     }
+
+    /**
+     * 快手的Cookie
+     */
+    @PropertyValue("Cookie.KuaiShou")
+    private String cookieKuaiShou;
+
+    public String getCookieKuaiShou() {
+        return setCookie(cookieKuaiShou);
+    }
 }

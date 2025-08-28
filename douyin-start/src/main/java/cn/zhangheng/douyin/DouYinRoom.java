@@ -32,15 +32,16 @@ public class DouYinRoom extends Room {
     //直播间封面
     private List<String> coverList;
 
-    @Override
-    public void initSetting(Setting setting) {
-        String cookieDouYin = setting.getCookieDouYin();
-        if (StrUtil.isNotBlank(cookieDouYin))
-            setCookie(cookieDouYin);
-    }
 
     public DouYinRoom(String id) {
         super(id);
+    }
+
+    @Override
+    public void initSetting(Setting setting) {
+        String cookie = setting.getCookieDouYin();
+        if (StrUtil.isNotBlank(cookie))
+            setCookie(cookie);
     }
 
 
@@ -56,6 +57,11 @@ public class DouYinRoom extends Room {
     @Override
     public Platform getPlatform() {
         return Platform.DouYin;
+    }
+
+    @Override
+    public String initRoomUrl() {
+        return getPlatform().getMainUrl() + getId();
     }
 
     @Override

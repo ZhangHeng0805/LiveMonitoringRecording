@@ -22,23 +22,29 @@ public class BiliRoom extends Room {
     private String uid;
     //观看人数
     private int viewers;
-    //关注数
+    //粉丝数
     private int followers;
 
-    @Override
-    public void initSetting(Setting setting) {
-        String cookieBili = setting.getCookieBili();
-        if (StrUtil.isNotBlank(cookieBili))
-            setCookie(cookieBili);
-    }
 
     public BiliRoom(String id) {
         super(id);
     }
 
     @Override
+    public void initSetting(Setting setting) {
+        String cookie = setting.getCookieBili();
+        if (StrUtil.isNotBlank(cookie))
+            setCookie(cookie);
+    }
+
+    @Override
     public Platform getPlatform() {
         return Platform.Bili;
+    }
+
+    @Override
+    public String initRoomUrl() {
+        return getPlatform().getMainUrl() + getId();
     }
 
     @Override

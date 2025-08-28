@@ -18,19 +18,24 @@ public abstract class RoomService<T extends Room> {
 
     protected RoomService(T room) {
         this.room = room;
+        //注意：子类调用super()方法后，需要调用refresh方法初始化room对象
     }
 
     public void refresh() {
         refresh(false);
     }
 
+    /**
+     * 刷新直播间数据
+     *
+     * @param force 是否强制更新直播流信息
+     */
     public abstract void refresh(boolean force);
 
     public HttpRequest get(String url) {
         return HttpRequest.get(url)
                 .timeout(30_000)
                 .header(Header.USER_AGENT, Constant.User_Agent)
-                .header(Header.REFERER, room.getPlatform().getMainUrl()+room.getId())
                 ;
     }
 

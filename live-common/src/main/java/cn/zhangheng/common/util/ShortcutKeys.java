@@ -1,6 +1,7 @@
 package cn.zhangheng.common.util;
 
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.extra.pinyin.PinyinUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,11 +23,13 @@ public class ShortcutKeys {
     private static final Logger log = LoggerFactory.getLogger(ShortcutKeys.class);
 
     public static void main(String[] args) throws AWTException {
-        Robot robot = new Robot();
+//        Robot robot = new Robot();
 //        startObsRecording(robot);
 //        stopObsRecording(robot);
-//        wechatSendMsg(robot,"文件传输助手","123");
-        execute("ctrl+2");
+//        wechatSendMsg(robot, "文件传输助手", "123");
+//        execute("ctrl+2");
+        setClipboardString("你好");
+        execute("ctrl+v,ctrl+enter");
     }
 
 
@@ -38,12 +41,7 @@ public class ShortcutKeys {
      */
     public static void shutdownProgram(Robot robot) throws AWTException {
         //关闭程序 快捷键alt+F4
-        robot.keyPress(KeyEvent.VK_ALT);
-        robot.keyPress(KeyEvent.VK_F4);
-        robot.delay(200);
-        robot.keyRelease(KeyEvent.VK_ALT);
-        robot.keyRelease(KeyEvent.VK_F4);
-        robot.delay(200);
+        execute("alt+f4");
     }
 
     /**
@@ -55,43 +53,42 @@ public class ShortcutKeys {
      * @throws AWTException
      */
     public static void wechatSendMsg(Robot robot, String user, String msg) throws AWTException {
+        execute("ctrl+alt+w,ctrl+f");
         //打开微信CTRL+ALT+W
-        robot.keyPress(KeyEvent.VK_CONTROL);
-        robot.keyPress(KeyEvent.VK_ALT);
-        robot.keyPress(KeyEvent.VK_W);
-        robot.keyRelease(KeyEvent.VK_CONTROL);
-        robot.keyRelease(KeyEvent.VK_ALT);
-        robot.keyRelease(KeyEvent.VK_W);
+//        robot.keyPress(KeyEvent.VK_CONTROL);
+//        robot.keyPress(KeyEvent.VK_ALT);
+//        robot.keyPress(KeyEvent.VK_W);
+//        robot.keyRelease(KeyEvent.VK_CONTROL);
+//        robot.keyRelease(KeyEvent.VK_ALT);
+//        robot.keyRelease(KeyEvent.VK_W);
+//        robot.delay(200);
+//        //打开搜索CTRL+F
+//        robot.keyPress(KeyEvent.VK_CONTROL);
+//        robot.keyPress(KeyEvent.VK_F);
+//        robot.keyRelease(KeyEvent.VK_CONTROL);
+//        robot.keyRelease(KeyEvent.VK_F);
         robot.delay(200);
-        //打开搜索CTRL+F
-        robot.keyPress(KeyEvent.VK_CONTROL);
-        robot.keyPress(KeyEvent.VK_F);
-        robot.keyRelease(KeyEvent.VK_CONTROL);
-        robot.keyRelease(KeyEvent.VK_F);
-        robot.delay(200);
-        // 获取系统剪切板
-        Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-        // 复制用户名到剪切板
-        StringSelection selection1 = new StringSelection(user);
-        clipboard.setContents(selection1, null);
+        setClipboardString(user);
         //粘贴
-        robot.keyPress(KeyEvent.VK_CONTROL);
-        robot.keyPress(KeyEvent.VK_V);
-        robot.keyRelease(KeyEvent.VK_CONTROL);
-        robot.keyRelease(KeyEvent.VK_V);
+        execute("ctrl+v");
+//        robot.keyPress(KeyEvent.VK_CONTROL);
+//        robot.keyPress(KeyEvent.VK_V);
+//        robot.keyRelease(KeyEvent.VK_CONTROL);
+//        robot.keyRelease(KeyEvent.VK_V);
         robot.delay(1000);
         //确认
-        robot.keyPress(KeyEvent.VK_ENTER);
-        robot.keyRelease(KeyEvent.VK_ENTER);
+        execute("enter");
+//        robot.keyPress(KeyEvent.VK_ENTER);
+//        robot.keyRelease(KeyEvent.VK_ENTER);
         robot.delay(200);
         // 复制消息到剪切板
-        StringSelection selection2 = new StringSelection(msg);
-        clipboard.setContents(selection2, null);
+        setClipboardString(msg);
         //粘贴
-        robot.keyPress(KeyEvent.VK_CONTROL);
-        robot.keyPress(KeyEvent.VK_V);
-        robot.keyRelease(KeyEvent.VK_CONTROL);
-        robot.keyRelease(KeyEvent.VK_V);
+        execute("ctrl+v");
+//        robot.keyPress(KeyEvent.VK_CONTROL);
+//        robot.keyPress(KeyEvent.VK_V);
+//        robot.keyRelease(KeyEvent.VK_CONTROL);
+//        robot.keyRelease(KeyEvent.VK_V);
         robot.delay(500);
         //发送信息
         robot.keyPress(KeyEvent.VK_CONTROL);
@@ -171,6 +168,13 @@ public class ShortcutKeys {
                 }
             }
         }
+    }
 
+    public static void setClipboardString(String data) {
+        // 获取系统剪切板
+        Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+        // 复制用户名到剪切板
+        StringSelection selection1 = new StringSelection(data);
+        clipboard.setContents(selection1, null);
     }
 }

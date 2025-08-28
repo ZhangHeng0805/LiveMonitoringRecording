@@ -70,6 +70,11 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
    }
 
     @Override
+    public HttpRequest get(String url) {
+        return super.get(url).header(Header.REFERER, room.getRoomUrl());
+    }
+
+    @Override
     public void refresh(boolean force) {
         if (cookieStr == null) {
             init();

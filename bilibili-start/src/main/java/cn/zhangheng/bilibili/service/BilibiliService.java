@@ -1,5 +1,6 @@
 package cn.zhangheng.bilibili.service;
 
+import cn.hutool.http.Header;
 import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
 import cn.hutool.json.JSONObject;
@@ -62,6 +63,11 @@ public class BilibiliService extends RoomService<BiliRoom> {
             room_info();
             if (force || room.getStreams() == null || room.getStreams().isEmpty()) room_stream();
         }
+    }
+
+    @Override
+    public HttpRequest get(String url) {
+        return super.get(url).header(Header.REFERER, room.getRoomUrl());
     }
 
     public void room_init_living() {
