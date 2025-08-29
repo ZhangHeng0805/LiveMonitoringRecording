@@ -3,8 +3,12 @@ package cn.zhangheng.common.bean;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.log.Log;
 import cn.hutool.log.LogFactory;
+import cn.zhangheng.common.activation.ActivationUtil;
+import cn.zhangheng.common.activation.DeviceInfoCollector;
+import cn.zhangheng.common.util.TrayIconUtil;
 import com.zhangheng.util.ThrowableUtil;
 
+import javax.swing.*;
 import java.net.URL;
 import java.util.Objects;
 import java.util.Scanner;
@@ -32,9 +36,10 @@ public abstract class ApplicationMain<R extends Room> {
                 "            ***************       ***       ***\n" +
                 "           ****************       ***       ***\n" +
                 "\n" +
-                "*****   程序：" + Constant.Application + "\n" +
-                "*****   配置文件：" + Constant.Setting_Name + "\n" +
-                "*****   作者：星曦向荣   版本：V" + getProjectVersion() + "       邮箱：zhangheng_0805@163.com\n" +
+                "*****   程序：" + Constant.Application + " " + getProjectVersion() + "\n" +
+                "*****   默认配置文件：" + Constant.Setting_Name + "\n" +
+                "*****   默认激活文件：" + Constant.ActivateVoucherFilePath + "\n" +
+                "*****   作者：星曦向荣       邮箱：zhangheng_0805@163.com\n" +
                 "*****   作者GitHub主页：https://github.com/ZhangHeng0805";
     }
 
@@ -128,11 +133,22 @@ public abstract class ApplicationMain<R extends Room> {
                     log.warn("读取配置文件异常：" + ThrowableUtil.getAllCauseMessage(e));
                 }
             }
+            try {
+                ActivationUtil.verifyActivationCodeFile(new DeviceInfoCollector().getDeviceUniqueId(), setting.getActivateVoucherPath());
+            } catch (IllegalArgumentException e) {
+                String message = ThrowableUtil.getAllCauseMessage(e);
+                TrayIconUtil iconUtil = new TrayIconUtil(Constant.Application);
+                iconUtil.notifyMessage(e.getMessage());
+                iconUtil.shutdown();
+                log.error(message, e);
+                System.exit(0);
+            }
             isLoop = setting.isLoop();
             room.reset();//重置直播间
             getMonitorMain(setting, room).start(room, isRecord);
         } while (isLoop);
     }
+
 
     public String getProjectVersion() {
         // 通过当前类的类加载器获取 MANIFEST.MF

@@ -10,6 +10,8 @@ record.FlvToMp4=true
 record.type=1
 #ffmpeg的路径
 record.ffmpegPath=bin/ffmpeg.exe
+#激活凭证文件路径，默认xxxr-activation.lic
+#activation.filePath=
 #是否循环监听直播（直播结束后，重新监听）
 record.isLoop=true
 #监听间隔时长（秒）

@@ -59,6 +59,11 @@ public class Setting {
     @PropertyValue("record.ffmpegPath")
     private String ffmpegPath = Constant.FFmpegExePath;
     /**
+     * 激活凭证文件的路径
+     */
+    @PropertyValue("activation.filePath")
+    private String activateVoucherPath = Constant.ActivateVoucherFilePath;
+    /**
      * 是否循环监听直播（直播结束后，重新监听）
      */
     @PropertyValue("record.isLoop")
