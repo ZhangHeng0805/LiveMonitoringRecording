@@ -23,6 +23,8 @@ import java.util.Map;
  * @description:
  */
 public class KuaiShouService extends RoomService<KuaiShouRoom> {
+    private String cookieStr = "did=web_bec7a4478cae400ca13b46730b6380ed; clientid=3; did=web_bec7a4478cae400ca13b46730b6380ed; client_key=65890b29; kpn=GAME_ZONE; kwpsecproductname=PCLive; kuaishou.live.bfb1s=9b8f70844293bed778aade6e0a8f9942; kwssectoken=eYWujBV1vDQtpE8BCGNe9Himu8V2FykstfbtDvAr9ZrP4oj4A9zvLrU/ofKnTk4XoXYd+z1btjmhiNV9j7g8kA==; kwscode=4edb255b6a4abf408282d5383588890b8ff5de72e7945d25cee7d313be58bcfe; kwfv1=PnGU+9+Y8008S+nH0U+0mjPf8fP08f+98f+nLlwnrIP9+Sw/ZFGfzY+eGlGf+f+e4SGfbYP0QfGnLFwBLU80mYGAcEP/zYwe4DP0q9+eSS8fHAwBcIPfPIPfP7P9zY+eGEwBHUPAr98eQD+AZFPAZFG0DFweZUP/GUPBQY80rlweD=";
+
     protected KuaiShouService(KuaiShouRoom room) {
         super(room);
         refresh();
@@ -33,7 +35,7 @@ public class KuaiShouService extends RoomService<KuaiShouRoom> {
 //        KuaiShouRoom room = new KuaiShouRoom("KPL704668133");
         KuaiShouRoom room = new KuaiShouRoom("3xg62wetq66kquy");
         KuaiShouService service = new KuaiShouService(room);
-        service.refresh(false);
+//        service.refresh(false);
         System.out.println(JSONUtil.parseObj(room).toStringPretty());
     }
 
@@ -48,6 +50,8 @@ public class KuaiShouService extends RoomService<KuaiShouRoom> {
         HttpRequest header = super.get(url).header(Header.REFERER, room.getRoomUrl());
         if (room.getCookie() != null) {
             return header.header(Header.COOKIE, room.getCookie());
+        } else if (cookieStr != null) {
+            return header.header(Header.COOKIE, cookieStr);
         }
         return header;
     }
@@ -55,7 +59,9 @@ public class KuaiShouService extends RoomService<KuaiShouRoom> {
     private JSONObject getData() {
         HttpRequest httpRequest = get(room.getRoomUrl());
         try (HttpResponse response = httpRequest.execute()) {
-            String initialState = InitialStateExtractor.extractInitialState(response.body());
+            cookieStr = response.getCookieStr();
+            String body = response.body();
+            String initialState = InitialStateExtractor.extractInitialState(body);
             return new JSONObject(initialState);
         }
     }
@@ -67,25 +73,26 @@ public class KuaiShouService extends RoomService<KuaiShouRoom> {
         if (room.getNickname() == null) {
             room.setNickname(author.getStr("name"));
         }
-        if (room.getTitle() == null) {
-            String title = author.getStr("description").replaceAll("[\\n\\r]", "");
-            title = title.length() > 100 ? title.substring(0, 100) + "..." : title;
-            room.setTitle(title);
-        }
-        if (room.isLiving() && room.getStartTime() == null) {
-            room.setStartTime(new Date(author.getLong("timestamp")));
-        }
-        if (room.getAvatar() == null) {
-            room.setAvatar(UnicodeUtil.toString(author.getStr("avatar")));
-        }
-        JSONObject liveStream = playList.getJSONObject("liveStream");
-        if (room.getCover() == null) {
-            room.setCover(UnicodeUtil.toString(liveStream.getStr("poster")));
-        }
-        JSONObject counts = author.getJSONObject("counts");
-        room.setFollowers(counts.getStr("fan"));
-        room.setLikeCount(counts.getStr("liked"));
         if (room.isLiving()) {
+            if (room.getTitle() == null) {
+                String title = author.getStr("description").replaceAll("[\\n\\r]", "");
+                title = title.length() > 100 ? title.substring(0, 100) + "..." : title;
+                room.setTitle(title);
+            }
+            if (room.isLiving() && room.getStartTime() == null) {
+                room.setStartTime(new Date(author.getLong("timestamp")));
+            }
+            if (room.getAvatar() == null) {
+                room.setAvatar(UnicodeUtil.toString(author.getStr("avatar")));
+            }
+            JSONObject liveStream = playList.getJSONObject("liveStream");
+            if (room.getCover() == null) {
+                room.setCover(UnicodeUtil.toString(liveStream.getStr("poster")));
+            }
+            JSONObject counts = author.getJSONObject("counts");
+            room.setFollowers(counts.getStr("fan"));
+            room.setLikeCount(counts.getStr("liked"));
+
             if (room.getStreams() != null && !isStream) {
                 return;
             }
