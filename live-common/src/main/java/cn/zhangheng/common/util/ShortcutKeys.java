@@ -22,24 +22,22 @@ public class ShortcutKeys {
 
     private static final Logger log = LoggerFactory.getLogger(ShortcutKeys.class);
 
-    public static void main(String[] args) throws AWTException {
+    public static void main(String[] args) throws AWTException, InterruptedException {
 //        Robot robot = new Robot();
 //        startObsRecording(robot);
 //        stopObsRecording(robot);
-//        wechatSendMsg(robot, "文件传输助手", "123");
+        wechatSendMsg( "文件传输助手", "123");
 //        execute("ctrl+2");
-        setClipboardString("你好");
-        execute("ctrl+v,ctrl+enter");
+//        setClipboardString("你好");
+//        execute("ctrl+v,ctrl+enter");
     }
 
 
     /**
      * 关闭程序
      *
-     * @param robot
-     * @throws AWTException
      */
-    public static void shutdownProgram(Robot robot) throws AWTException {
+    public static void shutdownProgram() {
         //关闭程序 快捷键alt+F4
         execute("alt+f4");
     }
@@ -47,46 +45,42 @@ public class ShortcutKeys {
     /**
      * 微信发消息
      *
-     * @param robot
      * @param user
      * @param msg
      * @throws AWTException
      */
-    public static void wechatSendMsg(Robot robot, String user, String msg) throws AWTException {
+    public static void wechatSendMsg(String user, String msg) throws InterruptedException {
         //打开微信CTRL+ALT+W
         //打开搜索CTRL+F
         execute("ctrl+alt+w,ctrl+f");
-        robot.delay(200);
+        TimeUnit.MILLISECONDS.sleep(500);
         //复制到剪切板
         setClipboardString(user);
         //粘贴
         execute("ctrl+v");
-        robot.delay(1000);
+        TimeUnit.MILLISECONDS.sleep(1000);
         //确认
         execute("enter");
-        robot.delay(200);
+        TimeUnit.MILLISECONDS.sleep(500);
+
         // 复制消息到剪切板
         setClipboardString(msg);
         //粘贴
         execute("ctrl+v");
-        robot.delay(500);
+        TimeUnit.MILLISECONDS.sleep(500);
         //发送信息ctrl+enter
-        robot.keyPress(KeyEvent.VK_CONTROL);
-        robot.keyPress(KeyEvent.VK_ENTER);
-        robot.keyRelease(KeyEvent.VK_CONTROL);
-        robot.keyRelease(KeyEvent.VK_ENTER);
-        robot.delay(500);
+        execute("ctrl+enter");
+        TimeUnit.MILLISECONDS.sleep(500);
         //关闭微信
-        shutdownProgram(robot);
+        shutdownProgram();
     }
 
     /**
      * 打开obs软件
      *
      * @param robot
-     * @throws AWTException
      */
-    public static void openObs(Robot robot) throws AWTException {
+    public static void openObs(Robot robot) {
         //快捷键ctrl+alt+O
         robot.keyPress(KeyEvent.VK_CONTROL);
         robot.keyPress(KeyEvent.VK_ALT);
@@ -102,9 +96,8 @@ public class ShortcutKeys {
      * 开始obs录屏
      *
      * @param robot
-     * @throws AWTException
      */
-    public static void startObsRecording(Robot robot) throws AWTException {
+    public static void startObsRecording(Robot robot) {
         robot.keyPress(KeyEvent.VK_CONTROL);
         robot.keyPress(KeyEvent.VK_1);
         robot.delay(200);
@@ -127,17 +120,17 @@ public class ShortcutKeys {
         robot.delay(200);
     }
 
+    private static final ShortcutExecutor executor = new ShortcutExecutor();
+
     /**
      * 快捷键组合执行，多个组合之间逗号分割
      * 例：ctrl+c,ctrl+v
      *
      * @param shortcutKeys
-     * @throws AWTException
      */
-    public static void execute(String shortcutKeys) throws AWTException {
+    public static void execute(String shortcutKeys) {
         if (StrUtil.isBlank(shortcutKeys)) return;
         log.info("执行快捷键：{}", shortcutKeys);
-        ShortcutExecutor executor = new ShortcutExecutor();
         String[] keys = shortcutKeys.split(",");
         for (int i = 0; i < keys.length; i++) {
             executor.executeShortcut(keys[i]);

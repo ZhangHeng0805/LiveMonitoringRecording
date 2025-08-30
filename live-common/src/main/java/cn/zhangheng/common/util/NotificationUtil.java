@@ -75,8 +75,8 @@ public class NotificationUtil {
             return;
         }
         try {
-            ShortcutKeys.wechatSendMsg(new Robot(), weChatTarget, msg);
-        } catch (AWTException e) {
+            ShortcutKeys.wechatSendMsg( weChatTarget, msg);
+        } catch (InterruptedException e) {
             log.error("微信客户端发送信息失败：" + ThrowableUtil.getAllCauseMessage(e));
         }
     }

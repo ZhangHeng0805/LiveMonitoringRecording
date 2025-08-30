@@ -58,7 +58,7 @@ public class FlvDownload extends FFmpegService {
 //                    "-fflags", "+igndts+genpts+nobuffer", //关键调整
 //                    "-fflags", "+igndts +discardcorrupt", // 忽略错误时间戳，丢弃损坏帧
 //                    "-fflags", "+igndts+genpts",  // 忽略错误时间戳，生成连续新时间戳
-                    "-max_delay", "2000000", // 最大延迟3000ms，给足时间等待乱序帧
+//                    "-max_delay", "2000000", // 最大延迟3000ms，给足时间等待乱序帧
 //                    "-vsync", "vfr", // 可变帧率,控制同步方式
                     "-probesize", "32M",
                     "-rw_timeout", "15000000",
