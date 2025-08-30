@@ -15,6 +15,7 @@
         <module>live-common</module>
         <module>live-monitor-record</module>
         <module>kuaishou-start</module>
+        <module>activation-tool</module>
     </modules>
 
     <properties>

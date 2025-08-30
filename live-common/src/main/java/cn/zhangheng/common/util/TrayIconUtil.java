@@ -24,50 +24,56 @@ import java.io.InputStream;
 public class TrayIconUtil {
     private static final Logger log = LoggerFactory.getLogger(TrayIconUtil.class);
     @Getter
-    private final TrayIcon trayIcon;
+    private TrayIcon trayIcon;
     @Getter
     private final PopupMenu pop = new PopupMenu();//创建弹出式菜单
     @Getter
     private MenuItem startRecordMenu, stopRecordMenu, closeMenu, openWebMenu, playVideo;
     @Setter
     private ClickListener clickListener;
-    private final String title;
+    private String title;
 
     public TrayIconUtil(String title) {
-        this.title = title;
-        ClassPathResource classPathResource = new ClassPathResource("/logo.png");
-        try (InputStream inputStreamImg = classPathResource.getStream()) {
-            Image iconImg = ImageIO.read(inputStreamImg);
-            trayIcon = new TrayIcon(iconImg, title, pop);
-            trayIcon.setImageAutoSize(true);
-            trayIcon.setToolTip(title);
-            trayIcon.addActionListener(e -> {
-                if (clickListener != null) {
-                    log.debug("点击事件: 任务栏图标");
-                    clickListener.iconClick(e);
-                }
-            });
-            SystemTray tray = SystemTray.getSystemTray();
-            int length = tray.getTrayIcons().length;
-            if (length == 0)
-                tray.add(trayIcon);
-        } catch (IOException | AWTException e) {
-            throw new RuntimeException(e);
+        if (SystemTray.isSupported()) {
+            this.title = title;
+            ClassPathResource classPathResource = new ClassPathResource("/logo.png");
+            try (InputStream inputStreamImg = classPathResource.getStream()) {
+                Image iconImg = ImageIO.read(inputStreamImg);
+                trayIcon = new TrayIcon(iconImg, title, pop);
+                trayIcon.setImageAutoSize(true);
+                trayIcon.setToolTip(title);
+                trayIcon.addActionListener(e -> {
+                    if (clickListener != null) {
+                        log.debug("点击事件: 任务栏图标");
+                        clickListener.iconClick(e);
+                    }
+                });
+                SystemTray tray = SystemTray.getSystemTray();
+                int length = tray.getTrayIcons().length;
+                if (length == 0)
+                    tray.add(trayIcon);
+            } catch (IOException | AWTException e) {
+                log.error("系统状态栏通知创建失败：" + ThrowableUtil.getAllCauseMessage(e), e);
+            }
+            addActionListener();
+        }else {
+            log.warn("操作系统不支持系统托盘功能");
         }
-        addActionListener();
-
     }
 
     public void notifyMessage(String msg) {
-        trayIcon.displayMessage(title, msg, TrayIcon.MessageType.INFO);
+        if (trayIcon != null)
+            trayIcon.displayMessage(title, msg, TrayIcon.MessageType.INFO);
     }
 
     public void setToolTip(String title) {
-        trayIcon.setToolTip(title);
+        if (trayIcon != null)
+            trayIcon.setToolTip(title);
     }
 
     public void shutdown() {
-        SystemTray.getSystemTray().remove(trayIcon);
+        if (trayIcon != null)
+            SystemTray.getSystemTray().remove(trayIcon);
     }
 
     private void addActionListener() {

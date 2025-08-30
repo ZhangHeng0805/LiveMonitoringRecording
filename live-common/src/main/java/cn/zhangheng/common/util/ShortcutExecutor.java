@@ -1,5 +1,8 @@
 package cn.zhangheng.common.util;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.util.ArrayList;
@@ -16,6 +19,7 @@ import java.util.Map;
 public class ShortcutExecutor {
     // 键名到KeyEvent常量的映射
     private static final Map<String, Integer> KEY_MAP;
+    private static final Logger log = LoggerFactory.getLogger(ShortcutExecutor.class);
 
     static {
         KEY_MAP = new HashMap<>();
@@ -63,20 +67,42 @@ public class ShortcutExecutor {
         KEY_MAP.put("right", KeyEvent.VK_RIGHT);
     }
 
-    private final Robot robot;
+    private Robot robot;
 
-    public ShortcutExecutor() throws AWTException {
-        robot = new Robot();
-        // 设置延迟，模拟真实用户操作
-        robot.setAutoDelay(50);
+    public ShortcutExecutor() {
+        initRobot();
+    }
+
+    // 初始化 Robot 前检查环境
+    public boolean initRobot() {
+        // 检查是否为图形化环境
+        if (GraphicsEnvironment.isHeadless()) {
+            log.error("错误：当前为无图形界面环境，无法使用 Robot");
+            return false;
+        }
+
+        // 尝试创建 Robot 实例
+        try {
+            robot = new Robot();
+            // 设置全局延迟（避免操作过快）
+            robot.setAutoDelay(50); // 每次操作后自动延迟 50ms
+            return true;
+        } catch (AWTException e) {
+            log.error("创建 Robot 失败：" + e.getMessage());
+            return false;
+        }
     }
 
     /**
      * 执行指定的快捷键组合
+     *
      * @param shortcut 快捷键字符串，例如 "ctrl+c"、"alt+shift+s"、"f5"
      * @throws IllegalArgumentException 如果快捷键格式不正确或包含未知键
      */
     public void executeShortcut(String shortcut) {
+        if (robot == null) {
+            return;
+        }
         if (shortcut == null || shortcut.trim().isEmpty()) {
             throw new IllegalArgumentException("快捷键不能为空");
         }

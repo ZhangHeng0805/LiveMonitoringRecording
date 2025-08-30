@@ -53,49 +53,29 @@ public class ShortcutKeys {
      * @throws AWTException
      */
     public static void wechatSendMsg(Robot robot, String user, String msg) throws AWTException {
-        execute("ctrl+alt+w,ctrl+f");
         //打开微信CTRL+ALT+W
-//        robot.keyPress(KeyEvent.VK_CONTROL);
-//        robot.keyPress(KeyEvent.VK_ALT);
-//        robot.keyPress(KeyEvent.VK_W);
-//        robot.keyRelease(KeyEvent.VK_CONTROL);
-//        robot.keyRelease(KeyEvent.VK_ALT);
-//        robot.keyRelease(KeyEvent.VK_W);
-//        robot.delay(200);
-//        //打开搜索CTRL+F
-//        robot.keyPress(KeyEvent.VK_CONTROL);
-//        robot.keyPress(KeyEvent.VK_F);
-//        robot.keyRelease(KeyEvent.VK_CONTROL);
-//        robot.keyRelease(KeyEvent.VK_F);
+        //打开搜索CTRL+F
+        execute("ctrl+alt+w,ctrl+f");
         robot.delay(200);
+        //复制到剪切板
         setClipboardString(user);
         //粘贴
         execute("ctrl+v");
-//        robot.keyPress(KeyEvent.VK_CONTROL);
-//        robot.keyPress(KeyEvent.VK_V);
-//        robot.keyRelease(KeyEvent.VK_CONTROL);
-//        robot.keyRelease(KeyEvent.VK_V);
         robot.delay(1000);
         //确认
         execute("enter");
-//        robot.keyPress(KeyEvent.VK_ENTER);
-//        robot.keyRelease(KeyEvent.VK_ENTER);
         robot.delay(200);
         // 复制消息到剪切板
         setClipboardString(msg);
         //粘贴
         execute("ctrl+v");
-//        robot.keyPress(KeyEvent.VK_CONTROL);
-//        robot.keyPress(KeyEvent.VK_V);
-//        robot.keyRelease(KeyEvent.VK_CONTROL);
-//        robot.keyRelease(KeyEvent.VK_V);
         robot.delay(500);
-        //发送信息
+        //发送信息ctrl+enter
         robot.keyPress(KeyEvent.VK_CONTROL);
         robot.keyPress(KeyEvent.VK_ENTER);
         robot.keyRelease(KeyEvent.VK_CONTROL);
         robot.keyRelease(KeyEvent.VK_ENTER);
-        robot.delay(200);
+        robot.delay(500);
         //关闭微信
         shutdownProgram(robot);
     }
