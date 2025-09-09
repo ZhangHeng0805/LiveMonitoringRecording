@@ -123,4 +123,5 @@ public class Setting {
     public String getCookieKuaiShou() {
         return setCookie(cookieKuaiShou);
     }
+
 }

@@ -35,35 +35,42 @@ public class TrayIconUtil {
 
     public TrayIconUtil(String title) {
         if (SystemTray.isSupported()) {
-            this.title = title;
-            ClassPathResource classPathResource = new ClassPathResource("/logo.png");
-            try (InputStream inputStreamImg = classPathResource.getStream()) {
-                Image iconImg = ImageIO.read(inputStreamImg);
-                trayIcon = new TrayIcon(iconImg, title, pop);
-                trayIcon.setImageAutoSize(true);
-                trayIcon.setToolTip(title);
-                trayIcon.addActionListener(e -> {
-                    if (clickListener != null) {
-                        log.debug("点击事件: 任务栏图标");
-                        clickListener.iconClick(e);
-                    }
-                });
-                SystemTray tray = SystemTray.getSystemTray();
-                int length = tray.getTrayIcons().length;
-                if (length == 0)
+            SystemTray tray = SystemTray.getSystemTray();
+            TrayIcon[] trayIcons = tray.getTrayIcons();
+            int length = trayIcons.length;
+            if (length == 0) {
+                this.title = title;
+                ClassPathResource classPathResource = new ClassPathResource("/logo.png");
+                try (InputStream inputStreamImg = classPathResource.getStream()) {
+                    Image iconImg = ImageIO.read(inputStreamImg);
+                    addActionListener();
+                    trayIcon = new TrayIcon(iconImg, title, pop);
+                    trayIcon.setImageAutoSize(true);
+                    trayIcon.setToolTip(title);
+                    trayIcon.addActionListener(e -> {
+                        if (clickListener != null) {
+                            log.debug("点击事件: 任务栏图标");
+                            clickListener.iconClick(e);
+                        }
+                    });
                     tray.add(trayIcon);
-            } catch (IOException | AWTException e) {
-                log.error("系统状态栏通知创建失败：" + ThrowableUtil.getAllCauseMessage(e), e);
+                } catch (IOException | AWTException e) {
+                    log.error("系统状态栏通知创建失败：" + ThrowableUtil.getAllCauseMessage(e), e);
+                }
             }
-            addActionListener();
-        }else {
+        } else {
             log.warn("操作系统不支持系统托盘功能");
         }
     }
 
-    public void notifyMessage(String msg) {
+
+    public void notifyMessage(String msg, TrayIcon.MessageType messageType) {
         if (trayIcon != null)
-            trayIcon.displayMessage(title, msg, TrayIcon.MessageType.INFO);
+            trayIcon.displayMessage(title, msg, messageType);
+    }
+
+    public void notifyMessage(String msg) {
+        notifyMessage(msg, TrayIcon.MessageType.INFO);
     }
 
     public void setToolTip(String title) {

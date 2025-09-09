@@ -5,10 +5,13 @@ import cn.hutool.log.Log;
 import cn.hutool.log.LogFactory;
 import cn.zhangheng.common.activation.ActivationUtil;
 import cn.zhangheng.common.activation.DeviceInfoCollector;
+import cn.zhangheng.common.activation.ErrorException;
+import cn.zhangheng.common.activation.WarnException;
 import cn.zhangheng.common.util.TrayIconUtil;
 import com.zhangheng.util.ThrowableUtil;
 
 import javax.swing.*;
+import java.awt.*;
 import java.net.URL;
 import java.util.Objects;
 import java.util.Scanner;
@@ -135,13 +138,19 @@ public abstract class ApplicationMain<R extends Room> {
             }
             try {
                 ActivationUtil.verifyActivationCodeFile(new DeviceInfoCollector().getDeviceUniqueId(), setting.getActivateVoucherPath());
-            } catch (IllegalArgumentException e) {
-                String message = ThrowableUtil.getAllCauseMessage(e);
+            } catch (ErrorException errorException) {
+                String message = ThrowableUtil.getAllCauseMessage(errorException);
                 TrayIconUtil iconUtil = new TrayIconUtil(Constant.Application);
-                iconUtil.notifyMessage(e.getMessage());
+                iconUtil.notifyMessage(errorException.getMessage(), TrayIcon.MessageType.ERROR);
                 iconUtil.shutdown();
-                log.error(message, e);
+                log.error(message, errorException);
                 System.exit(0);
+            }catch (WarnException warnException){
+                TrayIconUtil iconUtil = new TrayIconUtil(Constant.Application);
+                String message = warnException.getMessage();
+                iconUtil.notifyMessage(message, TrayIcon.MessageType.WARNING);
+                iconUtil.shutdown();
+                log.warn(message);
             }
             isLoop = setting.isLoop();
             room.reset();//重置直播间

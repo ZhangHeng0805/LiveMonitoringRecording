@@ -25,14 +25,14 @@ public abstract class Room {
         }
         this.id = id.trim();
     }
-
+    //直播标题
     protected volatile String title;
-    //    protected String owner;
+    //用户名
     protected volatile String nickname;
+    //是否在直播
     protected volatile boolean living;
     //开始时间
     protected volatile Date startTime;
-    //    protected Date updateTime;
     //直播封面
     protected volatile String cover;
     //用户头像
@@ -43,7 +43,7 @@ public abstract class Room {
 
 
     private String cookie;
-
+    //直播间地址
     private final String roomUrl;
 
     public void setCookie(String cookie) {
@@ -56,10 +56,22 @@ public abstract class Room {
         roomUrl = initRoomUrl();
     }
 
+    /**
+     * 初始化配置，设置Cookie
+     * @param setting
+     */
     public abstract void initSetting(Setting setting);
 
+    /**
+     * 直播间平台
+     * @return
+     */
     public abstract Platform getPlatform();
 
+    /**
+     * 获取直播流地址
+     * @return
+     */
     public String getFlvUrl() {
         if (streams != null && !streams.isEmpty()) {
             return getStreams().entrySet().iterator().next().getValue();
@@ -68,6 +80,10 @@ public abstract class Room {
         }
     }
 
+    /**
+     * 初始化直播间地址
+     * @return
+     */
     public abstract String initRoomUrl();
 
     @Getter
@@ -86,6 +102,10 @@ public abstract class Room {
         }
     }
 
+    /**
+     * 获取直播间请求头，可以重新添加
+     * @return
+     */
     public Map<String, String> getRequestHead() {
         Map<String, String> header = new HashMap<>();
         header.put("User-Agent", Constant.User_Agent);
@@ -95,6 +115,9 @@ public abstract class Room {
         return header;
     }
 
+    /**
+     * 重置直播间
+     */
     public void reset() {
         setStartTime(null);
         setCookie(null);

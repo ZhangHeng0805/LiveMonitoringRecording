@@ -13,6 +13,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Enumeration;
 import java.util.Formatter;
+import java.util.Properties;
 
 /**
  * @author: ZhangHeng
@@ -42,14 +43,33 @@ public class DeviceInfoCollector {
             // 获取CPU信息
             String cpuInfo = getCPUInfo();
             if (cpuInfo != null) {
-                deviceInfo.append(cpuInfo);
+                deviceInfo.append("-").append(cpuInfo);
             }
 
             // 获取MAC地址
             String macAddress = getMacAddress();
             if (macAddress != null) {
-                deviceInfo.append(macAddress);
+                deviceInfo.append("-").append(macAddress);
             }
+//            //操作系统名称
+//            String osName = System.getProperty("os.name");
+//            if (osName != null) {
+//                deviceInfo.append("-").append(osName);
+//            }
+//            //操作系统版本
+//            String osVersion = System.getProperty("os.version");
+//            if (osVersion != null) {
+//                deviceInfo.append("-").append(osVersion);
+//            }
+//            //操作系统版本
+//            String osArch = System.getProperty("os.arch");
+//            if (osArch != null) {
+//                deviceInfo.append("-").append(osArch);
+//            }
+//            String userName = System.getProperty("user.name");
+//            if (userName != null) {
+//                deviceInfo.append("-").append(userName);
+//            }
 //            System.out.println(deviceInfo);
             // 对设备信息进行MD5哈希，生成固定长度的唯一标识
             return generateMD5Hash(deviceInfo.toString());
