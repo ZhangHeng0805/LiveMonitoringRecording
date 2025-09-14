@@ -25,6 +25,35 @@
                 <version>${xxxr.version}</version>
                 <scope>compile</scope>
             </dependency>
+
+            <dependency>
+                <groupId>com.microsoft.playwright</groupId>
+                <artifactId>playwright</artifactId>
+                <version>1.39.0</version>
+            </dependency>
+
+<!--            <dependency>-->
+<!--                <groupId>org.apache.httpcomponents</groupId>-->
+<!--                <artifactId>httpclient</artifactId>-->
+<!--                <version>4.5.13</version>-->
+<!--            </dependency>-->
+<!--            &lt;!&ndash; HTTP客户端 &ndash;&gt;-->
+<!--            <dependency>-->
+<!--                <groupId>org.apache.httpcomponents.client5</groupId>-->
+<!--                <artifactId>httpclient5</artifactId>-->
+<!--                <version>5.3</version>-->
+<!--            </dependency>-->
+<!--            &lt;!&ndash; HTML解析器 &ndash;&gt;-->
+<!--            <dependency>-->
+<!--                <groupId>org.jsoup</groupId>-->
+<!--                <artifactId>jsoup</artifactId>-->
+<!--                <version>1.16.1</version>-->
+<!--            </dependency>-->
+<!--            <dependency>-->
+<!--                <groupId>net.sourceforge.htmlunit</groupId>-->
+<!--                <artifactId>htmlunit</artifactId>-->
+<!--                <version>2.70.0</version>-->
+<!--            </dependency>-->
         </dependencies>
     <build>
         <plugins>

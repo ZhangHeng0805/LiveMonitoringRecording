@@ -54,4 +54,13 @@ public class BiliRoom extends Room {
         header.put("Origin", getPlatform().getMainUrl());
         return header;
     }
+
+    @Override
+    public void reset() {
+        super.reset();
+        setRoom_id(null);
+        setUid(null);
+        setViewers(0);
+        setFollowers(0);
+    }
 }

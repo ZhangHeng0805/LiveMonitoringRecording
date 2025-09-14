@@ -3,6 +3,8 @@ package cn.zhangheng.common.bean;
 import cn.hutool.core.util.StrUtil;
 import lombok.Data;
 import lombok.Getter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Date;
 import java.util.HashMap;
@@ -17,6 +19,7 @@ import java.util.Map;
  */
 @Data
 public abstract class Room {
+    private static final Logger log = LoggerFactory.getLogger(Room.class);
     protected String id;
 
     public void setId(String id) {
@@ -25,6 +28,7 @@ public abstract class Room {
         }
         this.id = id.trim();
     }
+
     //直播标题
     protected volatile String title;
     //用户名
@@ -44,11 +48,19 @@ public abstract class Room {
 
     private String cookie;
     //直播间地址
-    private final String roomUrl;
+    protected String roomUrl;
 
     public void setCookie(String cookie) {
-        if (StrUtil.isNotBlank(cookie))
+        if (StrUtil.isNotBlank(cookie)) {
             this.cookie = cookie;
+            log.debug("{}直播间[{}]设置Cookie：{}", getPlatform().name, id, cookie);
+        }
+    }
+
+    public void setNickname(String nickname) {
+        if (nickname != null && !"null".equals(nickname)) {
+            this.nickname = nickname;
+        }
     }
 
     public Room(String id) {
@@ -58,18 +70,21 @@ public abstract class Room {
 
     /**
      * 初始化配置，设置Cookie
+     *
      * @param setting
      */
     public abstract void initSetting(Setting setting);
 
     /**
      * 直播间平台
+     *
      * @return
      */
     public abstract Platform getPlatform();
 
     /**
      * 获取直播流地址
+     *
      * @return
      */
     public String getFlvUrl() {
@@ -82,6 +97,7 @@ public abstract class Room {
 
     /**
      * 初始化直播间地址
+     *
      * @return
      */
     public abstract String initRoomUrl();
@@ -104,6 +120,7 @@ public abstract class Room {
 
     /**
      * 获取直播间请求头，可以重新添加
+     *
      * @return
      */
     public Map<String, String> getRequestHead() {
