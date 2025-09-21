@@ -310,6 +310,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             } catch (IllegalArgumentException e) {
                 log.warn(e.getMessage());
             }
+            trayIconUtil.setToolTip("录制文件: "+path+" 视频转码中...");
             Thread thread = new Thread(() -> {
                 String output = path.substring(0, path.lastIndexOf(".")) + ".mp4";
                 boolean convert = flvToMp4.convert(path, output);

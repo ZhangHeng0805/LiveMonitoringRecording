@@ -6,7 +6,7 @@
     <parent>
         <groupId>cn.zhangheng.record</groupId>
         <artifactId>LiveMonitoringRecording</artifactId>
-        <version>3.0</version>
+        <version>3.1</version>
     </parent>
 
     <groupId>cn.zhangheng.douyin</groupId>
@@ -27,9 +27,10 @@
             </dependency>
 
             <dependency>
-                <groupId>com.microsoft.playwright</groupId>
-                <artifactId>playwright</artifactId>
-                <version>1.39.0</version>
+                <groupId>cn.zhangheng.browser</groupId>
+                <artifactId>browser-utils</artifactId>
+                <version>${xxxr.version}</version>
+                <scope>compile</scope>
             </dependency>
 
 <!--            <dependency>-->
