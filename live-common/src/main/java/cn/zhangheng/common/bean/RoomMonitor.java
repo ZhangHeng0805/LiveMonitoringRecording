@@ -18,7 +18,6 @@ import java.util.concurrent.TimeUnit;
  * @description:
  */
 public abstract class RoomMonitor<R extends Room, S extends RoomService<R>> extends Task {
-    private final int delayIntervalSec;
     @Getter
     private State state;
     @Getter
@@ -28,15 +27,10 @@ public abstract class RoomMonitor<R extends Room, S extends RoomService<R>> exte
     @Setter
     private RoomListener<R> listener = null;
 
-    public RoomMonitor(int delayIntervalSec, R room) {
-        this.delayIntervalSec = delayIntervalSec;
+    public RoomMonitor(R room) {
         this.room = room;
         roomService = getRoomService(room);
         state = State.NOT_LIVING;
-    }
-
-    public RoomMonitor(R room) {
-        this(10, room);
     }
 
     protected abstract S getRoomService(R room);
@@ -65,7 +59,7 @@ public abstract class RoomMonitor<R extends Room, S extends RoomService<R>> exte
                 }
                 do {
                     try {
-                        TimeUnit.SECONDS.sleep(delayIntervalSec);
+                        TimeUnit.SECONDS.sleep(room.getSetting().getDelayIntervalSec());
                     } catch (InterruptedException ignored) {
                         continue;
                     }
@@ -84,7 +78,7 @@ public abstract class RoomMonitor<R extends Room, S extends RoomService<R>> exte
                 }
                 do {
                     try {
-                        TimeUnit.SECONDS.sleep(delayIntervalSec);
+                        TimeUnit.SECONDS.sleep(room.getSetting().getDelayIntervalSec());
                     } catch (InterruptedException ignored) {
                         continue;
                     }

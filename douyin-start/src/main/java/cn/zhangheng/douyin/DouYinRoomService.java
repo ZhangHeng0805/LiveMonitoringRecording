@@ -7,8 +7,9 @@ import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import cn.zhangheng.common.bean.RoomService;
 import cn.zhangheng.common.bean.Setting;
+import cn.zhangheng.common.bean.enums.RunMode;
 import cn.zhangheng.common.util.RequestUtils;
-import cn.zhangheng.douyin.util.DouYinBrowser;
+import cn.zhangheng.douyin.util.DouYinBrowserFactory;
 import cn.zhangheng.douyin.util.DouyinPlaywright;
 import com.zhangheng.util.RandomUtil;
 import com.zhangheng.util.ThrowableUtil;
@@ -29,7 +30,6 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
     private String url;
     //    private static final Map<String, Object> forms;
     private static final Map<String, String> headers;
-//    private final DouYinBrowser browser;
 
     static {
 //        forms = new HashMap<>();
@@ -80,11 +80,11 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
     public static void main(String[] args) {
         long sta = System.currentTimeMillis();
         Setting setting = new Setting();
-        DouYinRoom info = new DouYinRoom("208823316033");
+        DouYinRoom info = new DouYinRoom("622216334529");
 //        DouYinRoom info = new DouYinRoom("兰小美认证信息.txt");
 //        DouYinRoom info = new DouYinRoom("870887192950-7547373102502578971");
 //        DouYinRoom info = new DouYinRoom("816560967344-7549211978108029696-uu子.txt");
-        info.initSetting(setting);
+        info.setSetting(setting);
         DouYinRoomService douYinRoomService = new DouYinRoomService(info);
         System.out.println("耗时：" + (System.currentTimeMillis() - sta));
         System.out.println(JSONUtil.toJsonPrettyStr(info));
@@ -110,11 +110,13 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
     @Override
     public void refresh(boolean force) {
         if (!room.isLiving()) {
-            DouyinPlaywright.request(room);
-//            browser.request();
+            if (RunMode.FILE.equals(room.getSetting().getRunMode())) {
+                DouYinBrowserFactory.getBrowser().request(room);
+            } else {
+                DouyinPlaywright.request(room);
+            }
         }
         if (room.isLiving() && room.getData_url() != null) {
-//            browser.close();
             getData(force);
         }
     }
@@ -137,8 +139,11 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
                     if (StrUtil.isBlank(room.getNickname())) {
                         room.setNickname(data.getJSONObject("user").getStr("nickname"));
                     }
-                    if (room.getAvatar() == null) {
-                        room.setAvatar(data.getJSONObject("user").getJSONObject("avatar_thumb").getJSONArray("url_list").get(0, String.class));
+                    if (StrUtil.isBlank(room.getAvatar())) {
+                        room.setAvatar(data.getJSONObject("user")
+                                .getJSONObject("avatar_thumb")
+                                .getJSONArray("url_list")
+                                .get(0, String.class));
                     }
                     if (room.isLiving()) {
                         if (room.getStartTime() == null) {

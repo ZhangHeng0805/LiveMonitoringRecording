@@ -15,5 +15,10 @@ public class Constant {
     public final static String FFmpegExePath = "bin/ffmpeg.exe";
     public final static String ActivateVoucherFilePath = "xxxr-activation.lic";
     public final static String WeChatOfficialAccount = "https://mp.weixin.qq.com/s?__biz=MzIwMDQ2OTg4NA==&mid=2247484118&idx=1&sn=30dd3f7f2a4d93a6fdce4fb808e7c506&chksm=96fdfec5a18a77d35645d8e8f55477353aeb9a949fc73a2c302ca336155f8becae635e26f022#rd";
+    //监听间隔延时（秒）
+    public final static int delayIntervalSec=10;
+    //最大监听线程
+    public final static int maxMonitorThreads=10;
+
 
 }

@@ -36,11 +36,11 @@ public abstract class Room {
     //是否在直播
     protected volatile boolean living;
     //开始时间
-    protected volatile Date startTime;
+    protected Date startTime;
     //直播封面
-    protected volatile String cover;
+    protected String cover;
     //用户头像
-    protected volatile String avatar;
+    protected String avatar;
 
     //直播流不同清晰度地址（由高到低排序）
     protected volatile Map<String, String> streams;
@@ -49,6 +49,17 @@ public abstract class Room {
     private String cookie;
     //直播间地址
     protected String roomUrl;
+
+    private volatile Setting setting;
+    //平台
+    protected Platform platform;
+
+    public void setSetting(Setting setting) {
+        if (setting != null) {
+            this.setting = setting;
+            initSetting(setting);
+        }
+    }
 
     public void setCookie(String cookie) {
         if (StrUtil.isNotBlank(cookie)) {
@@ -75,12 +86,6 @@ public abstract class Room {
      */
     public abstract void initSetting(Setting setting);
 
-    /**
-     * 直播间平台
-     *
-     * @return
-     */
-    public abstract Platform getPlatform();
 
     /**
      * 获取直播流地址

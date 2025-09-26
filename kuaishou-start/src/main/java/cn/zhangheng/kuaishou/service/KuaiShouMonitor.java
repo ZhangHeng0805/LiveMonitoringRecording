@@ -10,9 +10,9 @@ import cn.zhangheng.kuaishou.bean.KuaiShouRoom;
  * @version: 1.0
  * @description:
  */
-public class KuaiShouMonitor extends RoomMonitor<KuaiShouRoom,KuaiShouService> {
-    public KuaiShouMonitor(int delayIntervalSec, KuaiShouRoom room) {
-        super(delayIntervalSec, room);
+public class KuaiShouMonitor extends RoomMonitor<KuaiShouRoom, KuaiShouService> {
+    public KuaiShouMonitor(KuaiShouRoom room) {
+        super(room);
     }
 
     @Override

@@ -26,7 +26,7 @@ public class BiliMain extends MonitorMain<BiliRoom, BiliMonitor> {
 
     @Override
     protected BiliMonitor getRoomMonitor(BiliRoom room) {
-        return new BiliMonitor(delayIntervalSec, room);
+        return new BiliMonitor(room);
     }
 
     @Override

@@ -377,12 +377,12 @@
 
                 // 创建 FLV 播放器
                 flvPlayer = flvjs.createPlayer({
-                    type: 'flv',
-                    url: source,
-                    isLive: true,  // 是否为直播流
-                    enableStashBuffer: false,  // 减少延迟
-                }
-                // , {customLoader: CustomLoader}
+                        type: 'flv',
+                        url: source,
+                        isLive: true,  // 是否为直播流
+                        enableStashBuffer: false,  // 减少延迟
+                    }
+                    // , {customLoader: CustomLoader}
                 );
             } else {
                 // 本地文件

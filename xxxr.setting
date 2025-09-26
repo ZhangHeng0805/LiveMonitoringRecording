@@ -2,6 +2,7 @@ server.flvPlayer.port=8000
 #微信客户端通用对象
 #notice.weChat.target=文件传输助手
 #息知通知地址
+notice.xiZhi.url=
 #notice.xiZhi.url=https://xizhi.qqoq.net/***.send
 #notice.xiZhi.url=https://xizhi.qqoq.net/***.channel
 #是否转换录制的视频

@@ -32,13 +32,10 @@ public class KuaiShouRoom extends Room {
             setCookie(cookie);
     }
 
-    @Override
-    public Platform getPlatform() {
-        return Platform.KuaiShou;
-    }
 
     @Override
     public String initRoomUrl() {
+        this.platform = Platform.KuaiShou;
         return getPlatform().getMainUrl() + "u/" + getId();
     }
 }

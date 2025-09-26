@@ -20,7 +20,7 @@ public class KuaiShouMain extends MonitorMain<KuaiShouRoom, KuaiShouMonitor> {
 
     @Override
     protected KuaiShouMonitor getRoomMonitor(KuaiShouRoom room) {
-        return new KuaiShouMonitor(delayIntervalSec, room);
+        return new KuaiShouMonitor(room);
     }
 
     @Override

@@ -24,7 +24,7 @@ public class DouYinMain extends MonitorMain<DouYinRoom, DouYinRoomMonitor> {
 
     @Override
     protected DouYinRoomMonitor getRoomMonitor(DouYinRoom room) {
-        return new DouYinRoomMonitor(delayIntervalSec, room);
+        return new DouYinRoomMonitor(room);
     }
 
     @Override

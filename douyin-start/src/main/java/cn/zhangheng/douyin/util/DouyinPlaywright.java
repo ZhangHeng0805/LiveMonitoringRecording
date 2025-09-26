@@ -11,27 +11,33 @@ import cn.zhangheng.common.bean.Constant;
 import cn.zhangheng.douyin.DouYinRoom;
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.LoadState;
-import com.microsoft.playwright.options.WaitUntilState;
-import com.zhangheng.util.RandomUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * 浏览器静态类，单次请求，请求完成自动关闭浏览器
+ */
 public class DouyinPlaywright {
 
     private static final Pattern STATUS_STR_PATTERN = Pattern.compile("\\\\\"status_str\\\\\":\\\\\"([^\"]+)\\\\\"");
     private static final Pattern NICKNAME_PATTERN = Pattern.compile("\\\\\"nickname\\\\\":\\\\\"([^\"]+)\\\\\"");
+    private static final Pattern AVATAR_PATTERN = Pattern.compile("\\\\\"url_list\\\\\":\\[\\\\\"([^\"]+)\\\\\"");
+
     private static final Logger log = LoggerFactory.getLogger(DouyinPlaywright.class);
 
+    private DouyinPlaywright() {
+    }
 
     public static void request(DouYinRoom room) {
         try (PlaywrightBrowser browser = new PlaywrightBrowser(Constant.User_Agent)) {
             Page page = browser.newPage();
-            page.onRequest(request -> {
+            Consumer<Request> handler = request -> {
                 // 过滤需要的接口（例如包含 "api"、"data" 等关键词的接口）
                 String url = request.url();
                 if ("GET".equalsIgnoreCase(request.method()) && url.startsWith("https://live.douyin.com/webcast/room/web/enter/")) {
@@ -41,10 +47,11 @@ public class DouyinPlaywright {
                     room.setUser_agent(user_agent);
                     DouyinPlaywright.log.debug("直播{}开启\n===== 直播监听 URL: {}\n===== 用户代理: {}", room.isLiving() ? "已" : "未", url, user_agent);
                 }
-            });
+            };
+            page.onRequest(handler);
 
             // 4. 访问抖音页面
-            browser.navigatePage(room.getRoomUrl(),page);
+            browser.navigatePage(room.getRoomUrl(), page);
 
             // 5. 获取页面源码
             String pageSource = page.content();
@@ -61,8 +68,10 @@ public class DouyinPlaywright {
                 } catch (InterruptedException ignored) {
                 }
             }
+//            page.offRequest(handler);
         }
     }
+
     /**
      * 提取直播间信息（独立方法，便于维护）
      */
@@ -77,7 +86,10 @@ public class DouyinPlaywright {
                     new HashSet<>(Collections.singletonList("$undefined")));
             room.setNickname(nickname);
         }
-
+        if (room.getAvatar()==null){
+            String avatar = extractStr(pageSource, AVATAR_PATTERN, null);
+            room.setAvatar(avatar);
+        }
     }
 
     /**

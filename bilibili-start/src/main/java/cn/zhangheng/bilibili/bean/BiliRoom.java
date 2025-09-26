@@ -37,13 +37,10 @@ public class BiliRoom extends Room {
             setCookie(cookie);
     }
 
-    @Override
-    public Platform getPlatform() {
-        return Platform.Bili;
-    }
 
     @Override
     public String initRoomUrl() {
+        this.platform = Platform.Bili;
         return getPlatform().getMainUrl() + getId();
     }
 

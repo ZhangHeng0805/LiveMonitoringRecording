@@ -15,7 +15,7 @@ public class Main extends ApplicationMain<BiliRoom> {
     }
 
     @Override
-    protected MonitorMain<BiliRoom, ?> getMonitorMain(Setting setting, BiliRoom room) {
+    protected MonitorMain<BiliRoom, ?> getMonitorMain(BiliRoom room) {
         return new BiliMain(setting);
     }
 

@@ -15,10 +15,6 @@ public class DouYinRoomMonitor extends RoomMonitor<DouYinRoom,DouYinRoomService>
         super(room);
     }
 
-    public DouYinRoomMonitor(int delayIntervalSec, DouYinRoom douYinRoom) {
-        super(delayIntervalSec,douYinRoom);
-    }
-
     @Override
     protected DouYinRoomService getRoomService(DouYinRoom room) {
         return new DouYinRoomService(room);

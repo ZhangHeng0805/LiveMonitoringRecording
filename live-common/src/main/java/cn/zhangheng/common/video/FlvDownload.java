@@ -27,11 +27,18 @@ public class FlvDownload extends FFmpegService {
     private final FFmpegProgress ffmpegProgress = new FFmpegProgress();
 
     public FlvDownload() {
-        super(Constant.FFmpegExePath);
+        this(Constant.FFmpegExePath);
     }
 
     public FlvDownload(String ffmpegPath) {
         super(ffmpegPath);
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            if (isRunning()) {
+                //程序关闭，自动关闭浏览器
+                log.debug("程序关闭，自动关闭FFmpeg下载");
+                stop(true);
+            }
+        }));
     }
 
     public void download(String url, String file, Map<String, String> headers) {

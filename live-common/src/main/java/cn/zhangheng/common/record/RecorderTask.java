@@ -49,19 +49,16 @@ public class RecorderTask {
         String fileName = "【" + FileUtil.filterFileName(room.getNickname()) + "】" + room.getPlatform().getName() + "直播录制" + TimeUtil.toTime(new Date(), "yyyy-MM-dd HH-mm-ss") + "[" + FileUtil.filterFileName(room.getTitle()) + "].flv";
         String path = Paths.get(LogUtil.getBasePathStr(room), fileName).toFile().getPath();
         Recorder streamRecorder;
-        switch (setting.getRecordType()) {
-            case 1:
-                try {
-                    String ffmpegPath = setting.getFfmpegPath();
-                    streamRecorder = new FFmpegFlvRecorder(flvUrl, path, definition, ffmpegPath);
-                } catch (IllegalArgumentException e) {
-                    log.warn(e.getMessage());
-                    streamRecorder = new FlvStreamRecorder(flvUrl, path, definition);
-                }
-                break;
-            default:
+        if (setting.getRecordType() == 1) {
+            try {
+                String ffmpegPath = setting.getFfmpegPath();
+                streamRecorder = new FFmpegFlvRecorder(flvUrl, path, definition, ffmpegPath);
+            } catch (IllegalArgumentException e) {
+                log.warn(e.getMessage());
                 streamRecorder = new FlvStreamRecorder(flvUrl, path, definition);
-                break;
+            }
+        } else {
+            streamRecorder = new FlvStreamRecorder(flvUrl, path, definition);
         }
         Recorder.ProgressCallback progressCallback = new Recorder.ProgressCallback() {
             @Override

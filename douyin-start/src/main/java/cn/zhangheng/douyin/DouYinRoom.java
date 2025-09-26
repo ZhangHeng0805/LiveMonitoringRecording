@@ -67,12 +67,8 @@ public class DouYinRoom extends Room {
     }
 
     @Override
-    public Platform getPlatform() {
-        return Platform.DouYin;
-    }
-
-    @Override
     public String initRoomUrl() {
+        this.platform = Platform.DouYin;
         return getPlatform().getMainUrl() + getId();
     }
 

@@ -3,6 +3,7 @@ package cn.zhangheng.browser;
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.LoadState;
 import com.microsoft.playwright.options.WaitUntilState;
+import com.zhangheng.util.ThrowableUtil;
 import lombok.Getter;
 import lombok.Setter;
 import org.slf4j.Logger;
@@ -38,6 +39,8 @@ public class PlaywrightBrowser implements AutoCloseable {
     @Setter
     private LoadState loadState = LoadState.DOMCONTENTLOADED;
 
+    private static final InheritableThreadLocal<BrowserContext> context = new InheritableThreadLocal<>();
+
     // 反自动化检测初始化脚本
     public static final String initScript =
             "Object.defineProperty(navigator, 'webdriver', { get: () => undefined });\n" +
@@ -67,6 +70,13 @@ public class PlaywrightBrowser implements AutoCloseable {
             playwright = Playwright.create();
             // 再初始化浏览器（若失败，需关闭已创建的Playwright）
             browser = playwright.chromium().launch(getLaunchOptions(userAgent));
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                if (isRunning()) {
+                    //程序关闭，自动关闭浏览器
+                    log.debug("程序关闭，自动关闭浏览器");
+                    close();
+                }
+            }));
         } catch (Exception e) {
             log.error("初始化Playwright/Browser失败", e);
             // 清理已创建的资源
@@ -123,9 +133,16 @@ public class PlaywrightBrowser implements AutoCloseable {
                 throw new RuntimeException("重新启动浏览器失败", e);
             }
         }
-
+        BrowserContext browserContext;
+        if (context.get() == null) {
+            browserContext = browser.newContext();
+            log.debug("{}线程设置browserContext",Thread.currentThread().getName());
+            context.set(browserContext);
+        } else {
+            browserContext = context.get();
+        }
+        Page page = browserContext.newPage();
         // 创建新页面并注入反检测脚本
-        Page page = browser.newPage();
         page.addInitScript(initScript);
         return page;
     }
@@ -154,14 +171,14 @@ public class PlaywrightBrowser implements AutoCloseable {
             );
 
             // 若需要更严格的状态（如NETWORKIDLE），额外等待一次
-            if (loadState == LoadState.NETWORKIDLE) {
-                page.waitForLoadState(loadState, new Page.WaitForLoadStateOptions()
-                        .setTimeout(waitForLoadTimeoutMs)
-                );
-            }
+//            if (loadState == LoadState.DOMCONTENTLOADED) {
+            page.waitForLoadState(loadState, new Page.WaitForLoadStateOptions()
+                    .setTimeout(waitForLoadTimeoutMs)
+            );
+//            }
         } catch (Exception e) {
-            log.error("页面导航失败: " + url, e);
-            throw new RuntimeException("导航到" + url + "失败", e);
+            log.error("页面导航失败:{} ,{} ", url, ThrowableUtil.getAllCauseMessage(e));
+//            throw new RuntimeException("导航到" + url + "失败",e);
         }
         return page;
     }
@@ -173,8 +190,8 @@ public class PlaywrightBrowser implements AutoCloseable {
         if (page == null) return;
         try {
             page.context().clearCookies();
-            page.context().clearPermissions();
-            page.evaluate("localStorage.clear(); sessionStorage.clear();"); // 补充清理sessionStorage
+//            page.context().clearPermissions();
+//            page.evaluate("localStorage.clear(); sessionStorage.clear();"); // 补充清理sessionStorage
         } catch (Exception e) {
             log.warn("清理页面状态失败", e);
         }

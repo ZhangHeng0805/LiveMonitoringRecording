@@ -20,7 +20,7 @@ public class Main extends ApplicationMain<DouYinRoom> {
     }
 
     @Override
-    protected MonitorMain<DouYinRoom, ?> getMonitorMain(Setting setting, DouYinRoom room) {
+    protected MonitorMain<DouYinRoom, ?> getMonitorMain(DouYinRoom room) {
         return new DouYinMain(setting);
     }
 

@@ -1,5 +1,8 @@
 package cn.zhangheng.common.bean;
 
+import cn.hutool.json.JSONUtil;
+import cn.zhangheng.common.bean.enums.MonitorStatus;
+import cn.zhangheng.common.bean.enums.RunMode;
 import cn.zhangheng.common.record.Recorder;
 import cn.zhangheng.common.record.RecorderTask;
 import cn.zhangheng.common.util.LogUtil;
@@ -11,6 +14,7 @@ import com.zhangheng.file.FileUtil;
 import com.zhangheng.util.EncryptUtil;
 import com.zhangheng.util.NetworkUtil;
 import com.zhangheng.util.ThrowableUtil;
+import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,29 +43,33 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
 
     protected final TrayIconUtil trayIconUtil;
     protected final Setting setting;
-    protected Recorder recorder;
+    @Getter
+    protected volatile Recorder recorder;
+    @Getter
+    protected volatile MonitorStatus status = MonitorStatus.READY;
+    @Getter
+    private M roomMonitor;
+
     protected RecorderTask recorderTask;
-    protected int delayIntervalSec;
     protected AtomicBoolean isRunning = new AtomicBoolean(true);
     protected AtomicBoolean recordFlag = new AtomicBoolean(true);
-    //0-FlvStreamRecorder,1-FFmpegFlvRecorder
-    protected final int recorderType;
+    @Getter
     protected R room;
     protected FlvToMp4 flvToMp4;
-    private M roomMonitor;
     private final LocalServerFlvPlayer flvPlayer;
     private int tryMonitorSec = 1;
     private int tryRecordSec = 1;
+    private final AtomicBoolean isForceStop = new AtomicBoolean(false);//是否强制停止
 
+    public boolean getIsForceStop() {
+        return isForceStop.get();
+    }
 
     public MonitorMain(Setting setting) {
-        this.trayIconUtil = new TrayIconUtil(Constant.Application);
+        this.trayIconUtil = TrayIconUtil.getInstance(Constant.Application);
         this.setting = setting;
-        delayIntervalSec = setting.getDelayIntervalSec();
-        recorderType = setting.getRecordType();
         flvPlayer = new LocalServerFlvPlayer(setting.getFlvPlayerPort());
         startFlvPlayer();
-
     }
 
     /**
@@ -79,7 +87,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
 
     public void stop() {
         if (isRunning.get()) {
-            roomMonitor.stop(false);
+            roomMonitor.stop(true);
         }
     }
 
@@ -87,17 +95,25 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
 
     public void start(R room, boolean isRecord) {
         try {
-            room.initSetting(setting);
             this.room = room;
             roomMonitor = getRoomMonitor(room);
+            while (room.getNickname() == null) {
+                try {
+                    TimeUnit.SECONDS.sleep(1);
+                } catch (InterruptedException ignored) {
+                }
+                roomMonitor.refresh(false);
+            }
             Thread.currentThread().setName(room.getNickname() + "-main-" + Thread.currentThread().getId());
             RoomMonitor.RoomListener<R> listener = getRoomListener(room, isRecord);
             trayIconUtil.setClickListener(getClickListener());
             roomMonitor.setListener(listener);
             do {
                 try {
+                    status = MonitorStatus.RUNNING;
                     roomMonitor.run(false);
                 } catch (Exception e) {
+                    status = MonitorStatus.ERROR;
                     log.error("直播间监听出现异常: {}", ThrowableUtil.getAllCauseMessage(e), e);
                     try {
                         TimeUnit.SECONDS.sleep(tryMonitorSec);
@@ -109,6 +125,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                 }
             } while (isRunning.get());
         } finally {
+            status = MonitorStatus.END;
             trayIconUtil.shutdown();
         }
     }
@@ -126,6 +143,11 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                 log.info(Constant.Application + "开始监听! {}", owner);
                 isRunning.set(true);
                 tryMonitorSec = 1;
+                if (!RunMode.FILE.equals(setting.getRunMode())){
+                    if (trayIconUtil != null) {
+                        trayIconUtil.setMenuVisible(trayIconUtil.getMonitorMenu(),false);
+                    }
+                }
             }
 
             @Override
@@ -133,16 +155,18 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                 isRunning.set(false);
                 String msg = "直播监听结束！" + owner;
                 log.info(msg);
-                trayIconUtil.notifyMessage(msg);
-                xiZhiSendMsg(notificationUtil, room);
-                notificationUtil.weChatSendMsg(msg);
-                notificationUtil.livingEndHandle();
+                if (!getIsForceStop()) {
+                    trayIconUtil.notifyMessage(msg);
+                    xiZhiSendMsg(notificationUtil, room);
+                    notificationUtil.weChatSendMsg(msg);
+                    notificationUtil.livingEndHandle();
+                }
                 exit();
             }
 
             @Override
             public void onChange(M.State state, R room) {
-
+                log.info("\n{}", JSONUtil.toJsonPrettyStr(room));
                 if (state == M.State.NOT_LIVING) {
                     //未开播
                     String msg = owner + "\n未开播，直播间监听中...";
@@ -170,6 +194,13 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                         logUtil.init(room);
                     }
                     if (isRecord) {
+                        trayIconUtil.setStartRecordStatue(true);
+                        while (recorder == null) {
+                            try {
+                                TimeUnit.MILLISECONDS.sleep(500);
+                            } catch (InterruptedException ignored) {
+                            }
+                        }
                         msg += "\n已开启【" + recorder.getDefinition() + "】录制！";
                     } else {
                         msg += "\n未开启录制！";
@@ -310,7 +341,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             } catch (IllegalArgumentException e) {
                 log.warn(e.getMessage());
             }
-            trayIconUtil.setToolTip("录制文件: "+path+" 视频转码中...");
+            trayIconUtil.setToolTip("录制文件: " + path + " 视频转码中...");
             Thread thread = new Thread(() -> {
                 String output = path.substring(0, path.lastIndexOf(".")) + ".mp4";
                 boolean convert = flvToMp4.convert(path, output);
@@ -409,6 +440,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
 
 
     protected TrayIconUtil.ClickListener getClickListener() {
+
         return new TrayIconUtil.ClickListener() {
             @Override
             public boolean startRecordClick(ActionEvent e) {
@@ -435,8 +467,9 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
 
             @Override
             public boolean closeClick(ActionEvent e) {
+                isForceStop.set(true);//退出监听循环
                 exit();
-                return true;
+                return !RunMode.FILE.equals(room.getSetting().getRunMode());//不要终止程序
             }
 
             @Override
@@ -468,10 +501,16 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                     return flvPlayer.getMainUrl();
                 }
             }
+
+            @Override
+            public String openMonitor(ActionEvent e) {
+                return System.getProperty("monitor.url");
+            }
         };
     }
 
     public void exit() {
+        stop();
         isRunning.set(false);
         if (recorder != null && recorder.isRunning()) {
             recordFlag.set(false);

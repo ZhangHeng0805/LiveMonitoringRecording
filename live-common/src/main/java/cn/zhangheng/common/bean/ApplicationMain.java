@@ -7,12 +7,15 @@ import cn.zhangheng.common.activation.ActivationUtil;
 import cn.zhangheng.common.activation.DeviceInfoCollector;
 import cn.zhangheng.common.activation.ErrorException;
 import cn.zhangheng.common.activation.WarnException;
+import cn.zhangheng.common.util.ObjectPropertyUpdater;
 import cn.zhangheng.common.util.TrayIconUtil;
 import com.zhangheng.util.ThrowableUtil;
+import lombok.Getter;
 
-import javax.swing.*;
 import java.awt.*;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.Scanner;
 import java.util.jar.Manifest;
@@ -27,6 +30,11 @@ import java.util.jar.Manifest;
 public abstract class ApplicationMain<R extends Room> {
     private static final Log log = LogFactory.get();
     protected Setting setting;
+    @Getter
+    protected R room;
+    @Getter
+    protected MonitorMain<R, ?> monitorMain;
+
 
     private String getBanner() {
         return "\n" +
@@ -47,7 +55,6 @@ public abstract class ApplicationMain<R extends Room> {
     }
 
     public void start(Setting setting, String[] args) {
-        this.setting = setting;
         System.out.println(getBanner());
         Room.Platform[] platforms = supportedPlatforms();
         String platformsStr = supportedPlatformsStr(platforms);
@@ -67,7 +74,12 @@ public abstract class ApplicationMain<R extends Room> {
                     }
                     try {
                         platform = Room.Platform.valueOf(p);
-                    } catch (IllegalArgumentException e) {
+                    } catch (Exception e) {
+                        continue;
+                    }
+                    int indexOf = new ArrayList<>(Arrays.asList(platforms)).indexOf(platform);
+                    if (indexOf < 0) {
+                        System.out.println("错误: " + platform.getName() + " 不支持该平台");
                         continue;
                     }
                 }
@@ -80,10 +92,12 @@ public abstract class ApplicationMain<R extends Room> {
                 System.out.print("是否录制需要监听的抖音直播间视频？(y:是/n:否): ");
                 String isRecord = scanner.nextLine(); // 读取一行文本
 
+                R room = getRoom(platform, roomID);
+                room.setSetting(setting);
                 if (isRecord.equalsIgnoreCase("y")) {
-                    listen(getRoom(platform, roomID), true);
+                    listen(room, true);
                 } else {
-                    listen(getRoom(platform, roomID), false);
+                    listen(room, false);
                 }
                 break;
             }
@@ -93,17 +107,31 @@ public abstract class ApplicationMain<R extends Room> {
             boolean isRecord = args.length >= 2 && Boolean.parseBoolean(args[1]);
             Room.Platform platform = null;
             if (args.length >= 3) {
+                String pla = args[2];
                 try {
-                    platform = Room.Platform.valueOf(args[2]);
-                } catch (IllegalArgumentException e) {
-                    throw new IllegalArgumentException("直播平台错误！" + platformsStr);
+                    platform = Room.Platform.valueOf(pla);
+                } catch (Exception e) {
+                    log.error(pla + " 直播平台错误！支持的平台有: " + platformsStr, e);
+                    return;
+                }
+                int indexOf = new ArrayList<>(Arrays.asList(platforms)).indexOf(platform);
+                if (indexOf < 0) {
+                    log.error("错误: " + platform.getName() + " 不支持该平台");
                 }
             }
-            listen(getRoom(platform, id), isRecord);
+            R room = getRoom(platform, id);
+            room.setSetting(setting);
+            listen(room, isRecord);
         }
     }
 
-    protected abstract MonitorMain<R, ?> getMonitorMain(Setting settingUtil, R room);
+    public void start(Setting setting, String id, Room.Platform platform, boolean isRecord) {
+        R room = getRoom(platform, id);
+        room.setSetting(setting);
+        listen(room, isRecord);
+    }
+
+    protected abstract MonitorMain<R, ?> getMonitorMain(R room);
 
     protected abstract R getRoom(Room.Platform platform, String id);
 
@@ -126,12 +154,16 @@ public abstract class ApplicationMain<R extends Room> {
     }
 
     private void listen(R room, boolean isRecord) {
-        //是否循环监听
         boolean isLoop;
+        //是否循环监听
         do {
             if (setting == null) {
                 try {
-                    setting = new Setting();
+                    this.room = room;
+                    this.setting = new Setting();
+                    if (room.getSetting() != null) {
+                        ObjectPropertyUpdater.updateDifferentProperties(room.getSetting(), setting);
+                    }
                 } catch (Exception e) {
                     log.warn("读取配置文件异常：" + ThrowableUtil.getAllCauseMessage(e));
                 }
@@ -140,22 +172,25 @@ public abstract class ApplicationMain<R extends Room> {
                 ActivationUtil.verifyActivationCodeFile(new DeviceInfoCollector().getDeviceUniqueId(), setting.getActivateVoucherPath());
             } catch (ErrorException errorException) {
                 String message = ThrowableUtil.getAllCauseMessage(errorException);
-                TrayIconUtil iconUtil = new TrayIconUtil(Constant.Application);
+                TrayIconUtil iconUtil = TrayIconUtil.getInstance(Constant.Application);
                 iconUtil.notifyMessage(errorException.getMessage(), TrayIcon.MessageType.ERROR);
                 iconUtil.shutdown();
                 log.error(message, errorException);
                 System.exit(0);
-            }catch (WarnException warnException){
-                TrayIconUtil iconUtil = new TrayIconUtil(Constant.Application);
+            } catch (WarnException warnException) {
+                TrayIconUtil iconUtil = TrayIconUtil.getInstance(Constant.Application);
                 String message = warnException.getMessage();
                 iconUtil.notifyMessage(message, TrayIcon.MessageType.WARNING);
-                iconUtil.shutdown();
+//                iconUtil.shutdown();
                 log.warn(message);
             }
-            isLoop = setting.isLoop();
             room.reset();//重置直播间
-            getMonitorMain(setting, room).start(room, isRecord);
+            room.setSetting(setting);
+            monitorMain = getMonitorMain(room);
+            monitorMain.start(room, isRecord);
+            isLoop = !monitorMain.getIsForceStop() && room.getSetting().isLoop();
         } while (isLoop);
+        log.info("{}直播间 {}[{}]监听结束！", room.getPlatform().getName(), room.getNickname(), room.getId());
     }
 
 

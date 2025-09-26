@@ -13,8 +13,8 @@ public class Main extends ApplicationMain<KuaiShouRoom> {
     }
 
     @Override
-    protected MonitorMain<KuaiShouRoom, ?> getMonitorMain(Setting settingUtil, KuaiShouRoom room) {
-        return new KuaiShouMain(settingUtil);
+    protected MonitorMain<KuaiShouRoom, ?> getMonitorMain(KuaiShouRoom room) {
+        return new KuaiShouMain(setting);
     }
 
     @Override

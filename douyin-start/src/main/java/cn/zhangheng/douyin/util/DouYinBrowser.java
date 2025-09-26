@@ -5,6 +5,7 @@ import cn.zhangheng.common.bean.Constant;
 import cn.zhangheng.douyin.DouYinRoom;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Request;
+import com.zhangheng.util.ThrowableUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,6 +13,7 @@ import java.io.Closeable;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -22,33 +24,30 @@ import java.util.regex.Pattern;
  * @date: 2025/09/21 星期日 05:02
  * @version: 1.0
  * @description: 抖音直播间信息获取工具类
+ * 浏览器对象类，请求重复调用，需手动关闭浏览器
  */
 public class DouYinBrowser implements Closeable {
 
     // 正则表达式模式（静态编译，提升性能）
     private static final Pattern STATUS_STR_PATTERN = Pattern.compile("\\\\\"status_str\\\\\":\\\\\"([^\"]+)\\\\\"");
     private static final Pattern NICKNAME_PATTERN = Pattern.compile("\\\\\"nickname\\\\\":\\\\\"([^\"]+)\\\\\"");
+    private static final Pattern AVATAR_PATTERN = Pattern.compile("\\\\\"url_list\\\\\":\\[\\\\\"([^\"]+)\\\\\"");
     private static final Logger log = LoggerFactory.getLogger(DouYinBrowser.class);
 
     // 线程安全的浏览器实例（volatile确保多线程可见性）
     private volatile PlaywrightBrowser browser;
-    private final DouYinRoom room;
 
     // 目标请求URL前缀（提取为常量，便于维护）
     private static final String TARGET_REQUEST_PREFIX = "https://live.douyin.com/webcast/room/web/enter/";
 
-    public DouYinBrowser(DouYinRoom room) {
-        // 校验核心参数非空
-        if (room == null) {
-            throw new IllegalArgumentException("DouYinRoom不能为空");
-        }
-        this.room = room;
+    DouYinBrowser() {
+        browser = new PlaywrightBrowser(Constant.User_Agent);
     }
 
     /**
      * 发起请求并提取直播间信息
      */
-    public void request() {
+    public void request(DouYinRoom room) {
         // 校验房间URL有效性
         String roomUrl = room.getRoomUrl();
         if (roomUrl == null || roomUrl.trim().isEmpty()) {
@@ -62,7 +61,19 @@ public class DouYinBrowser implements Closeable {
             page = browser.newPage();
 
             // 注册请求监听器（提取目标请求信息）
-            registerRequestListener(page);
+            Consumer<Request> handler = request -> {
+                String url = request.url();
+                // 匹配目标GET请求
+                if ("GET".equalsIgnoreCase(request.method()) && url.startsWith(TARGET_REQUEST_PREFIX)) {
+                    room.setData_url(url);
+                    // 获取并设置User-Agent
+                    String userAgent = request.headers().get("user-agent");
+                    room.setUser_agent(userAgent);
+                    log.debug("直播状态: {}\n===== 监听URL: {}\n===== User-Agent: {}",
+                            room.isLiving() ? "已开启" : "未开启", url, userAgent);
+                }
+            };
+            page.onRequest(handler);
 
             // 导航到直播间页面
             browser.navigatePage(roomUrl, page);
@@ -75,9 +86,9 @@ public class DouYinBrowser implements Closeable {
             if (room.isLiving()) {
                 waitForTargetRequest(page);
             }
-
+            page.offRequest(handler);
         } catch (Exception e) {
-            log.error("处理直播间[" + roomUrl + "]时发生异常", e); // 记录完整堆栈
+            log.error("处理直播间[" + roomUrl + "]时发生异常,{}", ThrowableUtil.getAllCauseMessage(e)); // 记录完整堆栈
         } finally {
             // 确保页面关闭，释放资源
             if (browser != null) {
@@ -86,23 +97,6 @@ public class DouYinBrowser implements Closeable {
         }
     }
 
-    /**
-     * 注册请求监听器，捕获目标请求信息
-     */
-    private void registerRequestListener(Page page) {
-        page.onRequest(request -> {
-            String url = request.url();
-            // 匹配目标GET请求
-            if ("GET".equalsIgnoreCase(request.method()) && url.startsWith(TARGET_REQUEST_PREFIX)) {
-                room.setData_url(url);
-                // 获取并设置User-Agent
-                String userAgent = request.headers().get("user-agent");
-                room.setUser_agent(userAgent);
-                log.debug("直播状态: {}\n===== 监听URL: {}\n===== User-Agent: {}",
-                        room.isLiving() ? "已开启" : "未开启", url, userAgent);
-            }
-        });
-    }
 
     /**
      * 等待目标请求完成（最多等待5秒，避免无限阻塞）
@@ -189,6 +183,10 @@ public class DouYinBrowser implements Closeable {
                     new HashSet<>(Collections.singletonList("$undefined")));
             room.setNickname(nickname);
             log.debug("提取到主播昵称: {}", nickname);
+        }
+        if (room.getAvatar()==null){
+            String avatar = extractStr(pageSource, AVATAR_PATTERN, null);
+            room.setAvatar(avatar);
         }
     }
 

@@ -11,9 +11,6 @@ import cn.zhangheng.common.bean.RoomMonitor;
  * @description:
  */
 public class BiliMonitor extends RoomMonitor<BiliRoom, BilibiliService> {
-    public BiliMonitor(int delayIntervalSec, BiliRoom room) {
-        super(delayIntervalSec, room);
-    }
 
     public BiliMonitor(BiliRoom room) {
         super(room);

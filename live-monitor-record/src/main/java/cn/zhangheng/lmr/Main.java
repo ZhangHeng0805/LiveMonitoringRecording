@@ -14,7 +14,7 @@ public class Main extends ApplicationMain<Room> {
     }
 
     @Override
-    protected MonitorMain getMonitorMain(Setting setting, Room room) {
+    protected MonitorMain getMonitorMain(Room room) {
         switch (room.getPlatform()) {
             case DouYin:
                 return new DouYinMain(setting);

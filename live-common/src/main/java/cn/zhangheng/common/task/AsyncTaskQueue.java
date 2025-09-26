@@ -59,7 +59,7 @@ public class AsyncTaskQueue {
      */
     public void start() {
         if (isRunning.compareAndSet(false, true)) {
-            log.info("异步任务队列已启动，核心线程数: " + corePoolSize);
+            log.debug("异步任务队列已启动，核心线程数: " + corePoolSize);
         }
     }
     public <T> void submit(Task<T> task, TaskCallback<T> callback) {

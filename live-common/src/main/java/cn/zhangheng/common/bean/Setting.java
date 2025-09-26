@@ -1,6 +1,7 @@
 package cn.zhangheng.common.bean;
 
 import cn.hutool.core.util.StrUtil;
+import cn.zhangheng.common.bean.enums.RunMode;
 import cn.zhangheng.common.setting.ConfigLoader;
 import cn.zhangheng.common.setting.PropertiesConfig;
 import cn.zhangheng.common.setting.PropertyValue;
@@ -25,6 +26,11 @@ public class Setting {
         ConfigLoader.load(this);
     }
 
+    /**
+     * 程序运行模式
+     */
+    @PropertyValue("server.runMode")
+    private RunMode runMode = RunMode.COMMAND;
     /**
      * FLV播放器服务-端口号
      */
@@ -67,12 +73,12 @@ public class Setting {
      * 是否循环监听直播（直播结束后，重新监听）
      */
     @PropertyValue("record.isLoop")
-    private boolean isLoop;
+    private volatile boolean isLoop;
     /**
      * 监听间隔延时（秒）
      */
     @PropertyValue("monitor.delayIntervalSec")
-    private int delayIntervalSec = 10;
+    private volatile int delayIntervalSec = Constant.delayIntervalSec;
     /**
      * 直播开始时触发的快捷键
      */
@@ -83,6 +89,7 @@ public class Setting {
      */
     @PropertyValue("living.end.shortcut")
     private String livingEndShortcut;
+
     /**
      * B站的Cookie
      */
