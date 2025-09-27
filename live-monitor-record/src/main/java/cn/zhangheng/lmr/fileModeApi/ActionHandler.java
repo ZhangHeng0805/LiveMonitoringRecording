@@ -4,6 +4,7 @@ import cn.hutool.core.util.StrUtil;
 import cn.zhangheng.common.bean.MonitorMain;
 import cn.zhangheng.common.bean.Room;
 import cn.zhangheng.common.record.Recorder;
+import cn.zhangheng.douyin.util.DouYinBrowserFactory;
 import cn.zhangheng.lmr.FileModeMain;
 import cn.zhangheng.lmr.Main;
 import com.sun.net.httpserver.HttpExchange;
@@ -39,11 +40,14 @@ public class ActionHandler extends JSONHandler {
             actionRecord(msg, query);
         } else if (indexPath.startsWith("getThread")) {
             getThread(msg);
-        } else {
+        }else if (indexPath.startsWith("clear")) {
+            DouYinBrowserFactory.getBrowser().clear();
+            msg.setMessage("清理成功！");
+        }else {
             msg.setCode(1);
             msg.setMessage("访问的接口路径不存在！" + prefix + indexPath);
         }
-        System.out.println(msg);
+//        System.out.println(msg);
         responseJson(httpExchange, msg);
     }
 

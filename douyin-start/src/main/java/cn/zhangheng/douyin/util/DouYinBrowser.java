@@ -168,6 +168,12 @@ public class DouYinBrowser implements Closeable {
         }
     }
 
+    public void clear() {
+        if (browser != null) {
+            browser.clear();
+        }
+    }
+
     /**
      * 提取直播间信息（状态、昵称等）
      */

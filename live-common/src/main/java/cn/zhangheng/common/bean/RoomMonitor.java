@@ -49,7 +49,7 @@ public abstract class RoomMonitor<R extends Room, S extends RoomService<R>> exte
             mainExecutors = Executors.newFixedThreadPool(1);
         }
         Future<?> future = mainExecutors.submit(() -> {
-            Thread.currentThread().setName(room.getNickname() + "-monitor-" + Thread.currentThread().getId());
+            Thread.currentThread().setName(room.getNickname() + "-monitor-" + room.getPlatform().name());
             isRunning.set(true);
             if (!room.isLiving()) {
                 state = State.NOT_LIVING;

@@ -11,6 +11,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -40,8 +42,17 @@ public class PlaywrightBrowser implements AutoCloseable {
     @Setter
     private LoadState loadState = LoadState.DOMCONTENTLOADED;
 
-    private static final InheritableThreadLocal<BrowserContext> context = new InheritableThreadLocal<>();
-    private static final InheritableThreadLocal<AtomicInteger> pageCount = new InheritableThreadLocal<>();
+    private static final MyThreadLocal<BrowserContext> context = new MyThreadLocal<>(new MyThreadLocal.Listener<BrowserContext>() {
+        @Override
+        public void beforeClear(ConcurrentHashMap<String, BrowserContext> map) {
+            for (Map.Entry<String, BrowserContext> entry : map.entrySet()) {
+                entry.getValue().close();
+                log.debug("{}清除BrowserContext，已关闭", entry.getKey());
+            }
+        }
+    });
+
+    private static final MyThreadLocal<AtomicInteger> pageCount = new MyThreadLocal<>();
 
     // 反自动化检测初始化脚本
     public static final String initScript =
@@ -136,6 +147,9 @@ public class PlaywrightBrowser implements AutoCloseable {
                     log.info("浏览器重新启动成功");
                 } catch (Exception e) {
                     throw new RuntimeException("重新启动浏览器失败", e);
+                } finally {
+                    context.clear();
+                    pageCount.clear();
                 }
             }
         }
@@ -197,7 +211,7 @@ public class PlaywrightBrowser implements AutoCloseable {
 //            }
         } catch (Exception e) {
             log.error("页面导航失败:{} ,{} ", url, ThrowableUtil.getAllCauseMessage(e));
-//            throw new RuntimeException("导航到" + url + "失败",e);
+            throw new RuntimeException("导航到" + url + "失败", e);
         }
         return page;
     }
@@ -209,8 +223,7 @@ public class PlaywrightBrowser implements AutoCloseable {
         if (page == null) return;
         try {
             page.evaluate("localStorage.clear(); sessionStorage.clear();"); // 补充清理sessionStorage
-//            browserContext.clearCookies();
-            page.context().clearPermissions();
+            page.context().clearCookies();
         } catch (Exception e) {
             log.warn("清理页面状态失败", e);
         }
@@ -223,7 +236,7 @@ public class PlaywrightBrowser implements AutoCloseable {
         if (page == null) return;
         try {
             // 计数递增（线程安全）
-            allPageCount.incrementAndGet();
+            int allCount = allPageCount.incrementAndGet();
             int count = pageCount.get().get();
             // 根据isPageClear策略清理状态
             if (Boolean.TRUE.equals(isPageClear)) {
@@ -242,6 +255,11 @@ public class PlaywrightBrowser implements AutoCloseable {
         } catch (Exception e) {
             log.warn("关闭页面失败", e);
         }
+    }
+
+    public void clear() {
+        context.clear();
+        pageCount.clear();
     }
 
     public void closeContext() {
@@ -266,6 +284,8 @@ public class PlaywrightBrowser implements AutoCloseable {
                 log.warn("关闭浏览器失败", e);
             } finally {
                 browser = null; // 标记为null，避免重复操作
+                context.clear();
+                pageCount.clear();
             }
         }
 

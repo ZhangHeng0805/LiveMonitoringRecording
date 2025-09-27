@@ -112,7 +112,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                 }
                 roomMonitor.refresh(false);
             }
-            Thread.currentThread().setName(room.getNickname() + "-main-" + Thread.currentThread().getId());
+            Thread.currentThread().setName(room.getNickname() + "-main-" + room.getPlatform().name());
             RoomMonitor.RoomListener<R> listener = getRoomListener(room, isRecord);
             trayIconUtil.setClickListener(getClickListener());
             roomMonitor.setListener(listener);
@@ -354,7 +354,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                 String output = path.substring(0, path.lastIndexOf(".")) + ".mp4";
                 boolean convert = flvToMp4.convert(path, output);
                 if (convert) {
-                    Thread.currentThread().setName(room.getNickname() + "-FlvToMp4-" + Thread.currentThread().getId());
+                    Thread.currentThread().setName(room.getNickname() + "-FlvToMp4-" + room.getPlatform().name());
                     try {
                         log.debug("FlvToMp4视频转换完成！删除源文件：" + path);
                         Files.deleteIfExists(srcPath);

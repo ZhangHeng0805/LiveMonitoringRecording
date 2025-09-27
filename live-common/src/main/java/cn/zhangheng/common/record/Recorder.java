@@ -88,7 +88,7 @@ public abstract class Recorder extends Task {
     private String getThreadName() {
         String threadName;
         if (room != null) {
-            threadName = room.getNickname() + "-recorder-" + Thread.currentThread().getId();
+            threadName = room.getNickname() + "-recorder-" + room.getPlatform().name();
         } else if (saveFilePath.indexOf("[") < saveFilePath.indexOf("]")) {
             String owner = saveFilePath.substring(saveFilePath.indexOf("[") + 1, saveFilePath.indexOf("]"));
             threadName = owner + "-recorder-" + Thread.currentThread().getId();
