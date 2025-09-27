@@ -1,11 +1,13 @@
-package cn.zhangheng.common.video.player;
+package cn.zhangheng.common.http.handle;
 
+import cn.hutool.core.util.StrUtil;
 import cn.zhangheng.common.bean.Constant;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -21,6 +23,16 @@ import java.util.Map;
  */
 public abstract class MyHandler implements HttpHandler {
     protected final Charset charset = StandardCharsets.UTF_8;
+
+    protected String getIndexPath(HttpExchange httpExchange,String prefix) {
+        URI requestURI = httpExchange.getRequestURI();
+        String path = requestURI.getPath();
+        return StrUtil.subAfter(path, prefix, true);
+    }
+
+    protected Map<String, String> parseQuery(HttpExchange exchange) {
+        return parseQuery(exchange.getRequestURI().getQuery());
+    }
 
     // 解析URL查询参数
     protected Map<String, String> parseQuery(String query) {

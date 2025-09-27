@@ -1,13 +1,13 @@
 package cn.zhangheng.lmr.fileModeApi;
 
-import cn.zhangheng.common.video.player.TextHandler;
+import cn.zhangheng.common.http.handle.StreamFileHandler;
+import cn.zhangheng.common.http.handle.TextFileHandler;
 import com.sun.net.httpserver.HttpServer;
 import com.zhangheng.util.NetworkUtil;
 import com.zhangheng.util.ThrowableUtil;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
-import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
 import java.net.URLEncoder;
@@ -36,8 +36,10 @@ public class LocalServerApi {
             }
             try {
                 server = HttpServer.create(new InetSocketAddress(port), 0);
-                server.createContext("/", new TextHandler("Monitor.html", "text/html"));
-                server.createContext("/api", new JsonHandler("/api/"));
+                server.createContext("/", new TextFileHandler("Monitor.html", "text/html"));
+                server.createContext("/api", new ApiHandler("/api/"));
+                server.createContext("/action", new ActionHandler("/action/"));
+                server.createContext("/img", new StreamFileHandler("/img/"));
             } catch (Exception e) {
                 log.error("本地API服务创建失败！{}", ThrowableUtil.getAllCauseMessage(e));
             }
@@ -54,11 +56,11 @@ public class LocalServerApi {
 
     public String getMainUrl() {
         String url = "http://localhost:" + port + "/";
-        String apiUrl = url + "api/";
+//        String apiUrl = url + "api/";
         try {
-            return url + "?url=" + URLEncoder.encode(apiUrl, "UTF-8");
+            return url + "?url=" + URLEncoder.encode(url, "UTF-8");
         } catch (UnsupportedEncodingException e) {
-            return url + "?url=" + apiUrl;
+            return url + "?url=" + url;
         }
     }
 

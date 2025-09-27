@@ -1,4 +1,4 @@
-package cn.zhangheng.common.video.player;
+package cn.zhangheng.common.http.handle;
 
 import cn.hutool.core.map.MapUtil;
 import com.sun.net.httpserver.HttpExchange;
@@ -16,16 +16,19 @@ import java.util.Map;
  * @version: 1.0
  * @description:
  */
-public class StreamHandler extends MyHandler {
+public class StreamFileHandler extends MyHandler {
     private String type = "application/octet-stream";
     private final String prefix;
 
-    public StreamHandler(String prefix, String type) {
+    public StreamFileHandler(String prefix, String type) {
         this.type = type;
         this.prefix = prefix;
     }
 
-    public StreamHandler() {
+    public StreamFileHandler(String prefix) {
+        this.prefix = prefix;
+    }
+    public StreamFileHandler() {
         this.prefix = null;
     }
 

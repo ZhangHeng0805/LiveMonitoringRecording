@@ -1,5 +1,6 @@
 package cn.zhangheng.browser;
 
+import cn.hutool.http.useragent.UserAgent;
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.LoadState;
 import com.microsoft.playwright.options.WaitUntilState;
@@ -27,7 +28,7 @@ public class PlaywrightBrowser implements AutoCloseable {
 
     // 线程安全的计数（替代int，避免多线程计数错误）
     @Getter
-    private final AtomicInteger newPageCount = new AtomicInteger(0);
+    private final AtomicInteger allPageCount = new AtomicInteger(0);
 
     @Setter
     private Boolean isPageClear; // 是否每次打开页面时重置状态，null时默认每10次清理
@@ -40,6 +41,7 @@ public class PlaywrightBrowser implements AutoCloseable {
     private LoadState loadState = LoadState.DOMCONTENTLOADED;
 
     private static final InheritableThreadLocal<BrowserContext> context = new InheritableThreadLocal<>();
+    private static final InheritableThreadLocal<AtomicInteger> pageCount = new InheritableThreadLocal<>();
 
     // 反自动化检测初始化脚本
     public static final String initScript =
@@ -112,34 +114,51 @@ public class PlaywrightBrowser implements AutoCloseable {
     /**
      * 创建新页面（自动处理浏览器断开重连）
      */
-    public synchronized Page newPage() {
+    public Page newPage() {
         // 双重检查：确保浏览器可用
         if (!isRunning()) {
             log.warn("浏览器已断开，尝试重新启动...");
-            // 安全关闭旧浏览器（若存在）
-            if (browser != null) {
-                try {
-                    browser.close();
-                } catch (Exception e) {
-                    log.warn("关闭旧浏览器失败", e);
+            synchronized (this) {
+                if (!isRunning()) {
+                    // 安全关闭旧浏览器（若存在）
+                    if (browser != null) {
+                        try {
+                            browser.close();
+                        } catch (Exception e) {
+                            log.warn("关闭旧浏览器失败", e);
+                        }
+                        browser = null;
+                    }
                 }
-                browser = null;
-            }
-            // 重新创建浏览器
-            try {
-                browser = playwright.chromium().launch(getLaunchOptions(userAgent));
-                log.info("浏览器重新启动成功");
-            } catch (Exception e) {
-                throw new RuntimeException("重新启动浏览器失败", e);
+                // 重新创建浏览器
+                try {
+                    browser = playwright.chromium().launch(getLaunchOptions(userAgent));
+                    log.info("浏览器重新启动成功");
+                } catch (Exception e) {
+                    throw new RuntimeException("重新启动浏览器失败", e);
+                }
             }
         }
-        BrowserContext browserContext;
-        if (context.get() == null) {
-            browserContext = browser.newContext();
-            log.debug("{}线程设置browserContext",Thread.currentThread().getName());
+        BrowserContext browserContext = context.get();
+        boolean isContextValid = (browserContext != null)
+                && browserContext.browser().equals(browser);
+        if (!isContextValid) {
+            if (browserContext != null) {
+                try {
+                    browserContext.close();
+                } catch (Exception e) {
+                    log.warn("关闭旧 Context 失败", e);
+                }
+            }
+            // 创建新 Context 并覆盖 ThreadLocal
+            browserContext = browser.newContext(new Browser.NewContextOptions()
+                    .setUserAgent(UserAgentUtil.getUser_Agent()));
             context.set(browserContext);
+        }
+        if (pageCount.get() == null) {
+            pageCount.set(new AtomicInteger(1));
         } else {
-            browserContext = context.get();
+            pageCount.get().incrementAndGet();
         }
         Page page = browserContext.newPage();
         // 创建新页面并注入反检测脚本
@@ -189,9 +208,9 @@ public class PlaywrightBrowser implements AutoCloseable {
     private void clearPageState(Page page) {
         if (page == null) return;
         try {
-            page.context().clearCookies();
-//            page.context().clearPermissions();
-//            page.evaluate("localStorage.clear(); sessionStorage.clear();"); // 补充清理sessionStorage
+            page.evaluate("localStorage.clear(); sessionStorage.clear();"); // 补充清理sessionStorage
+//            browserContext.clearCookies();
+            page.context().clearPermissions();
         } catch (Exception e) {
             log.warn("清理页面状态失败", e);
         }
@@ -204,19 +223,32 @@ public class PlaywrightBrowser implements AutoCloseable {
         if (page == null) return;
         try {
             // 计数递增（线程安全）
-            int count = newPageCount.incrementAndGet();
-
+            allPageCount.incrementAndGet();
+            int count = pageCount.get().get();
             // 根据isPageClear策略清理状态
             if (Boolean.TRUE.equals(isPageClear)) {
                 clearPageState(page); // 强制清理
             } else if (isPageClear == null && count % 10 == 0) {
                 clearPageState(page); // 每10次清理一次
             }
-
-            // 关闭页面（可选：触发beforeunload事件）
-            page.close(new Page.CloseOptions().setRunBeforeUnload(false));
+            if (!page.isClosed()) {
+                // 关闭页面（可选：触发beforeunload事件）
+                page.close(new Page.CloseOptions().setRunBeforeUnload(false));
+            }
+            if (count % 50 == 0) {
+                // 每50次关闭一次
+                closeContext();
+            }
         } catch (Exception e) {
             log.warn("关闭页面失败", e);
+        }
+    }
+
+    public void closeContext() {
+        BrowserContext browserContext = context.get();
+        if (browserContext != null) {
+            browserContext.close();
+            context.remove();
         }
     }
 

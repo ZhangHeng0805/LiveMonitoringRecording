@@ -109,7 +109,7 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
 
     @Override
     public void refresh(boolean force) {
-        if (!room.isLiving()) {
+        if (!room.isLiving() || room.getData_url() == null) {
             if (RunMode.FILE.equals(room.getSetting().getRunMode())) {
                 DouYinBrowserFactory.getBrowser().request(room);
             } else {
@@ -117,6 +117,9 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
             }
         }
         if (room.isLiving() && room.getData_url() != null) {
+            if (RunMode.FILE.equals(room.getSetting().getRunMode())) {
+                DouYinBrowserFactory.getBrowser().closeContext();
+            }
             getData(force);
         }
     }

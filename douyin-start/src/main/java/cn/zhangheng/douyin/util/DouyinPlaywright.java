@@ -17,17 +17,14 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+
+import static cn.zhangheng.douyin.util.DouYinBrowserFactory.*;
 
 /**
  * 浏览器静态类，单次请求，请求完成自动关闭浏览器
  */
 public class DouyinPlaywright {
 
-    private static final Pattern STATUS_STR_PATTERN = Pattern.compile("\\\\\"status_str\\\\\":\\\\\"([^\"]+)\\\\\"");
-    private static final Pattern NICKNAME_PATTERN = Pattern.compile("\\\\\"nickname\\\\\":\\\\\"([^\"]+)\\\\\"");
-    private static final Pattern AVATAR_PATTERN = Pattern.compile("\\\\\"url_list\\\\\":\\[\\\\\"([^\"]+)\\\\\"");
 
     private static final Logger log = LoggerFactory.getLogger(DouyinPlaywright.class);
 
@@ -40,7 +37,7 @@ public class DouyinPlaywright {
             Consumer<Request> handler = request -> {
                 // 过滤需要的接口（例如包含 "api"、"data" 等关键词的接口）
                 String url = request.url();
-                if ("GET".equalsIgnoreCase(request.method()) && url.startsWith("https://live.douyin.com/webcast/room/web/enter/")) {
+                if ("GET".equalsIgnoreCase(request.method()) && url.startsWith(TARGET_REQUEST_PREFIX)) {
                     room.setData_url(url);
                     // 获取请求头
                     String user_agent = request.headers().get("user-agent");
@@ -58,7 +55,7 @@ public class DouyinPlaywright {
 //            System.out.println("页面源码长度: " + pageSource.length());
 //            System.out.println(pageSource);
             // 6. 提取信息
-            extractRoomInfo(room, pageSource);
+            DouYinBrowserFactory.extractRoomInfo(room, pageSource);
 
             if (room.isLiving()) {
                 // 等待一段时间，确保异步请求被捕获
@@ -72,56 +69,9 @@ public class DouyinPlaywright {
         }
     }
 
-    /**
-     * 提取直播间信息（独立方法，便于维护）
-     */
-    private static void extractRoomInfo(DouYinRoom room, String pageSource) {
-        // 提取直播状态
-        String status = extractStr(pageSource, STATUS_STR_PATTERN, null);
-        room.setLiving("2".equals(status));
 
-        // 提取昵称（避免重复提取）
-        if (room.getNickname() == null) {
-            String nickname = extractStr(pageSource, NICKNAME_PATTERN,
-                    new HashSet<>(Collections.singletonList("$undefined")));
-            room.setNickname(nickname);
-        }
-        if (room.getAvatar()==null){
-            String avatar = extractStr(pageSource, AVATAR_PATTERN, null);
-            room.setAvatar(avatar);
-        }
-    }
 
-    /**
-     * 通用正则提取方法（复用逻辑）
-     *
-     * @param content       原始字符串
-     * @param excludeValues 需要排除的值集合（如{"", "0", "null"}）
-     * @return 第一个不在排除集合中的值；若所有值都被排除，返回null
-     */
-    public static String extractStr(String content, Pattern pattern, Set<String> excludeValues) {
-        // 参数校验：避免空指针
-        if (content == null) {
-            return null;
-        }
 
-        Matcher matcher = pattern.matcher(content);
-
-        // 循环查找所有匹配项
-        while (matcher.find()) {
-            // 提取值并处理转义字符
-            String value = matcher.group(1).trim();
-
-            // 排除指定值
-            if (excludeValues == null || !excludeValues.contains(value)) {
-                return value; // 返回第一个有效匹配
-            }
-            // 若在排除集合中，继续查找下一个
-        }
-
-        // 所有匹配都被排除或无匹配
-        return null;
-    }
 
     public static void main(String[] args) {
         // 1. 初始化Playwright（自动下载浏览器）

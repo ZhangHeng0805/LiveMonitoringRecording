@@ -180,7 +180,7 @@ public class TrayIconUtil {
 
                     // 最后从注册表移除
                     iconRegistry.remove(threadKey);
-                    log.info("线程[{}]：图标完全移除，当前总数: {}", threadKey, iconRegistry.size());
+                    log.debug("线程[{}]：图标完全移除，当前总数: {}", threadKey, iconRegistry.size());
 
                 } catch (Throwable e) {
                     // 捕获所有异常（包括native层可能抛出的Error）

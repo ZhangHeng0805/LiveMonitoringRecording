@@ -1,4 +1,4 @@
-package cn.zhangheng.common.video.player;
+package cn.zhangheng.common.http.handle;
 
 import com.sun.net.httpserver.HttpExchange;
 
@@ -13,16 +13,16 @@ import java.util.Scanner;
  * @version: 1.0
  * @description:
  */
-public class TextHandler extends MyHandler {
+public class TextFileHandler extends MyHandler {
 
     private String response = "";
     private final String contextType;
 
-    public TextHandler(String file) {
+    public TextFileHandler(String file) {
         this(file, "text/plain");
     }
 
-    public TextHandler(String file, String contextType) {
+    public TextFileHandler(String file, String contextType) {
         this.contextType = contextType;
         response = readText(file);
     }

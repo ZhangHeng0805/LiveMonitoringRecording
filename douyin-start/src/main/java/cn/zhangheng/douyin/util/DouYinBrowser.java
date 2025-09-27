@@ -10,13 +10,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+
+import static cn.zhangheng.douyin.util.DouYinBrowserFactory.TARGET_REQUEST_PREFIX;
+import static cn.zhangheng.douyin.util.DouYinBrowserFactory.extractRoomInfo;
 
 /**
  * @author: ZhangHeng
@@ -29,16 +27,16 @@ import java.util.regex.Pattern;
 public class DouYinBrowser implements Closeable {
 
     // 正则表达式模式（静态编译，提升性能）
-    private static final Pattern STATUS_STR_PATTERN = Pattern.compile("\\\\\"status_str\\\\\":\\\\\"([^\"]+)\\\\\"");
-    private static final Pattern NICKNAME_PATTERN = Pattern.compile("\\\\\"nickname\\\\\":\\\\\"([^\"]+)\\\\\"");
-    private static final Pattern AVATAR_PATTERN = Pattern.compile("\\\\\"url_list\\\\\":\\[\\\\\"([^\"]+)\\\\\"");
+//    private static final Pattern STATUS_STR_PATTERN = Pattern.compile("\\\\\"status_str\\\\\":\\\\\"([^\"]+)\\\\\"");
+//    private static final Pattern NICKNAME_PATTERN = Pattern.compile("\\\\\"nickname\\\\\":\\\\\"([^\"]+)\\\\\"");
+//    private static final Pattern AVATAR_PATTERN = Pattern.compile("\\\\\"url_list\\\\\":\\[\\\\\"([^\"]+)\\\\\"");
     private static final Logger log = LoggerFactory.getLogger(DouYinBrowser.class);
 
     // 线程安全的浏览器实例（volatile确保多线程可见性）
     private volatile PlaywrightBrowser browser;
 
     // 目标请求URL前缀（提取为常量，便于维护）
-    private static final String TARGET_REQUEST_PREFIX = "https://live.douyin.com/webcast/room/web/enter/";
+//    private static final String TARGET_REQUEST_PREFIX = "https://live.douyin.com/webcast/room/web/enter/";
 
     DouYinBrowser() {
         browser = new PlaywrightBrowser(Constant.User_Agent);
@@ -89,6 +87,7 @@ public class DouYinBrowser implements Closeable {
             page.offRequest(handler);
         } catch (Exception e) {
             log.error("处理直播间[" + roomUrl + "]时发生异常,{}", ThrowableUtil.getAllCauseMessage(e)); // 记录完整堆栈
+//            closeContext();
         } finally {
             // 确保页面关闭，释放资源
             if (browser != null) {
@@ -163,10 +162,16 @@ public class DouYinBrowser implements Closeable {
         }
     }
 
+    public void closeContext() {
+        if (browser != null) {
+            browser.closeContext();
+        }
+    }
+
     /**
      * 提取直播间信息（状态、昵称等）
      */
-    private static void extractRoomInfo(DouYinRoom room, String pageSource) {
+    /*private static void extractRoomInfo(DouYinRoom room, String pageSource) {
         if (pageSource == null) {
             log.warn("页面源码为空，无法提取房间信息");
             return;
@@ -185,15 +190,15 @@ public class DouYinBrowser implements Closeable {
             log.debug("提取到主播昵称: {}", nickname);
         }
         if (room.getAvatar()==null){
-            String avatar = extractStr(pageSource, AVATAR_PATTERN, null);
+            String avatar = UnicodeUtil.toString(extractStr(pageSource, AVATAR_PATTERN, null));
             room.setAvatar(avatar);
         }
-    }
+    }*/
 
     /**
      * 通用正则提取方法（处理转义字符和排除无效值）
      */
-    public static String extractStr(String content, Pattern pattern, Set<String> excludeValues) {
+    /*public static String extractStr(String content, Pattern pattern, Set<String> excludeValues) {
         if (content == null || pattern == null) {
             return null;
         }
@@ -211,7 +216,7 @@ public class DouYinBrowser implements Closeable {
             }
         }
         return null;
-    }
+    }*/
 
     /**
      * 关闭资源（实现Closeable，支持try-with-resources）

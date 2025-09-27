@@ -1,6 +1,8 @@
 package cn.zhangheng.common.video.player;
 
 import cn.zhangheng.common.bean.Task;
+import cn.zhangheng.common.http.handle.StreamFileHandler;
+import cn.zhangheng.common.http.handle.TextFileHandler;
 import com.sun.net.httpserver.HttpServer;
 import com.zhangheng.util.NetworkUtil;
 import lombok.Getter;
@@ -56,12 +58,12 @@ public class LocalServerFlvPlayer extends Task {
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
-                server.createContext("/", new TextHandler("FLVPlayer.html", "text/html"));
-                server.createContext("/js", new StreamHandler("/js/", "text/javascript"));
-                server.createContext("/css", new StreamHandler("/css/", "text/css"));
-                server.createContext("/fonts", new StreamHandler("/fonts/", "application/octet-stream"));
-                server.createContext("/img", new StreamHandler("/img/", "application/octet-stream"));
-                server.createContext("/static", new StreamHandler());
+                server.createContext("/", new TextFileHandler("FLVPlayer.html", "text/html"));
+                server.createContext("/js", new StreamFileHandler("/js/", "text/javascript"));
+                server.createContext("/css", new StreamFileHandler("/css/", "text/css"));
+                server.createContext("/fonts", new StreamFileHandler("/fonts/", "application/octet-stream"));
+                server.createContext("/img", new StreamFileHandler("/img/", "application/octet-stream"));
+                server.createContext("/static", new StreamFileHandler());
                 server.createContext("/flv", new FlvFileHandler("./"));
             }
             if (server == null) {

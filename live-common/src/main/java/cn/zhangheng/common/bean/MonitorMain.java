@@ -61,6 +61,14 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
     private int tryRecordSec = 1;
     private final AtomicBoolean isForceStop = new AtomicBoolean(false);//是否强制停止
 
+    public void setIsForceStop(boolean is) {
+        isForceStop.set(is);
+    }
+
+    public boolean getIsRunning() {
+        return isRunning.get();
+    }
+
     public boolean getIsForceStop() {
         return isForceStop.get();
     }
@@ -143,9 +151,9 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                 log.info(Constant.Application + "开始监听! {}", owner);
                 isRunning.set(true);
                 tryMonitorSec = 1;
-                if (!RunMode.FILE.equals(setting.getRunMode())){
+                if (!RunMode.FILE.equals(setting.getRunMode())) {
                     if (trayIconUtil != null) {
-                        trayIconUtil.setMenuVisible(trayIconUtil.getMonitorMenu(),false);
+                        trayIconUtil.setMenuVisible(trayIconUtil.getMonitorMenu(), false);
                     }
                 }
             }
@@ -444,25 +452,12 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         return new TrayIconUtil.ClickListener() {
             @Override
             public boolean startRecordClick(ActionEvent e) {
-                if (recorderTask == null) {
-                    recorderTask = getRecorderTask();
-                }
-                if (room.isLiving() && (recorder == null || !recorder.isRunning())) {
-                    recordFlag.set(true);
-                    recorderTask.run(room);
-                    return true;
-                }
-                return false;
+                return startRecord();
             }
 
             @Override
             public boolean stopRecordClick(ActionEvent e) {
-                if (recorder != null && recorder.isRunning()) {
-                    recordFlag.set(false);
-                    recorder.stop(false);
-                    return true;
-                }
-                return false;
+                return stopRecord();
             }
 
             @Override
@@ -507,6 +502,27 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                 return System.getProperty("monitor.url");
             }
         };
+    }
+
+    public boolean stopRecord() {
+        if (recorder != null && recorder.isRunning()) {
+            recordFlag.set(false);
+            recorder.stop(false);
+            return true;
+        }
+        return false;
+    }
+
+    public boolean startRecord() {
+        if (recorderTask == null) {
+            recorderTask = getRecorderTask();
+        }
+        if (room.isLiving() && (recorder == null || !recorder.isRunning())) {
+            recordFlag.set(true);
+            recorderTask.run(room);
+            return true;
+        }
+        return false;
     }
 
     public void exit() {
