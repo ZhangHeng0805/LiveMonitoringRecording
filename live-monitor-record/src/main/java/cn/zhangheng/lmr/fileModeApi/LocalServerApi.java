@@ -1,5 +1,6 @@
 package cn.zhangheng.lmr.fileModeApi;
 
+import cn.zhangheng.common.http.handle.ProxyHandler;
 import cn.zhangheng.common.http.handle.StreamFileHandler;
 import cn.zhangheng.common.http.handle.TextFileHandler;
 import com.sun.net.httpserver.HttpServer;
@@ -40,6 +41,7 @@ public class LocalServerApi {
                 server.createContext("/api", new ApiHandler("/api/"));
                 server.createContext("/action", new ActionHandler("/action/"));
                 server.createContext("/img", new StreamFileHandler("/img/"));
+                server.createContext("/proxy", new ProxyHandler());
             } catch (Exception e) {
                 log.error("本地API服务创建失败！{}", ThrowableUtil.getAllCauseMessage(e));
             }
