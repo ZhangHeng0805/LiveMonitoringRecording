@@ -54,16 +54,16 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
 //        forms.put("msToken", "IFF8HufmT5JYLYlGgzmNEiFVrPnxbQ75pNAz6nfXYOZ9J52rPRUheXPMvyMQE3FvcI6WviTXDJYp7r_8GpH1qI0yfQU-4dQrS3NI9bg57BzqjSP3HITkUulKS4D8NfWq5bvuxMQTKq7MUixe5HbFj--nQbiIftwg9RxlzI-nhQJljlzd2mv3Cw==");
 //        forms.put("a_bogus", "Ov4fgFtydZ8fedKbucaxHjpUYyglNBuySUT2We3u7xzBc7tYzWNtEPc6cxok4MjmjbpiiK37FVt/YExcs2Uk1MnkzmkkSp7RnTdVVX0o8Z7daskhVpfPeJbEqi-T8A4PKQAJEnEXU0lw1ocfNHcwlFF9eAti-/Y80Ha6pNRU7xgBg4kYI2/tePZ1");
         headers = new HashMap<>();
-        headers.put("Sec-Fetch-Site", "none");
-        headers.put("Sec-Fetch-Mode", "navigate");
-        headers.put("Sec-Fetch-Dest", "document");
+//        headers.put("Sec-Fetch-Site", "none");
+//        headers.put("Sec-Fetch-Mode", "navigate");
+//        headers.put("Sec-Fetch-Dest", "document");
 //        headers.put("Sec-Ch-Ua-Platform", "\"Windows\"");
-        headers.put("Sec-Ch-Ua-Mobile", "?0");
+//        headers.put("Sec-Ch-Ua-Mobile", "?0");
 //        headers.put("Sec-Ch-Ua", "\"Not;A=Brand\";v=\"99\", \"Microsoft Edge\";v=\"139\", \"Chromium\";v=\"139\"");
-        headers.put("Dnt", "1");
-        headers.put("Priority", "u=0, i");
+//        headers.put("Dnt", "1");
+//        headers.put("Priority", "u=0, i");
 
-        headers.put("Pragma", "no-cache");
+//        headers.put("Pragma", "no-cache");
 //        headers.put("Upgrade-Insecure-Requests", "1");
         headers.put("accept-language", "zh-CN,zh;q=0.9");
         headers.put("accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7");
@@ -182,7 +182,7 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
             } else {
                 int responseCode = -1;
                 responseCode = connection.getResponseCode();
-                System.err.println(responseCode + ": " + body);
+                System.err.println(Thread.currentThread().getName() + "-" + responseCode + ": " + body);
             }
         } catch (Exception e) {
             log.error("请求刷新失败！{}", ThrowableUtil.getAllCauseMessage(e));

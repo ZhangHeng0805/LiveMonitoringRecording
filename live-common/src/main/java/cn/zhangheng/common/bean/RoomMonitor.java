@@ -26,6 +26,8 @@ public abstract class RoomMonitor<R extends Room, S extends RoomService<R>> exte
     private int runCount = 0;
     @Setter
     private RoomListener<R> listener = null;
+    // 用于保存任务所在的工作线程
+    private volatile Thread workerThread = null;
 
     public RoomMonitor(R room) {
         this.room = room;
@@ -50,6 +52,7 @@ public abstract class RoomMonitor<R extends Room, S extends RoomService<R>> exte
         }
         Future<?> future = mainExecutors.submit(() -> {
             Thread.currentThread().setName(room.getNickname() + "-monitor-" + room.getPlatform().name());
+            workerThread = Thread.currentThread();
             isRunning.set(true);
             if (!room.isLiving()) {
                 state = State.NOT_LIVING;
@@ -117,6 +120,11 @@ public abstract class RoomMonitor<R extends Room, S extends RoomService<R>> exte
             }
         }
         mainExecutors.shutdown();
+    }
+
+    public void nowRefresh() {
+        refresh(true);
+        workerThread.interrupt();
     }
 
     @Override

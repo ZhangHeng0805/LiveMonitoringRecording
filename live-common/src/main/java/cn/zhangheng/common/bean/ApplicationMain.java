@@ -34,6 +34,8 @@ public abstract class ApplicationMain<R extends Room> {
     protected R room;
     @Getter
     protected MonitorMain<R, ?> monitorMain;
+    @Getter
+    protected String deviceUniqueId;
 
 
     private String getBanner() {
@@ -169,7 +171,8 @@ public abstract class ApplicationMain<R extends Room> {
                 }
             }
             try {
-                ActivationUtil.verifyActivationCodeFile(new DeviceInfoCollector().getDeviceUniqueId(), setting.getActivateVoucherPath());
+                deviceUniqueId = new DeviceInfoCollector().getDeviceUniqueId();
+                ActivationUtil.verifyActivationCodeFile(deviceUniqueId, setting.getActivateVoucherPath());
             } catch (ErrorException errorException) {
                 String message = ThrowableUtil.getAllCauseMessage(errorException);
                 TrayIconUtil iconUtil = TrayIconUtil.getInstance(Constant.Application);

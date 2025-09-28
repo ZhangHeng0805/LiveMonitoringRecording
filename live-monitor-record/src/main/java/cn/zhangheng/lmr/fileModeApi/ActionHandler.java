@@ -3,6 +3,7 @@ package cn.zhangheng.lmr.fileModeApi;
 import cn.hutool.core.util.StrUtil;
 import cn.zhangheng.common.bean.MonitorMain;
 import cn.zhangheng.common.bean.Room;
+import cn.zhangheng.common.bean.enums.MonitorStatus;
 import cn.zhangheng.common.record.Recorder;
 import cn.zhangheng.douyin.util.DouYinBrowserFactory;
 import cn.zhangheng.lmr.FileModeMain;
@@ -28,22 +29,39 @@ public class ActionHandler extends JSONHandler {
         super(prefix);
     }
 
+
     @Override
     public void handle(HttpExchange httpExchange) throws IOException {
         String indexPath = getIndexPath(httpExchange, prefix);
         Message msg = new Message();
         if (indexPath.startsWith("monitor")) {
             Map<String, String> query = parseQuery(httpExchange);
-            actionMonitor(msg, query);
+            if (checkActionKey(query, msg)) {
+                actionMonitor(msg, query);
+            } else {
+                msg.setCode(1);
+            }
         } else if (indexPath.startsWith("record")) {
             Map<String, String> query = parseQuery(httpExchange);
-            actionRecord(msg, query);
+            if (checkActionKey(query, msg)) {
+                actionRecord(msg, query);
+            } else {
+                msg.setCode(1);
+            }
+        }else if (indexPath.startsWith("refresh")) {
+            Map<String, String> query = parseQuery(httpExchange);
+            actionRefresh(msg, query);
         } else if (indexPath.startsWith("getThread")) {
             getThread(msg);
-        }else if (indexPath.startsWith("clear")) {
-            DouYinBrowserFactory.getBrowser().clear();
-            msg.setMessage("清理成功！");
-        }else {
+        } else if (indexPath.startsWith("clear")) {
+            Map<String, String> query = parseQuery(httpExchange);
+            if (checkActionKey(query, msg)) {
+                DouYinBrowserFactory.getBrowser().clear();
+                msg.setMessage("清理成功！");
+            } else {
+                msg.setCode(1);
+            }
+        } else {
             msg.setCode(1);
             msg.setMessage("访问的接口路径不存在！" + prefix + indexPath);
         }
@@ -109,6 +127,29 @@ public class ActionHandler extends JSONHandler {
         msg.setMessage(StrUtil.format("{}录制{}！", flag ? "开启" : "停止", res ? "成功" : "失败"));
     }
 
+    private void actionRefresh(Message msg, Map<String, String> query) {
+        String key = query.get("key");
+        boolean flag = Boolean.parseBoolean(query.get("flag"));
+        Main main = FileModeMain.getMainMap().get(key);
+        if (main == null) {
+            msg.setCode(1);
+            msg.setMessage("标识" + key + "不存在！");
+            return;
+        }
+        MonitorMain<Room, ?> monitorMain = main.getMonitorMain();
+        if (monitorMain.getStatus()!= MonitorStatus.RUNNING){
+            msg.setCode(1);
+            msg.setMessage("该直播间没有启动监听!");
+        }
+        try {
+            monitorMain.getRoomMonitor().nowRefresh();
+            msg.setMessage("刷新成功!");
+        }catch (Exception e){
+            msg.setCode(1);
+            msg.setMessage("刷新失败!");
+        }
+    }
+
     private void getThread(Message msg) {
         ThreadPoolExecutor threadPool = FileModeMain.getThreadPool();
         int corePoolSize = threadPool.getCorePoolSize();
@@ -120,5 +161,24 @@ public class ActionHandler extends JSONHandler {
         res.put("remainingThreads", remainingThreads);
         msg.setObj(res);
         msg.setMessage(StrUtil.format("核心线程数: {}， 正在工作的线程数: {}, 剩余可用线程数: {}", corePoolSize, activeCount, remainingThreads));
+    }
+
+    private boolean checkActionKey(Map<String, String> query, Message msg) {
+        String actionKey = query.get("actionKey");
+        if (StrUtil.isBlank(actionKey)) {
+            msg.setMessage("操作秘钥不能为空！");
+            return false;
+        }
+        String key = query.get("key");
+        Main main = FileModeMain.getMainMap().get(key);
+        if (main == null) {
+            msg.setMessage("标识不存在！");
+            return false;
+        }
+        if (!actionKey.equals(main.getDeviceUniqueId())) {
+            msg.setMessage("操作秘钥错误！");
+            return false;
+        }
+        return true;
     }
 }
