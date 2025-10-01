@@ -10,6 +10,7 @@ import cn.zhangheng.lmr.FileModeMain;
 import cn.zhangheng.lmr.Main;
 import com.sun.net.httpserver.HttpExchange;
 import com.zhangheng.bean.Message;
+import com.zhangheng.util.ThrowableUtil;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -48,7 +49,14 @@ public class ActionHandler extends JSONHandler {
             } else {
                 msg.setCode(1);
             }
-        }else if (indexPath.startsWith("refresh")) {
+        } else if (indexPath.startsWith("setting")) {
+            Map<String, String> query = parseQuery(httpExchange);
+            if (checkActionKey(query, msg)) {
+                actionSetting(msg, query);
+            } else {
+                msg.setCode(1);
+            }
+        } else if (indexPath.startsWith("refresh")) {
             Map<String, String> query = parseQuery(httpExchange);
             actionRefresh(msg, query);
         } else if (indexPath.startsWith("getThread")) {
@@ -137,16 +145,32 @@ public class ActionHandler extends JSONHandler {
             return;
         }
         MonitorMain<Room, ?> monitorMain = main.getMonitorMain();
-        if (monitorMain.getStatus()!= MonitorStatus.RUNNING){
+        if (monitorMain.getStatus() != MonitorStatus.RUNNING) {
             msg.setCode(1);
             msg.setMessage("该直播间没有启动监听!");
         }
         try {
             monitorMain.getRoomMonitor().nowRefresh();
             msg.setMessage("刷新成功!");
-        }catch (Exception e){
+        } catch (Exception e) {
             msg.setCode(1);
             msg.setMessage("刷新失败!");
+        }
+    }
+
+    private void actionSetting(Message msg, Map<String, String> query) {
+        String key = query.get("key");
+        Main main = FileModeMain.getMainMap().get(key);
+        try {
+            MonitorMain<Room, ?> monitorMain = main.getMonitorMain();
+            if (query.containsKey("delayIntervalSec")) {
+                int delayIntervalSec = Integer.parseInt(query.get("delayIntervalSec"));
+                monitorMain.getRoom().getSetting().setDelayIntervalSec(delayIntervalSec);
+            }
+            msg.setMessage("设置成功!");
+        } catch (Exception e) {
+            msg.setCode(1);
+            msg.setMessage("设置错误! " + ThrowableUtil.getAllCauseMessage(e));
         }
     }
 

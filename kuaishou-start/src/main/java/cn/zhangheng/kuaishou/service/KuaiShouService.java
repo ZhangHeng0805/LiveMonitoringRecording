@@ -46,6 +46,7 @@ public class KuaiShouService extends RoomService<KuaiShouRoom> {
     public void refresh(boolean force) {
         JSONObject data = getData();
         initRoom(data, force);
+        room.setUpdateTime(new Date());
     }
 
     @Override

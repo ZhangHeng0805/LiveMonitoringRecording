@@ -122,6 +122,7 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
             }
             getData(force);
         }
+        room.setUpdateTime(new Date());
     }
 
     public void getData(boolean force) {
@@ -138,6 +139,7 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
                 JSONObject data = entries.getJSONObject("data");
                 Integer code = entries.getInt("status_code", -1);
                 if (code == 0) {
+                    room.setUpdateTime(new Date());
                     room.setLiving(data.getInt("room_status", -1) == 0);
                     if (StrUtil.isBlank(room.getNickname())) {
                         room.setNickname(data.getJSONObject("user").getStr("nickname"));

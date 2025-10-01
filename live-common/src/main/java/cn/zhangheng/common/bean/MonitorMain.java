@@ -133,6 +133,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                 }
             } while (isRunning.get());
         } finally {
+            isRunning.set(false);
             status = MonitorStatus.END;
             trayIconUtil.shutdown();
         }

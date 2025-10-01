@@ -63,6 +63,7 @@ public class BilibiliService extends RoomService<BiliRoom> {
             room_info();
             if (force || room.getStreams() == null || room.getStreams().isEmpty()) room_stream();
         }
+        room.setUpdateTime(new Date());
     }
 
     @Override

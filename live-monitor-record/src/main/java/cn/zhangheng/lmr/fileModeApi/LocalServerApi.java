@@ -38,9 +38,12 @@ public class LocalServerApi {
             try {
                 server = HttpServer.create(new InetSocketAddress(port), 0);
                 server.createContext("/", new TextFileHandler("Monitor.html", "text/html"));
+                server.createContext("/img", new StreamFileHandler("/img/"));
+                server.createContext("/js", new StreamFileHandler("/js/", "text/javascript"));
+                server.createContext("/css", new StreamFileHandler("/css/", "text/css"));
+                server.createContext("/fonts", new StreamFileHandler("/fonts/", "application/octet-stream"));
                 server.createContext("/api", new ApiHandler("/api/"));
                 server.createContext("/action", new ActionHandler("/action/"));
-                server.createContext("/img", new StreamFileHandler("/img/"));
                 server.createContext("/proxy", new ProxyHandler());
             } catch (Exception e) {
                 log.error("本地API服务创建失败！{}", ThrowableUtil.getAllCauseMessage(e));

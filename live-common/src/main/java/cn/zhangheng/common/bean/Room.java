@@ -37,6 +37,8 @@ public abstract class Room {
     protected volatile boolean living;
     //开始时间
     protected Date startTime;
+    //更新时间
+    protected Date updateTime;
     //直播封面
     protected String cover;
     //用户头像
