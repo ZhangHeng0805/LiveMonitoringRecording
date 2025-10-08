@@ -77,7 +77,7 @@ public class ActionHandler extends JSONHandler {
         responseJson(httpExchange, msg);
     }
 
-    private void actionMonitor(Message msg, Map<String, String> query) {
+    private synchronized void actionMonitor(Message msg, Map<String, String> query) {
         String key = query.get("key");
         boolean flag = Boolean.parseBoolean(query.get("flag"));
         Main main = FileModeMain.getMainMap().get(key);
@@ -109,7 +109,7 @@ public class ActionHandler extends JSONHandler {
 
     }
 
-    private void actionRecord(Message msg, Map<String, String> query) {
+    private synchronized void actionRecord(Message msg, Map<String, String> query) {
         String key = query.get("key");
         boolean flag = Boolean.parseBoolean(query.get("flag"));
         Main main = FileModeMain.getMainMap().get(key);
@@ -135,7 +135,7 @@ public class ActionHandler extends JSONHandler {
         msg.setMessage(StrUtil.format("{}录制{}！", flag ? "开启" : "停止", res ? "成功" : "失败"));
     }
 
-    private void actionRefresh(Message msg, Map<String, String> query) {
+    private synchronized void actionRefresh(Message msg, Map<String, String> query) {
         String key = query.get("key");
         boolean flag = Boolean.parseBoolean(query.get("flag"));
         Main main = FileModeMain.getMainMap().get(key);
@@ -158,7 +158,7 @@ public class ActionHandler extends JSONHandler {
         }
     }
 
-    private void actionSetting(Message msg, Map<String, String> query) {
+    private synchronized void actionSetting(Message msg, Map<String, String> query) {
         String key = query.get("key");
         Main main = FileModeMain.getMainMap().get(key);
         try {

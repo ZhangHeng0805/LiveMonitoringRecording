@@ -62,9 +62,6 @@ public class MyThreadLocal<T> {
             listener.beforeClear(map);
         }
         map.clear();
-        if (listener != null) {
-            listener.afterClear();
-        }
     }
 
     interface Listener<T> {
@@ -80,10 +77,5 @@ public class MyThreadLocal<T> {
         default void beforeClear(ConcurrentHashMap<String, T> map) {
         }
 
-        /**
-         * 在所有值被清除后调用
-         */
-        default void afterClear() {
-        }
     }
 }

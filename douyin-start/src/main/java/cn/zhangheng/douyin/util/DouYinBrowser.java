@@ -85,7 +85,7 @@ public class DouYinBrowser implements Closeable {
                 waitForTargetRequest(page);
             }
             page.offRequest(handler);
-        } catch (Exception e) {
+        } catch (Throwable e) {
             log.error("处理直播间[" + roomUrl + "]时发生异常,{}", ThrowableUtil.getAllCauseMessage(e)); // 记录完整堆栈
 //            closeContext();
         } finally {

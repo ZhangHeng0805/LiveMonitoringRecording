@@ -6,7 +6,7 @@
     <parent>
         <groupId>cn.zhangheng.record</groupId>
         <artifactId>LiveMonitoringRecording</artifactId>
-        <version>3.1</version>
+        <version>3.5</version>
     </parent>
 
     <groupId>cn.zhangheng.lmr</groupId>

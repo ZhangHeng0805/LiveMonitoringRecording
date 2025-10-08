@@ -105,7 +105,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         try {
             this.room = room;
             roomMonitor = getRoomMonitor(room);
-            while (room.getNickname() == null) {
+            while (getIsRunning() && room.getNickname() == null) {
                 try {
                     TimeUnit.SECONDS.sleep(1);
                 } catch (InterruptedException ignored) {
@@ -131,7 +131,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                             tryMonitorSec++;
                     }
                 }
-            } while (isRunning.get());
+            } while (getIsRunning());
         } finally {
             isRunning.set(false);
             status = MonitorStatus.END;
@@ -204,7 +204,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                     }
                     if (isRecord) {
                         trayIconUtil.setStartRecordStatue(true);
-                        while (recorder == null) {
+                        while (getIsRunning() && recorder == null) {
                             try {
                                 TimeUnit.MILLISECONDS.sleep(500);
                             } catch (InterruptedException ignored) {

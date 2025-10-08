@@ -46,8 +46,15 @@ public class PlaywrightBrowser implements AutoCloseable {
         @Override
         public void beforeClear(ConcurrentHashMap<String, BrowserContext> map) {
             for (Map.Entry<String, BrowserContext> entry : map.entrySet()) {
-                entry.getValue().close();
-                log.debug("{}清除BrowserContext，已关闭", entry.getKey());
+                try {
+                    BrowserContext value = entry.getValue();
+                    if (value.browser().isConnected()) {
+                        value.close();
+                        log.debug("{}清除BrowserContext，已关闭", entry.getKey());
+                    }
+                } catch (Throwable e) {
+                    log.error("Error clearing browser context: {}", e.getMessage());
+                }
             }
         }
     });
@@ -211,7 +218,7 @@ public class PlaywrightBrowser implements AutoCloseable {
 //            }
         } catch (Exception e) {
             log.error("页面导航失败:{} ,{} ", url, ThrowableUtil.getAllCauseMessage(e));
-            throw new RuntimeException("导航到" + url + "失败", e);
+//            throw new RuntimeException("导航到" + url + "失败", e);
         }
         return page;
     }
@@ -252,8 +259,8 @@ public class PlaywrightBrowser implements AutoCloseable {
                 // 每50次关闭一次
                 closeContext();
             }
-        } catch (Exception e) {
-            log.warn("关闭页面失败", e);
+        } catch (Throwable e) {
+            log.error("关闭页面失败：{}", e.getMessage());
         }
     }
 
@@ -264,7 +271,7 @@ public class PlaywrightBrowser implements AutoCloseable {
 
     public void closeContext() {
         BrowserContext browserContext = context.get();
-        if (browserContext != null) {
+        if (browserContext != null && browserContext.browser().isConnected()) {
             browserContext.close();
             context.remove();
         }

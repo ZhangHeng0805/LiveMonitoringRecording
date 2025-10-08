@@ -6,7 +6,7 @@
 
     <groupId>cn.zhangheng.record</groupId>
     <artifactId>LiveMonitoringRecording</artifactId>
-    <version>3.1</version>
+    <version>3.5</version>
     <packaging>pom</packaging>
     <description>【星曦向荣】直播录屏工具</description>
     <modules>
@@ -20,7 +20,7 @@
     </modules>
 
     <properties>
-        <xxxr.version>3.1</xxxr.version>
+        <xxxr.version>3.5</xxxr.version>
         <project.encoding>UTF-8</project.encoding>
         <java.version>1.8</java.version>
         <maven.compiler.source>8</maven.compiler.source>
