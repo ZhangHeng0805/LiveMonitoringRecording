@@ -54,6 +54,7 @@ public class DouYinBrowserFactory {
             log.warn("页面源码为空，无法提取房间信息");
             return;
         }
+        pageSource=pageSource.substring(pageSource.lastIndexOf("\\\"homeStore\\\":"));
         // 提取直播状态
         String status = extractStr(pageSource, STATUS_STR_PATTERN, null);
         room.setLiving("2".equals(status));

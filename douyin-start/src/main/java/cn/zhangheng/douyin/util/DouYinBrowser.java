@@ -1,8 +1,10 @@
 package cn.zhangheng.douyin.util;
 
+import cn.hutool.core.util.StrUtil;
 import cn.zhangheng.browser.PlaywrightBrowser;
 import cn.zhangheng.common.bean.Constant;
 import cn.zhangheng.douyin.DouYinRoom;
+import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Request;
 import com.zhangheng.util.ThrowableUtil;
@@ -10,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
+import java.net.URL;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -58,6 +61,14 @@ public class DouYinBrowser implements Closeable {
             checkAndInitBrowser();
             page = browser.newPage();
 
+            BrowserContext context = page.context();
+            if (StrUtil.isNotBlank(room.getCookie()) && context.cookies(roomUrl).isEmpty()) {
+                String host = new URL(roomUrl).getHost();
+                context.addCookies(PlaywrightBrowser.parseCookieString(host, room.getCookie()));
+                log.debug("{}设置cookie成功！", host);
+            }
+//            log.debug("=== 对 {} 生效的 Cookie 共 {} 个 ===", roomUrl, context.cookies(roomUrl).size());
+
             // 注册请求监听器（提取目标请求信息）
             Consumer<Request> handler = request -> {
                 String url = request.url();
@@ -72,7 +83,6 @@ public class DouYinBrowser implements Closeable {
                 }
             };
             page.onRequest(handler);
-
             // 导航到直播间页面
             browser.navigatePage(roomUrl, page);
 

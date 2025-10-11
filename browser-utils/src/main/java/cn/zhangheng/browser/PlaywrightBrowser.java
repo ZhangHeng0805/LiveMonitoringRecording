@@ -1,7 +1,7 @@
 package cn.zhangheng.browser;
 
-import cn.hutool.http.useragent.UserAgent;
 import com.microsoft.playwright.*;
+import com.microsoft.playwright.options.Cookie;
 import com.microsoft.playwright.options.LoadState;
 import com.microsoft.playwright.options.WaitUntilState;
 import com.zhangheng.util.ThrowableUtil;
@@ -10,8 +10,7 @@ import lombok.Setter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -185,6 +184,42 @@ public class PlaywrightBrowser implements AutoCloseable {
         // 创建新页面并注入反检测脚本
         page.addInitScript(initScript);
         return page;
+    }
+
+    // 解析 Cookie 字符串为 Playwright 的 Cookie 对象
+    public static List<Cookie> parseCookieString(String targetDomain,String cookieStr) {
+        // 例如：访问抖音网页版填 ".douyin.com"（带点表示所有子域名生效），访问其他网站需替换
+//        String targetDomain = ".douyin.com";
+
+        // 拆分Cookie字符串并批量创建Cookie对象
+        List<Cookie> cookieList = new ArrayList<>();
+        // 按 ";" 拆分（处理可能的空格差异，用trim()去除首尾空格）
+        String[] cookiePairs = cookieStr.split(";");
+        for (String pair : cookiePairs) {
+            pair = pair.trim(); // 去除空格（如拆分后可能有 " store-region-src=uid"）
+            if (!pair.contains("=")) {
+                continue; // 跳过空值或非key=value格式的内容
+            }
+
+            // 拆分name和value（最多拆1次，避免value中包含"="）
+            String[] keyValue = pair.split("=", 2);
+            String cookieName = keyValue[0].trim();
+            String cookieValue = keyValue[1].trim();
+
+            // 创建Cookie对象（旧版本：直接给字段赋值）
+            Cookie cookie = new Cookie(cookieName,cookieValue);
+//            cookie.name = cookieName;       // Cookie名称
+//            cookie.value = cookieValue;     // Cookie值
+            cookie.domain = targetDomain;   // 必选：绑定的域名
+            cookie.path = "/";              // 必选：生效路径（默认"/"，表示整个域名）
+            cookie.httpOnly = false;        // 可选：是否仅HTTP访问（根据实际情况调整）
+            cookie.secure = true;           // 可选：HTTPS网站需设为true，HTTP设为false（抖音是HTTPS）
+            // cookie.expires = ...;       // 可选：过期时间（不设置则为会话Cookie，关闭浏览器失效）
+
+            cookieList.add(cookie); // 加入列表
+        }
+
+        return cookieList;
     }
 
     /**
