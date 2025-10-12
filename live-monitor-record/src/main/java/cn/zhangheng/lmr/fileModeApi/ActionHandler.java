@@ -1,6 +1,7 @@
 package cn.zhangheng.lmr.fileModeApi;
 
 import cn.hutool.core.util.StrUtil;
+import cn.zhangheng.common.bean.Constant;
 import cn.zhangheng.common.service.MonitorMain;
 import cn.zhangheng.common.bean.Room;
 import cn.zhangheng.common.bean.enums.MonitorStatus;
@@ -199,7 +200,7 @@ public class ActionHandler extends JSONHandler {
             msg.setMessage("标识不存在！");
             return false;
         }
-        if (!actionKey.equals(main.getDeviceUniqueId())) {
+        if (!actionKey.equals(Constant.deviceUniqueId)) {
             msg.setMessage("操作秘钥错误！");
             return false;
         }

@@ -36,8 +36,6 @@ public abstract class ApplicationMain<R extends Room> {
     protected R room;
     @Getter
     protected MonitorMain<R, ?> monitorMain;
-    @Getter
-    protected String deviceUniqueId;
 
 
     private String getBanner() {
@@ -61,8 +59,7 @@ public abstract class ApplicationMain<R extends Room> {
     public void start(Setting setting, String[] args) {
         System.out.println(getBanner());
         try {
-            deviceUniqueId = new DeviceInfoCollector().getDeviceUniqueId();
-            ActivationUtil.verifyActivationCodeFile(deviceUniqueId, new Setting().getActivateVoucherPath());
+            ActivationUtil.verifyActivationCodeFile(Constant.deviceUniqueId, new Setting().getActivateVoucherPath());
         } catch (ErrorException errorException) {
             String message = ThrowableUtil.getAllCauseMessage(errorException);
             log.error(message, errorException);

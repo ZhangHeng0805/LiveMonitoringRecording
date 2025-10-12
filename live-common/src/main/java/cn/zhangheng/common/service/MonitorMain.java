@@ -157,7 +157,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                 tryMonitorSec = 1;
                 if (!RunMode.FILE.equals(setting.getRunMode())) {
                     if (trayIconUtil != null) {
-                        trayIconUtil.setMenuVisible(trayIconUtil.getMonitorMenu(), false);
+                        trayIconUtil.setMenuVisible(trayIconUtil.getOpenMonitorMenu(), false);
                     }
                 }
             }

@@ -69,8 +69,7 @@ public class FileModeMain {
             }
             Setting setting = new Setting();
             try {
-                String deviceUniqueId = new DeviceInfoCollector().getDeviceUniqueId();
-                ActivationUtil.verifyActivationCodeFile(deviceUniqueId, setting.getActivateVoucherPath());
+                ActivationUtil.verifyActivationCodeFile(Constant.deviceUniqueId, setting.getActivateVoucherPath());
             } catch (ErrorException errorException) {
                 String message = ThrowableUtil.getAllCauseMessage(errorException);
                 TrayIconUtil iconUtil = TrayIconUtil.getInstance(Constant.Application);

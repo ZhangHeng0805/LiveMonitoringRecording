@@ -1,5 +1,7 @@
 package cn.zhangheng.common.bean;
 
+import cn.zhangheng.common.activation.DeviceInfoCollector;
+
 /**
  * @author: ZhangHeng
  * @email: zhangheng_0805@163.com
@@ -20,6 +22,8 @@ public class Constant {
     public final static int maxMonitorThreads = 10;
     //默认监听平台服务端口
     public final static int monitorServerPort=8005;
+    //设备标识ID
+    public final static String deviceUniqueId = new DeviceInfoCollector().getDeviceUniqueId();
 
 
 }

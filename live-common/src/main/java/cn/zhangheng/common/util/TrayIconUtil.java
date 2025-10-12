@@ -18,7 +18,6 @@ import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * @author: ZhangHeng
@@ -34,7 +33,7 @@ public class TrayIconUtil {
     @Getter
     private PopupMenu pop;//创建弹出式菜单
     @Getter
-    private MenuItem startRecordMenu, stopRecordMenu, closeMenu, openWebMenu, playVideo, monitorMenu;
+    private MenuItem startRecordMenu, stopRecordMenu, closeMenu, openRoomMenu, playFlvVideo, openMonitorMenu;
     @Setter
     @Getter
     private ClickListener clickListener;
@@ -216,10 +215,10 @@ public class TrayIconUtil {
         startRecordMenu = new MenuItem("Start Recording");
         stopRecordMenu = new MenuItem("Stop Recording");
         closeMenu = new MenuItem("Exit");
-        openWebMenu = new MenuItem("Open Web");
-        playVideo = new MenuItem("Play Video");
-        monitorMenu = new MenuItem("Open Monitor");
-        monitorMenu.addActionListener(e -> {
+        openRoomMenu = new MenuItem("Open Room");
+        playFlvVideo = new MenuItem("Play Flv Video");
+        openMonitorMenu = new MenuItem("Open Monitor");
+        openMonitorMenu.addActionListener(e -> {
             if (clickListener != null) {
                 String url = clickListener.openMonitor(e);
                 if (url != null) {
@@ -230,9 +229,9 @@ public class TrayIconUtil {
         });
 
         pop.add(closeMenu);
-        pop.add(openWebMenu);
-        pop.add(playVideo);
-        pop.add(monitorMenu);
+        pop.add(openRoomMenu);
+        pop.add(playFlvVideo);
+        pop.add(openMonitorMenu);
         startRecordMenu.addActionListener(e -> {
             if (clickListener == null || clickListener.startRecordClick(e)) {
                 log.debug("点击事件: 开始录制");
@@ -251,7 +250,7 @@ public class TrayIconUtil {
                 System.exit(0);
             }
         });
-        openWebMenu.addActionListener(e -> {
+        openRoomMenu.addActionListener(e -> {
             if (clickListener != null) {
                 String url = clickListener.openWebClick(e);
                 if (url != null) {
@@ -260,7 +259,7 @@ public class TrayIconUtil {
                 }
             }
         });
-        playVideo.addActionListener(e -> {
+        playFlvVideo.addActionListener(e -> {
             if (clickListener != null) {
                 String url = clickListener.playVideo(e);
                 if (url != null) {
