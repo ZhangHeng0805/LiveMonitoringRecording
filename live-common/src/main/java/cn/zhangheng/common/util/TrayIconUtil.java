@@ -15,6 +15,7 @@ import java.awt.event.ActionEvent;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -97,7 +98,7 @@ public class TrayIconUtil {
         iconRegistry.put(threadKey, newIcon);
         // 初始化图标（在EDT线程中执行）
         newIcon.initTrayIconInEDT();
-        log.info("线程[{}]：创建新托盘图标，当前总数: {}", threadKey, iconRegistry.size());
+//        log.info("线程[{}]：创建新托盘图标，当前总数: {}", threadKey, iconRegistry.size());
 
         return iconRegistry.get(threadKey);
 
@@ -110,33 +111,51 @@ public class TrayIconUtil {
                 log.error("线程[{}]：系统托盘图标已达上限({})，无法创建新图标", threadKey, MAX_ICON_LIMIT);
                 return;
             }
-            // 使用SwingUtilities确保在EDT线程中操作
-            SwingUtilities.invokeLater(() -> {
-                ClassPathResource classPathResource = new ClassPathResource("/logo.png");
-                try (InputStream inputStreamImg = classPathResource.getStream()) {
-                    Image iconImg = ImageIO.read(inputStreamImg);
-                    this.pop = new PopupMenu();//创建弹出式菜单
-                    addActionListener(pop);
-                    trayIcon = new TrayIcon(iconImg, title, pop);
-                    trayIcon.setImageAutoSize(true);
-                    trayIcon.setToolTip(title);
-                    trayIcon.addActionListener(e -> {
-                        if (clickListener != null) {
-                            log.debug("点击事件: 任务栏图标");
-                            clickListener.iconClick(e);
-                        }
-                    });
-                    // 4. 添加到系统托盘（同步操作避免并发冲突）
-                    synchronized (systemTray) {
-                        systemTray.add(trayIcon);
-                        log.info("线程[{}]：托盘图标创建成功，当前图标总数: {}", threadKey, iconRegistry.size());
-                    }
-                } catch (IOException | AWTException e) {
-                    log.error("系统状态栏通知创建失败：" + ThrowableUtil.getAllCauseMessage(e), e);
+            // 判断当前线程是否为EDT，避免在EDT中调用invokeAndWait导致死锁
+            if (SwingUtilities.isEventDispatchThread()) {
+                // 如果当前已是EDT，直接执行任务（无需通过invokeAndWait）
+                executeTrayIconTask();
+            } else {
+                try {
+                    // 同步提交任务到EDT，并等待任务完成
+                    SwingUtilities.invokeAndWait(this::executeTrayIconTask);
+                } catch (InterruptedException e) {
+                    // 处理线程中断（恢复中断状态，避免中断丢失）
+                    Thread.currentThread().interrupt();
+                    log.error("等待EDT任务时被中断", e);
+                } catch (InvocationTargetException e) {
+                    // 处理任务执行中抛出的异常（异常被包装在InvocationTargetException中）
+                    log.error("EDT中执行托盘任务失败", e.getTargetException());
                 }
-            });
+            }
         } else {
             log.warn("操作系统不支持系统托盘功能");
+        }
+    }
+
+    // 将原lambda中的逻辑提取为独立方法，便于调用
+    private void executeTrayIconTask() {
+        ClassPathResource classPathResource = new ClassPathResource("/logo.png");
+        try (InputStream inputStreamImg = classPathResource.getStream()) {
+            Image iconImg = ImageIO.read(inputStreamImg);
+            this.pop = new PopupMenu();// 创建弹出式菜单
+            addActionListener(pop);
+            trayIcon = new TrayIcon(iconImg, title, pop);
+            trayIcon.setImageAutoSize(true);
+            trayIcon.setToolTip(title);
+            trayIcon.addActionListener(e -> {
+                if (clickListener != null) {
+                    log.debug("点击事件: 任务栏图标");
+                    clickListener.iconClick(e);
+                }
+            });
+            // 4. 添加到系统托盘（同步操作避免并发冲突）
+            synchronized (systemTray) {
+                systemTray.add(trayIcon);
+                log.debug("线程[{}]：托盘图标创建成功，当前图标总数: {}", threadKey, iconRegistry.size());
+            }
+        } catch (IOException | AWTException e) {
+            log.error("系统状态栏通知创建失败：" + ThrowableUtil.getAllCauseMessage(e), e);
         }
     }
 

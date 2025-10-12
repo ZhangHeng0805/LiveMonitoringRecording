@@ -1,4 +1,4 @@
-package cn.zhangheng.douyin.util; /**
+package cn.zhangheng.douyin.browser; /**
  * @author: ZhangHeng
  * @email: zhangheng_0805@163.com
  * @date: 2025/09/14 星期日 05:14
@@ -18,7 +18,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
-import static cn.zhangheng.douyin.util.DouYinBrowserFactory.*;
+import static cn.zhangheng.douyin.browser.DouYinBrowserFactory.*;
 
 /**
  * 浏览器静态类，单次请求，请求完成自动关闭浏览器

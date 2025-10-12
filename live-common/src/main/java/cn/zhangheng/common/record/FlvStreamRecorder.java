@@ -1,14 +1,7 @@
 package cn.zhangheng.common.record;
 
-/**
- * @author: ZhangHeng
- * @email: zhangheng_0805@163.com
- * @date: 2025/05/15 星期四 22:43
- * @version: 1.0
- * @description:
- */
 
-import cn.zhangheng.common.bean.Constant;
+
 import com.zhangheng.file.FileUtil;
 import com.zhangheng.util.ThrowableUtil;
 import com.zhangheng.util.TimeUtil;
@@ -25,7 +18,13 @@ import java.nio.channels.ReadableByteChannel;
 import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
-
+/**
+ * @author: ZhangHeng
+ * @email: zhangheng_0805@163.com
+ * @date: 2025/05/15 星期四 22:43
+ * @version: 1.0
+ * @description: Java录制
+ */
 public class FlvStreamRecorder extends Recorder {
     private static final int BufferSize = 512 * 1024;
     // 缓冲区队列容量

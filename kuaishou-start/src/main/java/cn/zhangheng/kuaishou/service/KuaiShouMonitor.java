@@ -1,6 +1,6 @@
 package cn.zhangheng.kuaishou.service;
 
-import cn.zhangheng.common.bean.RoomMonitor;
+import cn.zhangheng.common.service.RoomMonitor;
 import cn.zhangheng.kuaishou.bean.KuaiShouRoom;
 
 /**

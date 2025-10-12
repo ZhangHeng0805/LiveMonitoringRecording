@@ -1,7 +1,7 @@
 package cn.zhangheng.lmr.fileModeApi;
 
 import cn.hutool.json.JSONUtil;
-import cn.zhangheng.common.http.handle.MyHandler;
+import cn.zhangheng.common.httpServer.handle.MyHandler;
 import com.sun.net.httpserver.HttpExchange;
 import com.zhangheng.util.ThrowableUtil;
 import lombok.extern.slf4j.Slf4j;

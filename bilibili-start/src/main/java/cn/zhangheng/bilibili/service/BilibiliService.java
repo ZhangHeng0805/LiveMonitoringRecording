@@ -6,7 +6,7 @@ import cn.hutool.http.HttpResponse;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import cn.zhangheng.bilibili.bean.BiliRoom;
-import cn.zhangheng.common.bean.RoomService;
+import cn.zhangheng.common.service.RoomService;
 import com.zhangheng.util.TimeUtil;
 
 import java.text.ParseException;

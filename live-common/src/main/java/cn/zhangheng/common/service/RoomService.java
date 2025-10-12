@@ -1,7 +1,9 @@
-package cn.zhangheng.common.bean;
+package cn.zhangheng.common.service;
 
 import cn.hutool.http.Header;
 import cn.hutool.http.HttpRequest;
+import cn.zhangheng.common.bean.Constant;
+import cn.zhangheng.common.bean.Room;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,7 +21,7 @@ import java.util.stream.Collectors;
  * @email: zhangheng_0805@163.com
  * @date: 2025/05/26 星期一 21:37
  * @version: 1.0
- * @description:
+ * @description: 直播间刷新抽象类
  */
 public abstract class RoomService<T extends Room> {
     protected final Logger log = LoggerFactory.getLogger(getClass());

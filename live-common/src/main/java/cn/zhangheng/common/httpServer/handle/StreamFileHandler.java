@@ -1,4 +1,4 @@
-package cn.zhangheng.common.http.handle;
+package cn.zhangheng.common.httpServer.handle;
 
 import cn.hutool.core.map.MapUtil;
 import com.sun.net.httpserver.HttpExchange;

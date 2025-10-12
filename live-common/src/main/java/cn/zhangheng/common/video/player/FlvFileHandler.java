@@ -1,6 +1,6 @@
 package cn.zhangheng.common.video.player;
 
-import cn.zhangheng.common.http.handle.MyHandler;
+import cn.zhangheng.common.httpServer.handle.MyHandler;
 import com.sun.net.httpserver.HttpExchange;
 
 import java.io.*;

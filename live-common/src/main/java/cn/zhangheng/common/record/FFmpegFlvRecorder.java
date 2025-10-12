@@ -13,7 +13,7 @@ import java.util.Map;
  * @email: zhangheng_0805@163.com
  * @date: 2025/06/02 星期一 00:09
  * @version: 1.0
- * @description:
+ * @description: FFmpeg录制
  */
 public class FFmpegFlvRecorder extends Recorder {
 

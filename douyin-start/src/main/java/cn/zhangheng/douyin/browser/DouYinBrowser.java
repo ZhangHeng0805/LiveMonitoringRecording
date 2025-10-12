@@ -1,4 +1,4 @@
-package cn.zhangheng.douyin.util;
+package cn.zhangheng.douyin.browser;
 
 import cn.hutool.core.util.StrUtil;
 import cn.zhangheng.browser.PlaywrightBrowser;
@@ -16,8 +16,8 @@ import java.net.URL;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
-import static cn.zhangheng.douyin.util.DouYinBrowserFactory.TARGET_REQUEST_PREFIX;
-import static cn.zhangheng.douyin.util.DouYinBrowserFactory.extractRoomInfo;
+import static cn.zhangheng.douyin.browser.DouYinBrowserFactory.TARGET_REQUEST_PREFIX;
+import static cn.zhangheng.douyin.browser.DouYinBrowserFactory.extractRoomInfo;
 
 /**
  * @author: ZhangHeng

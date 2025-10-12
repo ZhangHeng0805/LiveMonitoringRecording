@@ -5,12 +5,12 @@ import cn.hutool.http.HttpRequest;
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
-import cn.zhangheng.common.bean.RoomService;
+import cn.zhangheng.common.service.RoomService;
 import cn.zhangheng.common.bean.Setting;
 import cn.zhangheng.common.bean.enums.RunMode;
 import cn.zhangheng.common.util.RequestUtils;
-import cn.zhangheng.douyin.util.DouYinBrowserFactory;
-import cn.zhangheng.douyin.util.DouyinPlaywright;
+import cn.zhangheng.douyin.browser.DouYinBrowserFactory;
+import cn.zhangheng.douyin.browser.DouyinPlaywright;
 import com.zhangheng.util.RandomUtil;
 import com.zhangheng.util.ThrowableUtil;
 

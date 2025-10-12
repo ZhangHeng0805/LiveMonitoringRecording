@@ -1,8 +1,8 @@
 package cn.zhangheng.common.video.player;
 
 import cn.zhangheng.common.bean.Task;
-import cn.zhangheng.common.http.handle.StreamFileHandler;
-import cn.zhangheng.common.http.handle.TextFileHandler;
+import cn.zhangheng.common.httpServer.handle.StreamFileHandler;
+import cn.zhangheng.common.httpServer.handle.TextFileHandler;
 import com.sun.net.httpserver.HttpServer;
 import com.zhangheng.util.NetworkUtil;
 import lombok.Getter;

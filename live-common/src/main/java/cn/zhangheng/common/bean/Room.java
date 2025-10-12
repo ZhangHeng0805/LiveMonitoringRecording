@@ -15,7 +15,7 @@ import java.util.Map;
  * @email: zhangheng_0805@163.com
  * @date: 2025/05/26 星期一 00:40
  * @version: 1.0
- * @description:
+ * @description: 直播间抽象类
  */
 @Data
 public abstract class Room {
@@ -39,9 +39,9 @@ public abstract class Room {
     protected Date startTime;
     //更新时间
     protected Date updateTime;
-    //直播封面
+    //直播封面url
     protected String cover;
-    //用户头像
+    //用户头像url
     protected String avatar;
 
     //直播流不同清晰度地址（由高到低排序）
@@ -64,7 +64,7 @@ public abstract class Room {
     }
 
     public void setCookie(String cookie) {
-        if (StrUtil.isNotBlank(cookie)) {
+        if (StrUtil.isBlank(this.cookie) && StrUtil.isNotBlank(cookie)) {
             this.cookie = cookie;
             log.debug("{}直播间[{}]设置Cookie：{}", getPlatform().name, id, cookie);
         }

@@ -1,16 +1,23 @@
 package cn.zhangheng.lmr;
 
+import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
+import cn.zhangheng.common.activation.ActivationUtil;
+import cn.zhangheng.common.activation.DeviceInfoCollector;
+import cn.zhangheng.common.activation.ErrorException;
+import cn.zhangheng.common.activation.WarnException;
 import cn.zhangheng.common.bean.Constant;
 import cn.zhangheng.common.bean.Room;
 import cn.zhangheng.common.bean.Setting;
-import cn.zhangheng.douyin.util.DouYinBrowserFactory;
+import cn.zhangheng.common.util.TrayIconUtil;
+import cn.zhangheng.douyin.browser.DouYinBrowserFactory;
 import cn.zhangheng.lmr.fileModeApi.LocalServerApi;
 import com.zhangheng.util.ThrowableUtil;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
+import java.awt.*;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -53,13 +60,37 @@ public class FileModeMain {
             }
             List<Path> paths = retrieveFile(path, fileSuffix);
             if (paths.isEmpty()) {
-                log.warn("{} 路径下没有获取到监听的直播间文件[{}]", path, fileSuffix);
+                TrayIconUtil iconUtil = TrayIconUtil.getInstance(Constant.Application);
+                String message = StrUtil.format("{} 路径下没有获取到监听的直播间文件[{}]", path, fileSuffix);
+                iconUtil.notifyMessage(message, TrayIcon.MessageType.WARNING);
+                log.warn(message);
+                iconUtil.shutdown();
                 return;
             }
-            serverApi = new LocalServerApi(8005);
+            Setting setting = new Setting();
+            try {
+                String deviceUniqueId = new DeviceInfoCollector().getDeviceUniqueId();
+                ActivationUtil.verifyActivationCodeFile(deviceUniqueId, setting.getActivateVoucherPath());
+            } catch (ErrorException errorException) {
+                String message = ThrowableUtil.getAllCauseMessage(errorException);
+                TrayIconUtil iconUtil = TrayIconUtil.getInstance(Constant.Application);
+                iconUtil.notifyMessage(errorException.getMessage(), TrayIcon.MessageType.ERROR);
+                iconUtil.shutdown();
+                log.error(message, errorException);
+                System.exit(0);
+            } catch (WarnException warnException) {
+                TrayIconUtil iconUtil = TrayIconUtil.getInstance(Constant.Application);
+                String message = warnException.getMessage();
+                log.warn(message);
+                iconUtil.notifyMessage(message, TrayIcon.MessageType.WARNING);
+                iconUtil.shutdown();
+            }
+
+            serverApi = new LocalServerApi(Constant.monitorServerPort);
             serverApi.start();
-            int coreSize = Math.min(paths.size(), Constant.maxMonitorThreads);
+            int coreSize = Math.min(paths.size(), setting.getMaxMonitorThreads());
             ThreadPool = (ThreadPoolExecutor) Executors.newFixedThreadPool(coreSize);
+            log.info("启动监听线程数：{}个", coreSize);
             for (int i = 0; i < coreSize; i++) {
                 Path file = paths.get(i);
                 ThreadPool.execute(() -> {
@@ -95,7 +126,7 @@ public class FileModeMain {
             //解析文件
             String s = String.join("", Files.readAllLines(file));
             JSONObject json = JSONUtil.parseObj(s);
-            System.out.println(json.toStringPretty());
+//            System.out.println(json.toStringPretty());
             Boolean isRecord = json.getBool("isRecord", false);
             String id = json.getStr("id");
             Room.Platform platform = json.get("platform", Room.Platform.class);
@@ -133,20 +164,20 @@ public class FileModeMain {
         }
     }
 
-    public static void startMain(String key) throws RuntimeException{
+    public static void restartMain(String key) throws RuntimeException {
         try {
             ThreadPool.execute(() -> {
                 startMonitor(executeFileMap.get(key));
             });
         } catch (RejectedExecutionException e) {
             // 处理任务被拒绝的情况（如线程池关闭、队列满等）
-            String s = "监听任务提交失败，线程池可能已关闭或任务队列已满："+ ThrowableUtil.getAllCauseMessage(e);
+            String s = "监听任务提交失败，线程池可能已关闭或任务队列已满：" + ThrowableUtil.getAllCauseMessage(e);
             log.warn(s);
             throw new RuntimeException(s);
         } catch (Exception e) {
             String s = "提交监听任务发生异常" + ThrowableUtil.getAllCauseMessage(e);
-            log.error("提交任务发生异常", e);
-            throw new RuntimeException(e);
+            log.error("提交任务发生异常: {}", s);
+            throw new RuntimeException(s);
         }
     }
 }

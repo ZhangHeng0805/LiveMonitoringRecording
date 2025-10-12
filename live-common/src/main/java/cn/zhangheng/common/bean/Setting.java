@@ -16,7 +16,7 @@ import java.nio.charset.StandardCharsets;
  * @email: zhangheng_0805@163.com
  * @date: 2025/06/03 星期二 02:03
  * @version: 1.0
- * @description:
+ * @description: 配置类
  */
 @Data
 @PropertiesConfig(path = Constant.Setting_Name)
@@ -79,6 +79,29 @@ public class Setting {
      */
     @PropertyValue("monitor.delayIntervalSec")
     private volatile int delayIntervalSec = Constant.delayIntervalSec;
+
+    public int getDelayIntervalSec() {
+        //不能小于系统默认值
+        if (delayIntervalSec < Constant.delayIntervalSec) {
+            delayIntervalSec = Constant.delayIntervalSec;
+        }
+        return delayIntervalSec;
+    }
+
+    /**
+     * 最大监听线程数
+     */
+    @PropertyValue("monitor.maxMonitorThreads")
+    private int maxMonitorThreads = Constant.maxMonitorThreads;
+
+    public int getMaxMonitorThreads() {
+        //不能超过系统默认最大值
+        if (maxMonitorThreads > Constant.maxMonitorThreads) {
+            maxMonitorThreads = Constant.maxMonitorThreads;
+        }
+        return maxMonitorThreads;
+    }
+
     /**
      * 直播开始时触发的快捷键
      */

@@ -1,11 +1,11 @@
 package cn.zhangheng.lmr.fileModeApi;
 
 import cn.hutool.core.util.StrUtil;
-import cn.zhangheng.common.bean.MonitorMain;
+import cn.zhangheng.common.service.MonitorMain;
 import cn.zhangheng.common.bean.Room;
 import cn.zhangheng.common.bean.enums.MonitorStatus;
 import cn.zhangheng.common.record.Recorder;
-import cn.zhangheng.douyin.util.DouYinBrowserFactory;
+import cn.zhangheng.douyin.browser.DouYinBrowserFactory;
 import cn.zhangheng.lmr.FileModeMain;
 import cn.zhangheng.lmr.Main;
 import com.sun.net.httpserver.HttpExchange;
@@ -94,7 +94,7 @@ public class ActionHandler extends JSONHandler {
         }
         if (flag) {
             try {
-                FileModeMain.startMain(key);
+                FileModeMain.restartMain(key);
             } catch (RuntimeException e) {
                 msg.setCode(1);
                 msg.setMessage(e.getMessage());

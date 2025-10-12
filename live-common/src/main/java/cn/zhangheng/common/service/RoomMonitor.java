@@ -1,5 +1,7 @@
-package cn.zhangheng.common.bean;
+package cn.zhangheng.common.service;
 
+import cn.zhangheng.common.bean.Room;
+import cn.zhangheng.common.bean.Task;
 import com.zhangheng.util.RandomUtil;
 import com.zhangheng.util.ThrowableUtil;
 import lombok.Getter;
@@ -15,7 +17,7 @@ import java.util.concurrent.TimeUnit;
  * @email: zhangheng_0805@163.com
  * @date: 2025/05/26 星期一 21:33
  * @version: 1.0
- * @description:
+ * @description: 直播监听
  */
 public abstract class RoomMonitor<R extends Room, S extends RoomService<R>> extends Task {
     @Getter

@@ -1,9 +1,8 @@
 package cn.zhangheng.kuaishou;
 
-import cn.zhangheng.common.bean.ApplicationMain;
-import cn.zhangheng.common.bean.MonitorMain;
+import cn.zhangheng.common.service.ApplicationMain;
+import cn.zhangheng.common.service.MonitorMain;
 import cn.zhangheng.common.bean.Room;
-import cn.zhangheng.common.bean.Setting;
 import cn.zhangheng.kuaishou.bean.KuaiShouRoom;
 import cn.zhangheng.kuaishou.service.KuaiShouMain;
 
@@ -14,7 +13,7 @@ public class Main extends ApplicationMain<KuaiShouRoom> {
 
     @Override
     protected MonitorMain<KuaiShouRoom, ?> getMonitorMain(KuaiShouRoom room) {
-        return new KuaiShouMain(setting);
+        return new KuaiShouMain(room.getSetting());
     }
 
     @Override

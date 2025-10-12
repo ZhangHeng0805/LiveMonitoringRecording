@@ -7,7 +7,7 @@ import cn.hutool.http.HttpResponse;
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
-import cn.zhangheng.common.bean.RoomService;
+import cn.zhangheng.common.service.RoomService;
 import cn.zhangheng.kuaishou.bean.KuaiShouRoom;
 import cn.zhangheng.kuaishou.util.InitialStateExtractor;
 

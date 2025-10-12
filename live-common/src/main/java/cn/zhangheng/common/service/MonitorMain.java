@@ -1,6 +1,9 @@
-package cn.zhangheng.common.bean;
+package cn.zhangheng.common.service;
 
 import cn.hutool.json.JSONUtil;
+import cn.zhangheng.common.bean.Constant;
+import cn.zhangheng.common.bean.Room;
+import cn.zhangheng.common.bean.Setting;
 import cn.zhangheng.common.bean.enums.MonitorStatus;
 import cn.zhangheng.common.bean.enums.RunMode;
 import cn.zhangheng.common.record.Recorder;
@@ -36,7 +39,7 @@ import static cn.zhangheng.common.util.TrayIconUtil.openDirectory;
  * @email: zhangheng_0805@163.com
  * @date: 2025/05/26 星期一 05:58
  * @version: 1.0
- * @description:
+ * @description: 监听核心
  */
 public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
     protected final Logger log = LoggerFactory.getLogger(getClass());

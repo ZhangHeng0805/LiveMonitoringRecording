@@ -1,7 +1,7 @@
 package cn.zhangheng.bilibili.service;
 
 import cn.zhangheng.bilibili.bean.BiliRoom;
-import cn.zhangheng.common.bean.RoomMonitor;
+import cn.zhangheng.common.service.RoomMonitor;
 
 /**
  * @author: ZhangHeng

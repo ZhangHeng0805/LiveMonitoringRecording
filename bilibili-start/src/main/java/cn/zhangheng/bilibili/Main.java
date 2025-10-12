@@ -1,11 +1,9 @@
 package cn.zhangheng.bilibili;
 
 import cn.zhangheng.bilibili.bean.BiliRoom;
-import cn.zhangheng.common.bean.ApplicationMain;
-import cn.zhangheng.common.bean.MonitorMain;
+import cn.zhangheng.common.service.ApplicationMain;
+import cn.zhangheng.common.service.MonitorMain;
 import cn.zhangheng.common.bean.Room;
-import cn.zhangheng.common.bean.Setting;
-import com.zhangheng.util.SettingUtil;
 
 public class Main extends ApplicationMain<BiliRoom> {
 
@@ -16,7 +14,7 @@ public class Main extends ApplicationMain<BiliRoom> {
 
     @Override
     protected MonitorMain<BiliRoom, ?> getMonitorMain(BiliRoom room) {
-        return new BiliMain(setting);
+        return new BiliMain(room.getSetting());
     }
 
     @Override

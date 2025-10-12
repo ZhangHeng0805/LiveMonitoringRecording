@@ -1,6 +1,6 @@
 package cn.zhangheng.douyin;
 
-import cn.zhangheng.common.bean.RoomMonitor;
+import cn.zhangheng.common.service.RoomMonitor;
 
 /**
  * @author: ZhangHeng

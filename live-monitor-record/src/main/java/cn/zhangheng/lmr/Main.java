@@ -3,6 +3,8 @@ package cn.zhangheng.lmr;
 import cn.zhangheng.bilibili.BiliMain;
 import cn.zhangheng.bilibili.bean.BiliRoom;
 import cn.zhangheng.common.bean.*;
+import cn.zhangheng.common.service.ApplicationMain;
+import cn.zhangheng.common.service.MonitorMain;
 import cn.zhangheng.douyin.DouYinMain;
 import cn.zhangheng.douyin.DouYinRoom;
 import cn.zhangheng.kuaishou.bean.KuaiShouRoom;
@@ -15,6 +17,7 @@ public class Main extends ApplicationMain<Room> {
 
     @Override
     protected MonitorMain getMonitorMain(Room room) {
+        Setting setting = room.getSetting();
         switch (room.getPlatform()) {
             case DouYin:
                 return new DouYinMain(setting);

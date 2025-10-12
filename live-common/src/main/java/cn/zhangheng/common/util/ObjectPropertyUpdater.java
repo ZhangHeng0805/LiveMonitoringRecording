@@ -8,6 +8,7 @@ package cn.zhangheng.common.util;
  * @description:
  */
 import java.lang.reflect.Field;
+import java.util.Objects;
 
 public class ObjectPropertyUpdater {
 
@@ -57,7 +58,7 @@ public class ObjectPropertyUpdater {
      * 安全地比较两个对象是否相等，处理null的情况
      */
     private static boolean equals(Object a, Object b) {
-        return (a == b) || (a != null && a.equals(b));
+        return Objects.equals(a, b);
     }
 }
 

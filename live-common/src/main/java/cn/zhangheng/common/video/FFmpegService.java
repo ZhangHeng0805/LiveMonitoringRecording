@@ -19,7 +19,7 @@ import java.util.List;
  * @email: zhangheng_0805@163.com
  * @date: 2025/06/01 星期日 12:06
  * @version: 1.0
- * @description:
+ * @description: FFmpeg抽象类
  */
 public abstract class FFmpegService {
     protected static final Logger log = LoggerFactory.getLogger(FFmpegService.class);

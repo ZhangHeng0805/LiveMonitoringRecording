@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit;
  * @email: zhangheng_0805@163.com
  * @date: 2025/07/21 星期一 10:39
  * @version: 1.0
- * @description:
+ * @description: 录制任务类
  */
 public class RecorderTask {
     protected final Logger log = LoggerFactory.getLogger(getClass());

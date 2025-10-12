@@ -17,7 +17,7 @@ import java.util.concurrent.*;
  * @email: zhangheng_0805@163.com
  * @date: 2025/06/01 星期日 20:13
  * @version: 1.0
- * @description:
+ * @description: 录制抽象类
  */
 public abstract class Recorder extends Task {
     protected Runnable runnable = null;

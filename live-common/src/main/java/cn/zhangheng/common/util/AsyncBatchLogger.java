@@ -1,13 +1,5 @@
 package cn.zhangheng.common.util;
 
-/**
- * @author: ZhangHeng
- * @email: zhangheng_0805@163.com
- * @date: 2025/07/19 星期六 12:41
- * @version: 1.0
- * @description:
- */
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -18,6 +10,14 @@ import java.util.concurrent.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+
+/**
+ * @author: ZhangHeng
+ * @email: zhangheng_0805@163.com
+ * @date: 2025/07/19 星期六 12:41
+ * @version: 1.0
+ * @description: 异步批处理日志记录器
+ */
 public class AsyncBatchLogger {
     private final Path logPath;
     private long lastFlushTime = System.currentTimeMillis();

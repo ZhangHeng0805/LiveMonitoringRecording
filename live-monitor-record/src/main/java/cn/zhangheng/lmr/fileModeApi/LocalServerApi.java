@@ -1,8 +1,8 @@
 package cn.zhangheng.lmr.fileModeApi;
 
-import cn.zhangheng.common.http.handle.ProxyHandler;
-import cn.zhangheng.common.http.handle.StreamFileHandler;
-import cn.zhangheng.common.http.handle.TextFileHandler;
+import cn.zhangheng.common.httpServer.handle.ProxyHandler;
+import cn.zhangheng.common.httpServer.handle.StreamFileHandler;
+import cn.zhangheng.common.httpServer.handle.TextFileHandler;
 import com.sun.net.httpserver.HttpServer;
 import com.zhangheng.util.NetworkUtil;
 import com.zhangheng.util.ThrowableUtil;

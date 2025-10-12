@@ -1,4 +1,4 @@
-package cn.zhangheng.douyin.util;
+package cn.zhangheng.douyin.browser;
 
 import cn.hutool.core.text.UnicodeUtil;
 import cn.zhangheng.douyin.DouYinRoom;

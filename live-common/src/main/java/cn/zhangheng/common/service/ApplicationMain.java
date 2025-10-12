@@ -1,4 +1,4 @@
-package cn.zhangheng.common.bean;
+package cn.zhangheng.common.service;
 
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.log.Log;
@@ -7,17 +7,19 @@ import cn.zhangheng.common.activation.ActivationUtil;
 import cn.zhangheng.common.activation.DeviceInfoCollector;
 import cn.zhangheng.common.activation.ErrorException;
 import cn.zhangheng.common.activation.WarnException;
+import cn.zhangheng.common.bean.Constant;
+import cn.zhangheng.common.bean.Room;
+import cn.zhangheng.common.bean.Setting;
 import cn.zhangheng.common.util.ObjectPropertyUpdater;
-import cn.zhangheng.common.util.TrayIconUtil;
 import com.zhangheng.util.ThrowableUtil;
 import lombok.Getter;
 
-import java.awt.*;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Scanner;
+import java.util.concurrent.TimeUnit;
 import java.util.jar.Manifest;
 
 /**
@@ -25,11 +27,11 @@ import java.util.jar.Manifest;
  * @email: zhangheng_0805@163.com
  * @date: 2025/05/27 星期二 10:30
  * @version: 1.0
- * @description:
+ * @description: 应用启动核心
  */
 public abstract class ApplicationMain<R extends Room> {
     private static final Log log = LogFactory.get();
-    protected Setting setting;
+//    protected Setting setting;
     @Getter
     protected R room;
     @Getter
@@ -58,6 +60,23 @@ public abstract class ApplicationMain<R extends Room> {
 
     public void start(Setting setting, String[] args) {
         System.out.println(getBanner());
+        try {
+            deviceUniqueId = new DeviceInfoCollector().getDeviceUniqueId();
+            ActivationUtil.verifyActivationCodeFile(deviceUniqueId, new Setting().getActivateVoucherPath());
+        } catch (ErrorException errorException) {
+            String message = ThrowableUtil.getAllCauseMessage(errorException);
+            log.error(message, errorException);
+            try {
+                System.out.println("程序即将自动退出......");
+                TimeUnit.SECONDS.sleep(3);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            System.exit(0);
+        } catch (WarnException warnException) {
+            String message = warnException.getMessage();
+            log.warn(message);
+        }
         Room.Platform[] platforms = supportedPlatforms();
         String platformsStr = supportedPlatformsStr(platforms);
         System.out.println(Constant.Application + " - " + platformsStr);
@@ -139,10 +158,6 @@ public abstract class ApplicationMain<R extends Room> {
 
     protected abstract Room.Platform[] supportedPlatforms();
 
-//    private String supportedPlatformsStr() {
-//        return supportedPlatformsStr(supportedPlatforms());
-//    }
-
     private String supportedPlatformsStr(Room.Platform[] platforms) {
         StringBuilder notice = new StringBuilder();
         for (int i = 0; i < platforms.length; i++) {
@@ -159,33 +174,17 @@ public abstract class ApplicationMain<R extends Room> {
         boolean isLoop;
         //是否循环监听
         do {
+            Setting setting=room.getSetting();
             if (setting == null) {
                 try {
                     this.room = room;
-                    this.setting = new Setting();
+                    setting = new Setting();
                     if (room.getSetting() != null) {
                         ObjectPropertyUpdater.updateDifferentProperties(room.getSetting(), setting);
                     }
                 } catch (Exception e) {
                     log.warn("读取配置文件异常：" + ThrowableUtil.getAllCauseMessage(e));
                 }
-            }
-            try {
-                deviceUniqueId = new DeviceInfoCollector().getDeviceUniqueId();
-                ActivationUtil.verifyActivationCodeFile(deviceUniqueId, setting.getActivateVoucherPath());
-            } catch (ErrorException errorException) {
-                String message = ThrowableUtil.getAllCauseMessage(errorException);
-                TrayIconUtil iconUtil = TrayIconUtil.getInstance(Constant.Application);
-                iconUtil.notifyMessage(errorException.getMessage(), TrayIcon.MessageType.ERROR);
-                iconUtil.shutdown();
-                log.error(message, errorException);
-                System.exit(0);
-            } catch (WarnException warnException) {
-                TrayIconUtil iconUtil = TrayIconUtil.getInstance(Constant.Application);
-                String message = warnException.getMessage();
-                iconUtil.notifyMessage(message, TrayIcon.MessageType.WARNING);
-//                iconUtil.shutdown();
-                log.warn(message);
             }
             room.reset();//重置直播间
             room.setSetting(setting);
@@ -195,7 +194,6 @@ public abstract class ApplicationMain<R extends Room> {
         } while (isLoop);
         log.info("{}直播间 {}[{}]监听结束！", room.getPlatform().getName(), room.getNickname(), room.getId());
     }
-
 
     public String getProjectVersion() {
         // 通过当前类的类加载器获取 MANIFEST.MF
