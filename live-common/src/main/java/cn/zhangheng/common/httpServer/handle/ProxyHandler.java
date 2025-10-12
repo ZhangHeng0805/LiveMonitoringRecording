@@ -1,5 +1,6 @@
 package cn.zhangheng.common.httpServer.handle;
 
+import cn.hutool.core.util.StrUtil;
 import com.sun.net.httpserver.HttpExchange;
 
 import java.io.IOException;
@@ -30,8 +31,9 @@ public class ProxyHandler extends MyHandler {
     @Override
     public void handle(HttpExchange httpExchange) throws IOException {
         // 最终确保响应被关闭
-        try  {
-            String url = parseQuery(httpExchange).get("url");
+        Map<String, String> params = parseQuery(httpExchange);
+        try {
+            String url = params.get("url");
             if (url == null || url.trim().isEmpty()) {
                 sendErrorResponse(httpExchange, 400, "Missing 'url' parameter");
                 return;
@@ -70,6 +72,11 @@ public class ProxyHandler extends MyHandler {
                 // 传递请求头
                 copyRequestHeaders(httpExchange, connection);
 
+                for (Map.Entry<String, String> entry : params.entrySet()) {
+                    if (entry.getKey().startsWith("header_")) {
+                        connection.setRequestProperty(StrUtil.subAfter(entry.getKey(),"header_",false), entry.getValue());
+                    }
+                }
                 // 处理POST等有请求体的方法
                 if (needsRequestBody(method)) {
                     connection.setDoOutput(true);
@@ -102,7 +109,7 @@ public class ProxyHandler extends MyHandler {
                     connection.disconnect(); // 确保连接关闭
                 }
             }
-        }finally {
+        } finally {
             httpExchange.close();
         }
     }

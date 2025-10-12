@@ -76,7 +76,7 @@ public class FileModeMain {
                 iconUtil.notifyMessage(errorException.getMessage(), TrayIcon.MessageType.ERROR);
                 iconUtil.shutdown();
                 log.error(message, errorException);
-                System.exit(0);
+                return;
             } catch (WarnException warnException) {
                 TrayIconUtil iconUtil = TrayIconUtil.getInstance(Constant.Application);
                 String message = warnException.getMessage();
@@ -143,7 +143,7 @@ public class FileModeMain {
             log.debug("{} 监听文件结束运行!", file);
             endMonitor(key);
         } catch (Exception e) {
-            log.error(file + " 启动监听异常:" + e.getMessage(), e);
+            log.error(file + " 监听发生异常:" + e.getMessage(), e);
         }
     }
 

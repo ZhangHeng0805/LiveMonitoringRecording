@@ -31,7 +31,6 @@ import java.util.jar.Manifest;
  */
 public abstract class ApplicationMain<R extends Room> {
     private static final Log log = LogFactory.get();
-//    protected Setting setting;
     @Getter
     protected R room;
     @Getter
@@ -111,11 +110,10 @@ public abstract class ApplicationMain<R extends Room> {
                 String isRecord = scanner.nextLine(); // 读取一行文本
 
                 R room = getRoom(platform, roomID);
-                room.setSetting(setting);
                 if (isRecord.equalsIgnoreCase("y")) {
-                    listen(room, true);
+                    listen(room, setting, true);
                 } else {
-                    listen(room, false);
+                    listen(room, setting, false);
                 }
                 break;
             }
@@ -138,15 +136,13 @@ public abstract class ApplicationMain<R extends Room> {
                 }
             }
             R room = getRoom(platform, id);
-            room.setSetting(setting);
-            listen(room, isRecord);
+            listen(room, setting, isRecord);
         }
     }
 
     public void start(Setting setting, String id, Room.Platform platform, boolean isRecord) {
         R room = getRoom(platform, id);
-        room.setSetting(setting);
-        listen(room, isRecord);
+        listen(room, setting, isRecord);
     }
 
     protected abstract MonitorMain<R, ?> getMonitorMain(R room);
@@ -167,24 +163,21 @@ public abstract class ApplicationMain<R extends Room> {
         return notice.toString();
     }
 
-    private void listen(R room, boolean isRecord) {
+    private void listen(R room, Setting setting, boolean isRecord) {
         boolean isLoop;
+        this.room = room;
+        Setting srcSetting = new Setting();
         //是否循环监听
         do {
-            Setting setting=room.getSetting();
-            if (setting == null) {
+            if (setting != null) {
                 try {
-                    this.room = room;
-                    setting = new Setting();
-                    if (room.getSetting() != null) {
-                        ObjectPropertyUpdater.updateDifferentProperties(room.getSetting(), setting);
-                    }
+                    ObjectPropertyUpdater.updateDifferentProperties(setting, srcSetting);
                 } catch (Exception e) {
                     log.warn("读取配置文件异常：" + ThrowableUtil.getAllCauseMessage(e));
                 }
             }
             room.reset();//重置直播间
-            room.setSetting(setting);
+            room.setSetting(srcSetting);
             monitorMain = getMonitorMain(room);
             monitorMain.start(room, isRecord);
             isLoop = !monitorMain.getIsForceStop() && room.getSetting().isLoop();
