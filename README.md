@@ -61,7 +61,7 @@ monitor.delayIntervalSec=10
 living.start.shortcut=
 living.end.shortcut=
 
-# 各平台Cookie配置（可直接配置或通过文件引用）
+# 各平台Cookie配置（可直接配置或通过文件引用，文件引用示例 file:Bili_Cookie.txt）
 Cookie.Bilibili=
 Cookie.DouYin=
 Cookie.KuaiShou=
@@ -77,8 +77,13 @@ Cookie.KuaiShou=
 
 ### 通用启动方式
 
-1. **编译打包**：项目打包后会在 `target/` 目录生成可执行 JAR 文件
-2. **运行命令**：
+1. **编译打包**：项目打包后会在 `target/` 目录生成可执行 JAR 文件，**注意：运行程序需要激活凭证文件，获取文件请联系作者**
+2. **运行环境**：
+   - JDK 1.8 或更高
+   - 配置文件 xxxr.setting
+   - 激活凭证文件 xxxr-activation.lic (联系作者获取)
+   - ffmpeg工具，根据不同的操作系统去下载对应的ffmpeg，下载完成后在配置文件中配置ffmpeg路径
+3. **运行脚本命令**：
 
     - **集成模块**（支持抖音/B站）：
       ```bash
@@ -114,11 +119,10 @@ Cookie.KuaiShou=
   "setting": {
     //选填，监听刷新间隔时间
     "delayIntervalSec": 30,
-    //选填，监听刷新间隔时间
+    //选填，监听通知接口地址
     "xiZhiUrl": "息知通知接口地址",
-    //根据直播平台选填
+    //选填，根据直播平台配置Cookie
     "cookieBili": "B站Cookie",
-    //根据直播平台选填
     "cookieDouYin": "抖音Cookie",
     "runMode": "FILE"
   }
@@ -164,7 +168,7 @@ Cookie.KuaiShou=
 打开直播监控界面后，可通过点击**停止监控**的操作按钮实现停止运行，若所有直播监控都停止了，那么程序将自动终止。
 
 ## 开发者信息
-
 - **作者**：ZhangHeng0805（星曦向荣）
 - **项目地址**：[Gitee 仓库](https://gitee.com/ZhangHeng0805/LiveMonitoringRecording) | [GitHub 仓库](https://github.com/ZhangHeng0805/LiveMonitoringRecording)
 - **演示视频**: [bilibili](https://www.bilibili.com/video/BV1JMhzzuE1G/) |  [抖音](https://v.douyin.com/uPsZUQICC7w/)
+- **交流QQ群**：573648936 ![573648936](image/4a074f80d4f2ed6935e084f768857458.jpg)
