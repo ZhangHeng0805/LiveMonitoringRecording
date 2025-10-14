@@ -184,6 +184,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                     String msg = owner + "\n未开播，直播间监听中...";
                     trayIconUtil.notifyMessage(msg);
                     trayIconUtil.setToolTip(msg);
+                    trayIconUtil.setStartLivingImage(false);
                     log.info(msg);
                 } else {
                     if (isRecord) {

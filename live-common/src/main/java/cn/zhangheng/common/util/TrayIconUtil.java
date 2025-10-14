@@ -167,6 +167,18 @@ public class TrayIconUtil {
         notifyMessage(msg, TrayIcon.MessageType.INFO);
     }
 
+    private void setTrayIconImage(String path) {
+        if (trayIcon != null) {
+            ClassPathResource classPathResource = new ClassPathResource(path);
+            try (InputStream inputStreamImg = classPathResource.getStream()) {
+                Image iconImg = ImageIO.read(inputStreamImg);
+                trayIcon.setImage(iconImg);
+            } catch (IOException e) {
+                log.error("系统状态栏图标设置失败：" + ThrowableUtil.getAllCauseMessage(e));
+            }
+        }
+    }
+
     public void setToolTip(String title) {
         if (trayIcon != null)
             trayIcon.setToolTip(title);
@@ -270,13 +282,25 @@ public class TrayIconUtil {
         });
     }
 
+
+    public void setStartLivingImage(boolean startLiving) {
+        if (startLiving) {
+            setTrayIconImage("/logo-running.png");
+        } else {
+            setTrayIconImage("/logo.png");
+        }
+    }
+
+
     public void setStartRecordStatue(boolean startRecordStatue) {
         if (startRecordStatue) {
             pop.remove(startRecordMenu);
             pop.add(stopRecordMenu);
+            setTrayIconImage("/logo-recording.png");
         } else {
             pop.remove(stopRecordMenu);
             pop.add(startRecordMenu);
+            setTrayIconImage("/logo-running.png");
         }
     }
 
