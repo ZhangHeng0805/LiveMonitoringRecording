@@ -554,7 +554,6 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         String title = "**" + room.getNickname() + ", " + room.getPlatform().getName() + (room.isLiving() ? "开播了！ " + room.getTitle() : "下播了！") + "**\t\n";
         String webUrl = room.isLiving() ? "- 直播间地址: [进入直播间](" + room.getRoomUrl() + ")" : "";
         String playUrl = "";
-        try {
         //B站请求头限制，无法在线播放
         if (room.isLiving() && room.getPlatform() != Room.Platform.Bili) {
             Map<String, String> streams = room.getStreams();
@@ -571,6 +570,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             } catch (Exception ignored) {
             }
         }
+        try {
             String footer = "\t\n------\t\n"
                     + "\t\n **个人链接:**\t [微信公众号](" + Constant.WeChatOfficialAccount + ") / [Bilibili](https://b23.tv/fmqmfNv)"
 //                    + " / [抖音](https://v.douyin.com/cubL5sg7sNE/)"
