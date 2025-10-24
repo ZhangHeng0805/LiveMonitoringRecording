@@ -4,8 +4,11 @@ import cn.hutool.core.util.StrUtil;
 import cn.zhangheng.common.bean.Constant;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URLDecoder;
@@ -22,6 +25,7 @@ import java.util.Map;
  * @description:
  */
 public abstract class MyHandler implements HttpHandler {
+    private static final Logger log = LoggerFactory.getLogger(ProxyHandler.class);
     protected final Charset charset = StandardCharsets.UTF_8;
 
     protected String getIndexPath(HttpExchange httpExchange,String prefix) {
@@ -47,7 +51,7 @@ public abstract class MyHandler implements HttpHandler {
                     String value = URLDecoder.decode(pair.substring(idx + 1), charset.name());
                     result.put(key, value);
                 } catch (UnsupportedEncodingException e) {
-                    e.printStackTrace();
+                    log.warn("Failed to decode query parameter: {}", pair, e);
                 }
             }
         }
@@ -56,11 +60,17 @@ public abstract class MyHandler implements HttpHandler {
 
     // 发送错误响应
     protected void sendErrorResponse(HttpExchange exchange, int statusCode, String message) throws IOException {
+        // 检查响应是否已发送
+        if (exchange.getResponseCode() != -1) {
+            log.warn("响应已发送，无法再发送错误信息: {}", message);
+            return;
+        }
         String response = "<html><head><title>" + Constant.Application + "</title></head><body><h1>" + statusCode + " - " + message + "</h1></body></html>";
         exchange.getResponseHeaders().set("Content-Type", "text/html; charset=" + charset.name());
         byte[] bytes = response.getBytes(charset);
         exchange.sendResponseHeaders(statusCode, bytes.length);
-        exchange.getResponseBody().write(bytes);
-        exchange.getResponseBody().close();
+        try (OutputStream os = exchange.getResponseBody()) {
+            os.write(bytes);
+        }
     }
 }

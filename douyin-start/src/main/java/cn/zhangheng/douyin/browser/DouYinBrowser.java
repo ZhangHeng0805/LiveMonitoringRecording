@@ -1,12 +1,11 @@
 package cn.zhangheng.douyin.browser;
 
 import cn.hutool.core.util.StrUtil;
+import cn.zhangheng.browser.API;
 import cn.zhangheng.browser.PlaywrightBrowser;
 import cn.zhangheng.common.bean.Constant;
 import cn.zhangheng.douyin.DouYinRoom;
-import com.microsoft.playwright.BrowserContext;
-import com.microsoft.playwright.Page;
-import com.microsoft.playwright.Request;
+import com.microsoft.playwright.*;
 import com.zhangheng.util.ThrowableUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,8 +15,7 @@ import java.net.URL;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
-import static cn.zhangheng.douyin.browser.DouYinBrowserFactory.TARGET_REQUEST_PREFIX;
-import static cn.zhangheng.douyin.browser.DouYinBrowserFactory.extractRoomInfo;
+import static cn.zhangheng.douyin.browser.DouYinBrowserFactory.*;
 
 /**
  * @author: ZhangHeng
@@ -37,6 +35,7 @@ public class DouYinBrowser implements Closeable {
 
     // 线程安全的浏览器实例（volatile确保多线程可见性）
     private volatile PlaywrightBrowser browser;
+    private final API api = new API(TARGET_REQUEST_PREFIX);
 
     // 目标请求URL前缀（提取为常量，便于维护）
 //    private static final String TARGET_REQUEST_PREFIX = "https://live.douyin.com/webcast/room/web/enter/";
@@ -44,6 +43,7 @@ public class DouYinBrowser implements Closeable {
     DouYinBrowser() {
         browser = new PlaywrightBrowser(Constant.User_Agent);
     }
+
 
     /**
      * 发起请求并提取直播间信息
@@ -70,19 +70,14 @@ public class DouYinBrowser implements Closeable {
 //            log.debug("=== 对 {} 生效的 Cookie 共 {} 个 ===", roomUrl, context.cookies(roomUrl).size());
 
             // 注册请求监听器（提取目标请求信息）
-            Consumer<Request> handler = request -> {
-                String url = request.url();
-                // 匹配目标GET请求
-                if ("GET".equalsIgnoreCase(request.method()) && url.startsWith(TARGET_REQUEST_PREFIX)) {
-                    room.setData_url(url);
-                    // 获取并设置User-Agent
-                    String userAgent = request.headers().get("user-agent");
-                    room.setUser_agent(userAgent);
-                    log.debug("直播状态: {}\n===== 监听URL: {}\n===== User-Agent: {}",
-                            room.isLiving() ? "已开启" : "未开启", url, userAgent);
-                }
+            Consumer<Request> requestHandler = request -> {
+                getRequestApi(room, request, api);
             };
-            page.onRequest(handler);
+//            Consumer<Response> responsehandler = response -> {
+//                getResponseApi(room, response, api);
+//            };
+            page.onRequest(requestHandler);
+//            page.onResponse(responsehandler);
             // 导航到直播间页面
             browser.navigatePage(roomUrl, page);
 
@@ -92,12 +87,14 @@ public class DouYinBrowser implements Closeable {
 
             // 若直播中，等待目标请求完成（替代固定休眠，更高效）
             if (room.isLiving()) {
-                waitForTargetRequest(page);
+                browser.waitForTargetRequest(page, TARGET_REQUEST_PREFIX, 10_000);
             }
-            page.offRequest(handler);
+            page.offRequest(requestHandler);
+//            page.offResponse(responsehandler);
         } catch (Throwable e) {
-            log.error("处理直播间[" + roomUrl + "]时发生异常,{}", ThrowableUtil.getAllCauseMessage(e)); // 记录完整堆栈
-//            closeContext();
+            if (!(e instanceof PlaywrightException && e.getMessage().startsWith("Object doesn't exist:"))) {
+                log.error("处理直播间[{}]时发生异常,{}", roomUrl, ThrowableUtil.getAllCauseMessage(e)); // 记录完整堆栈
+            }
         } finally {
             // 确保页面关闭，释放资源
             if (browser != null) {
@@ -106,38 +103,6 @@ public class DouYinBrowser implements Closeable {
         }
     }
 
-
-    /**
-     * 等待目标请求完成（最多等待5秒，避免无限阻塞）
-     */
-    private void waitForTargetRequest(Page page) {
-        try {
-            // 1. 定义请求匹配规则：Predicate<Request>
-            Predicate<Request> requestPredicate = request ->
-                    "GET".equalsIgnoreCase(request.method()) &&
-                            request.url().startsWith(TARGET_REQUEST_PREFIX);
-
-            // 2. 定义请求匹配后的回调逻辑（Runnable）
-            Runnable callback = () -> {
-                log.debug("已捕获目标请求！");
-                // 这里可以执行你原本在“请求匹配后”要做的事，比如：
-                // - 标记请求已捕获
-                // - 记录请求信息
-                // - 触发后续流程
-            };
-
-            // 3. 配置等待选项（超时 5000 毫秒）
-            Page.WaitForRequestOptions waitOptions = new Page.WaitForRequestOptions()
-                    .setTimeout(5000);
-
-            // 4. 注册“匹配规则 + 回调 + 等待选项”
-            page.waitForRequest(requestPredicate, waitOptions, callback);
-
-            log.debug("已注册目标请求监听器，将在请求匹配时执行回调");
-        } catch (Exception e) {
-            log.warn("注册请求监听器时发生异常", e);
-        }
-    }
 
     /**
      * 检查并初始化浏览器（线程安全）

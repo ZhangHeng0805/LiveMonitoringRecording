@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="img/favicon.ico" type="image/x-icon"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>【星曦向荣】抖音视频作品解析</title>
+    <!-- 引入Tailwind CSS -->
+    <script src="js/tailwindcss-3.4.17.js"></script>
+    <!-- 引入Font Awesome图标 -->
+    <link href="css/font-awesome.min-4.7.0.css" rel="stylesheet">
+    <!-- 自定义配置 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#6366F1', // 主色调：靛蓝色
+                        secondary: '#F59E0B', // 辅助色：橙色
+                        neutral: {
+                            100: '#F3F4F6',
+                            200: '#E5E7EB',
+                            300: '#D1D5DB',
+                            800: '#1F2937',
+                            900: '#111827'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif']
+                    },
+                    boxShadow: {
+                        'card': '0 4px 20px rgba(0, 0, 0, 0.08)',
+                        'card-hover': '0 8px 30px rgba(0, 0, 0, 0.12)'
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .text-shadow {
+                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+            .transition-custom {
+                transition: all 0.3s ease;
+            }
+            .skeleton {
+                background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+                background-size: 200% 100%;
+                animation: skeleton-loading 1.5s infinite;
+            }
+            @keyframes skeleton-loading {
+                0% { background-position: 200% 0; }
+                100% { background-position: -200% 0; }
+            }
+        }
+    </style>
+</head>
+<body class="bg-neutral-100 font-sans text-neutral-800 min-h-screen py-8 px-4 md:px-8">
+    <div class="max-w-4xl mx-auto">
+        <!-- 页面标题 -->
+        <h1 class="text-[clamp(1.8rem,3vw,2.5rem)] font-bold text-center mb-8 text-neutral-900 text-shadow">
+            抖音视频作品解析与展示
+        </h1>
+
+        <!-- 链接输入区域 -->
+        <div class="bg-white rounded-2xl shadow-card p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4 text-neutral-800">解析作品链接</h2>
+            <div class="flex flex-col md:flex-row gap-3">
+                <input 
+                    type="text" 
+                    id="shareLinkInput" 
+                    placeholder="粘贴作品分享链接到这里..." 
+                    class="flex-1 px-4 py-3 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-custom"
+                >
+                <button 
+                    id="parseBtn" 
+                    class="bg-primary hover:bg-primary/90 text-white px-6 py-3 rounded-lg transition-custom flex items-center justify-center gap-2 font-medium"
+                >
+                    <i class="fa fa-search"></i>
+                    <span>解析链接</span>
+                </button>
+            </div>
+            <p class="text-sm text-neutral-500 mt-3">支持解析抖音平台的视频作品分享链接</p>
+        </div>
+
+        <!-- 加载状态 -->
+        <div id="loading" class="bg-white rounded-2xl shadow-card p-8 text-center mb-8 hidden">
+            <div class="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+            <p class="mt-4 text-neutral-600">正在解析并加载内容...</p>
+        </div>
+
+        <!-- 错误状态 -->
+        <div id="error" class="bg-white rounded-2xl shadow-card p-8 text-center mb-8 hidden">
+            <i class="fa fa-exclamation-triangle text-4xl text-secondary mb-4"></i>
+            <p id="errorMessage" class="text-neutral-600 mb-4">解析链接失败，请检查链接是否有效</p>
+            <button id="retryBtn" class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg transition-custom">
+                重试
+            </button>
+        </div>
+
+        <!-- 内容展示区 (初始隐藏，数据加载后显示) -->
+        <div id="contentContainer" class="hidden">
+               <!-- 作者信息区 -->
+               <div class="p-4 border-b border-neutral-200 flex items-center gap-4">
+                <img 
+                    id="authorAvatar"
+                    src="" 
+                    alt="作者头像" 
+                    class="w-12 h-12 rounded-full object-cover border-2 border-primary/20">
+                <div class="flex-1">
+                    <h3 id="authorName" class="font-semibold text-lg"></h3>
+                    <div id="tagsContainer" class="flex flex-wrap gap-2 mt-1">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 内容切换标签 -->
+            <div class="bg-white rounded-t-2xl shadow-card p-1 mb-0 flex">
+                <button class="content-tab flex-1 py-3 px-4 rounded-xl bg-primary text-white font-medium transition-custom" data-tab="video">
+                    <i class="fa fa-video-camera mr-2"></i>视频
+                </button>
+                <button class="content-tab flex-1 py-3 px-4 rounded-xl hover:bg-neutral-100 transition-custom" data-tab="cover">
+                    <i class="fa fa-image mr-2"></i>封面
+                </button>
+                <button id="tab-audio" class="content-tab flex-1 py-3 px-4 rounded-xl hover:bg-neutral-100 transition-custom" data-tab="audio">
+                    <i class="fa fa-music mr-2"></i>音频
+                </button>
+            </div>
+
+            <!-- 视频内容卡片 -->
+            <div id="videoTab" class="content-panel bg-white rounded-b-2xl shadow-card hover:shadow-card-hover transition-custom overflow-hidden mb-8">
+                <!-- 视频预览区 -->
+                <div class="relative aspect-video bg-neutral-900">
+                    <video 
+                        id="videoPlayer"
+                        class="w-full h-full"
+                        controls
+                        autoplay="autoplay"
+                        >
+                        您的浏览器不支持HTML5视频播放
+                    </video>
+                </div>
+
+                <!-- 视频信息区域 -->
+                <div class="p-4 border-b border-neutral-200">
+                    <h2 id="videoTitle" class="text-neutral-900 text-lg md:text-xl font-semibold">
+                    </h2>
+                    <span class="inline-block bg-secondary/90 text-white text-xs px-2 py-1 rounded-md ml-2">
+                        <i class="fa fa-clock-o mr-1"></i>发布时间: <span id="videoCreateTime"></span>
+                    </span>
+                    <span class="inline-block bg-secondary/90 text-white text-xs px-2 py-1 rounded-md ml-2">
+                        <i class="fa fa-info mr-1"></i>视频规格: <span id="videoSpecifications"></span>
+
+                    </span>
+                    <span class="inline-block bg-secondary/90 text-white text-xs px-2 py-1 rounded-md ml-2">
+                        <i class="fa fa-file-video-o mr-1"></i>视频大小: <span id="videoSize"></span>
+                    </span>
+                    <div class="mt-4 flex justify-center">
+                        <button id="downloadVideoBtn" class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg transition-custom flex items-center gap-1">
+                            <i class="fa fa-download"></i>
+                            <span>下载视频</span>
+                        </button>
+                    </div>
+                </div>
+
+            <!-- 数据统计区 -->
+            <div class="p-4 grid grid-cols-2 md:grid-cols-6 gap-2 md:gap-4 text-center">
+                <div class="p-2 rounded-lg hover:bg-neutral-100 transition-custom">
+                    <div id="likeCount" class="text-primary text-2xl font-bold"></div>
+                    <div class="text-sm text-neutral-600 mt-1">
+                        <i class="fa fa-thumbs-up mr-1"></i>点赞
+                    </div>
+                </div>
+                <div class="p-2 rounded-lg hover:bg-neutral-100 transition-custom">
+                    <div id="collectCount" class="text-secondary text-2xl font-bold"></div>
+                    <div class="text-sm text-neutral-600 mt-1">
+                        <i class="fa fa-star mr-1"></i>收藏
+                    </div>
+                </div>
+                <div class="p-2 rounded-lg hover:bg-neutral-100 transition-custom">
+                    <div id="shareCount" class="text-green-500 text-2xl font-bold"></div>
+                    <div class="text-sm text-neutral-600 mt-1">
+                        <i class="fa fa-share mr-1"></i>分享
+                    </div>
+                </div>
+                <div class="p-2 rounded-lg hover:bg-neutral-100 transition-custom">
+                    <div id="commentCount" class="text-blue-500 text-2xl font-bold"></div>
+                    <div class="text-sm text-neutral-600 mt-1">
+                        <i class="fa fa-comment mr-1"></i>评论
+                    </div>
+                </div>
+                <div class="p-2 rounded-lg hover:bg-neutral-100 transition-custom">
+                    <div id="recommendCount" class="text-purple-500 text-2xl font-bold"></div>
+                    <div class="text-sm text-neutral-600 mt-1">
+                        <i class="fa fa-thumbs-o-up mr-1"></i>推荐
+                    </div>
+                </div>
+                <div class="p-2 rounded-lg hover:bg-neutral-100 transition-custom">
+                    <div id="admireCount" class="text-neutral-400 text-2xl font-bold"></div>
+                    <div class="text-sm text-neutral-600 mt-1">
+                        <i class="fa fa-trophy mr-1"></i>赞赏
+                    </div>
+                </div>
+            </div>
+                
+            </div>
+
+            <!-- 封面内容卡片 -->
+            <div id="coverTab" class="content-panel bg-white rounded-b-2xl shadow-card hover:shadow-card-hover transition-custom overflow-hidden mb-8 hidden">  
+                <div class="p-6">
+                    <h3 class="text-lg font-semibold mb-4">视频封面</h3>
+                    <div class="flex justify-center items-center bg-neutral-100 p-4 rounded-xl">
+                        <img 
+                            id="coverImage" 
+                            src="" 
+                            alt="视频封面" 
+                            class="max-w-full max-h-[500px] object-contain rounded-lg shadow-md"
+                        >
+                    </div>
+                    <div class="mt-4 flex justify-center">
+                        <button id="downloadCoverBtn" class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg transition-custom flex items-center gap-1">
+                            <i class="fa fa-download"></i>
+                            <span>下载封面</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 音频内容卡片 -->
+            <div id="audioTab" class="content-panel bg-white rounded-b-2xl shadow-card hover:shadow-card-hover transition-custom overflow-hidden mb-8 hidden">
+                <div class="p-6">
+                    <h3 class="text-lg font-semibold mb-4">音频版本</h3>
+                    <div class="bg-neutral-100 p-6 rounded-xl">
+                        <audio id="audioPlayer" class="w-full" controls>
+                            您的浏览器不支持音频播放
+                        </audio>
+                         <div class="mt-4 text-center">
+                            <button id="downloadAudioBtn" class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg transition-custom flex items-center gap-1 mx-auto">
+                                <i class="fa fa-download"></i>
+                                <span>下载音频</span>
+                            </button>
+                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="text-center text-neutral-500 text-sm py-6">
+        <p>© 2025 【星曦向荣】抖音视频作品解析工具 | 所有内容仅供学习交流使用</p>
+    </footer>
+
+    <!-- 交互脚本 -->
+    <script>
+    const rootUrl=getMainUrl();
+
+    function getMainUrl() {
+        // 初始化默认基础URL
+        let mainUrl = "http://localhost:8005/";
+        const fullUrl = window.location.href;
+        
+        // 处理当前页面URL（如果是http开头）
+        if (fullUrl.startsWith('http')) {
+            mainUrl = fullUrl.split('?')[0];
+        }
+        
+        // 处理URL参数中的url（优先级更高）
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlParam = urlParams.get('url');
+        
+        if (urlParam) {
+            // 解码参数中的URL（支持http开头的明文和base64编码）
+            mainUrl = urlParam.startsWith('http') 
+                ? decodeURIComponent(urlParam) 
+                : atob(urlParam);
+        }
+        // 确保URL以斜杠结尾
+        return mainUrl.endsWith('/') ? mainUrl : `${mainUrl}/`;
+    }
+    
+
+
+        // DOM元素引用
+        const shareLinkInput = document.getElementById('shareLinkInput');
+        const parseBtn = document.getElementById('parseBtn');
+        const retryBtn = document.getElementById('retryBtn');
+        const loadingEl = document.getElementById('loading');
+        const errorEl = document.getElementById('error');
+        const errorMessage = document.getElementById('errorMessage');
+        const contentContainer = document.getElementById('contentContainer');
+        const contentTabs = document.querySelectorAll('.content-tab');
+        const contentPanels = document.querySelectorAll('.content-panel');
+        
+        // 存储当前解析的视频数据
+        let currentVideoData = null;
+
+        // 格式化文件大小（字节转MB）
+        function formatFileSize(bytes) {
+            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        }
+
+        // 从标题中提取标签
+        function extractTags(title) {
+            const tagRegex = /#([^#\s]+)/g;
+            const tags = [];
+            let match;
+            while ((match = tagRegex.exec(title)) !== null) {
+                tags.push(match[1]);
+            }
+            return tags;
+        }
+
+        function extractDouyinLink(input) {
+            // 正则表达式：匹配抖音相关链接，支持多种子域名和路径格式
+            const regex = /https:\/\/[\w.]+\.douyin\.com\/[\w\-/?&=]+/;
+            
+            // 执行匹配
+            const match = input.match(regex);
+            
+            // 返回匹配到的第一个链接，未找到则返回null
+            return match ? match[0] : null;
+        }
+
+        // 渲染数据到页面
+        function renderData(data,link) {
+            // 保存当前数据
+            currentVideoData = data;
+            
+            const videoPlayer=document.getElementById('videoPlayer');
+            // 填充视频信息
+            // videoPlayer.innerHTML = `<source src="${rootUrl+'proxy?url='+encodeURIComponent(data.videoUrl)+'&header_Referer='+link}" >`;
+            // videoPlayer.src=rootUrl+'proxy?url='+encodeURIComponent(data.videoUrl)+'&header_Referer='+link;
+            videoPlayer.src=data.videoUrl;
+            //抖音视频不支持跨域播放，展示隐藏
+            // videoPlayer.classList.add("hidden");
+            document.getElementById('videoTitle').textContent = data.title;
+            document.getElementById('videoSize').innerHTML = formatFileSize(data.size);
+            document.getElementById('videoCreateTime').innerHTML = data.createTime;
+            document.getElementById('videoSpecifications').innerHTML = data.videoSpecifications;
+            document.getElementById('downloadVideoBtn').title = data.videoUrl;
+            if (data.audioUrl) {
+                document.getElementById('audioPlayer').innerHTML = `<source src="${data.audioUrl}" type="audio/mpeg">`;
+                document.getElementById('downloadAudioBtn').title = data.audioUrl;
+            }else {
+                document.getElementById("tab-audio").classList.add("hidden")
+            }
+            // 设置封面图
+            document.getElementById('coverImage').src = data.cover;
+            document.getElementById('downloadCoverBtn').title = data.cover;
+
+            // 填充作者信息
+            document.getElementById('authorAvatar').src = data.avatar;
+            document.getElementById('authorAvatar').alt = `${data.author}的头像`;
+            document.getElementById('authorName').textContent = data.author;
+
+
+            // 提取并渲染标签
+            const tagsContainer = document.getElementById('tagsContainer');
+            tagsContainer.innerHTML = ''; // 清空现有标签
+            // const tags = extractTags(data.title);
+            const tags =[data.signature];
+            tags.forEach(tag => {
+                const tagEl = document.createElement('span');
+                tagEl.className = 'text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full';
+                tagEl.textContent = `${tag}`;
+                tagsContainer.appendChild(tagEl);
+            });
+            
+            // 填充统计数据
+            document.getElementById('likeCount').textContent = data.like_count;
+            document.getElementById('collectCount').textContent = data.collect_count;
+            document.getElementById('shareCount').textContent = data.share_count;
+            document.getElementById('commentCount').textContent = data.comment_count;
+            document.getElementById('recommendCount').textContent = data.recommend_count;
+            document.getElementById('admireCount').textContent = data.admire_count;
+            
+            // 显示内容，隐藏加载状态
+            loadingEl.classList.add('hidden');
+            contentContainer.classList.remove('hidden');
+        }
+
+        // 解析链接并获取数据
+        async function parseLink(link) {
+            try {
+                link=extractDouyinLink(link);
+                // 验证链接是否有效
+                if (!link || !isValidUrl(link)) {
+                    throw new Error('请输入有效的链接');
+                }
+                
+                // 显示加载状态
+                loadingEl.classList.remove('hidden');
+                errorEl.classList.add('hidden');
+                contentContainer.classList.add('hidden');
+                
+                
+                // 调用后端API获取视频数据
+                // 实际项目中替换为真实接口地址
+                const response = await fetch(`${rootUrl+'action/videoParsing?url='+ encodeURIComponent(link)}`);
+                if (!response.ok) {
+                    throw new Error('获取视频数据失败');
+                }
+                const data = await response.json();
+                
+                if(data.code!==0){
+                    throw new Error('获取视频数据失败:'+data.message);
+                } 
+                // 渲染数据
+                renderData(data.obj,link);
+                
+            } catch (error) {
+                console.error('解析失败:', error);
+                // 显示错误状态
+                loadingEl.classList.add('hidden');
+                errorEl.classList.remove('hidden');
+                contentContainer.classList.add('hidden');
+                errorMessage.textContent = error.message || '解析链接失败，请检查链接是否有效';
+            }
+        }
+
+        // 验证URL是否有效
+        function isValidUrl(url) {
+            try {
+                new URL(url);
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        // 切换内容标签
+        function switchTab(tabName) {
+            // 更新标签样式
+            contentTabs.forEach(tab => {
+                if (tab.dataset.tab === tabName) {
+                    tab.classList.add('bg-primary', 'text-white');
+                    tab.classList.remove('hover:bg-neutral-100');
+                } else {
+                    tab.classList.remove('bg-primary', 'text-white');
+                    tab.classList.add('hover:bg-neutral-100');
+                }
+            });
+            
+            // 显示对应面板
+            contentPanels.forEach(panel => {
+                if (panel.id === `${tabName}Tab`) {
+                    panel.classList.remove('hidden');
+                } else {
+                    panel.classList.add('hidden');
+                }
+            });
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            // 解析按钮事件
+            parseBtn.addEventListener('click', () => {
+                const link = shareLinkInput.value.trim();
+                parseLink(link);
+            });
+            
+            // 回车触发解析
+            shareLinkInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    const link = shareLinkInput.value.trim();
+                    parseLink(link);
+                }
+            });
+            
+            // 重试按钮事件
+            retryBtn.addEventListener('click', () => {
+                const link = shareLinkInput.value.trim();
+                parseLink(link);
+            });
+            
+            // 标签切换事件
+            contentTabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    switchTab(tab.dataset.tab);
+                });
+            });
+            
+            // 视频加载状态处理
+            const video = document.getElementById('videoPlayer');
+            video.addEventListener('loadedmetadata', () => {
+                console.log('视频元数据加载完成');
+            });
+            video.addEventListener('error', (e) => {
+                console.error('视频加载失败:', e);
+                alert('视频加载失败，请稍后重试');
+            });
+
+            // 音频加载状态处理
+            const audio = document.getElementById('audioPlayer');
+            audio.addEventListener('error', (e) => {
+                console.error('音频加载失败:', e);
+                alert('音频加载失败，请稍后重试');
+            });
+
+            // 下载封面按钮
+            document.getElementById('downloadVideoBtn').addEventListener('click', () => {
+                if (currentVideoData) {
+                    // alert('正在准备下载视频文件...');
+                    // 实际项目中实现封面下载逻辑
+                    downloadFile(currentVideoData.videoUrl);
+                }
+            });
+
+            // 下载封面按钮
+            document.getElementById('downloadCoverBtn').addEventListener('click', () => {
+                if (currentVideoData) {
+                    // alert('正在准备下载封面图片...');
+                    // 实际项目中实现封面下载逻辑
+                    downloadFile(currentVideoData.cover);
+                }
+            });
+
+            // 下载音频按钮
+            document.getElementById('downloadAudioBtn').addEventListener('click', () => {
+                if (currentVideoData) {
+                    // alert('正在准备下载音频文件...');
+                    // 实际项目中实现音频下载逻辑
+                    downloadFile(currentVideoData.audioUrl);
+                }
+            });
+        });
+
+        function downloadFile(url, fileName) {
+            // 创建隐藏的a标签
+            const link = document.createElement('a');
+            link.target="_blank";
+            link.href = url; // 下载链接（可以是 blob: 或 http(s): 协议）
+            
+            // 指定文件名（可选，部分浏览器可能忽略）
+            if (fileName) {
+                link.download = fileName; // 文件名（不含路径，仅文件名+扩展名）
+            }
+            
+            // 触发点击
+            document.body.appendChild(link);
+            link.click();
+            
+            // 清理
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>

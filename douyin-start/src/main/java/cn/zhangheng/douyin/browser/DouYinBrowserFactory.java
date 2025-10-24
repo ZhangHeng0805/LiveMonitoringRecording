@@ -1,11 +1,15 @@
 package cn.zhangheng.douyin.browser;
 
 import cn.hutool.core.text.UnicodeUtil;
+import cn.zhangheng.browser.API;
 import cn.zhangheng.douyin.DouYinRoom;
+import com.microsoft.playwright.Request;
+import com.microsoft.playwright.Response;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -54,7 +58,10 @@ public class DouYinBrowserFactory {
             log.warn("页面源码为空，无法提取房间信息");
             return;
         }
-        pageSource=pageSource.substring(pageSource.lastIndexOf("\\\"homeStore\\\":"));
+        int index = pageSource.lastIndexOf("\\\"homeStore\\\":");
+        if (index > 0) {
+            pageSource = pageSource.substring(index);
+        }
         // 提取直播状态
         String status = extractStr(pageSource, STATUS_STR_PATTERN, null);
         room.setLiving("2".equals(status));
@@ -100,5 +107,28 @@ public class DouYinBrowserFactory {
 
         // 所有匹配都被排除或无匹配
         return null;
+    }
+
+    public static void getRequestApi(DouYinRoom room, Request request, API api) {
+        String url = request.url();
+        // 匹配目标GET请求
+        if ("GET".equalsIgnoreCase(request.method()) && url.startsWith(TARGET_REQUEST_PREFIX)) {
+            Map<String, String> headers = request.allHeaders();
+            headers.entrySet().removeIf(next -> next.getKey().startsWith(":"));
+            api.setDataUrl(url);
+            api.setHeaders(headers);
+            room.setApi(api);
+            log.debug("直播状态: {}\n===== 监听URL: {}\n===== User-Agent: {}",
+                    room.isLiving() ? "已开启" : "未开启", api.getDataUrl(), api.getHeaders());
+        }
+    }
+
+    public static void getResponseApi(DouYinRoom room, Response response, API api) {
+        String url = response.url();
+        if (url.startsWith(api.getUrlPrefix())) {
+            api.setDataUrl(url);
+            api.setResponseBody(response.text());
+            room.setApi(api);
+        }
     }
 }

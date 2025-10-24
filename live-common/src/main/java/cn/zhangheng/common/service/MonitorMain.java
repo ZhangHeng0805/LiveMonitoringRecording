@@ -187,6 +187,13 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                     trayIconUtil.setStartLivingImage(false);
                     log.info(msg);
                 } else {
+                    while (getIsRunning() && (room.getStreams() == null || room.getStreams().isEmpty())) {
+                        roomMonitor.refresh(true);
+                        try {
+                            TimeUnit.SECONDS.sleep(1);
+                        } catch (InterruptedException ignored) {
+                        }
+                    }
                     if (isRecord) {
                         recorderTask = getRecorderTask();
                         recorderTask.run(room);

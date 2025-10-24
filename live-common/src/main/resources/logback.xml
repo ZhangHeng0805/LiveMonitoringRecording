@@ -24,11 +24,16 @@
     </appender>
 
     <!-- 根日志配置 -->
+<!--    <root level="debug">-->
+<!--        <appender-ref ref="CONSOLE" />-->
+<!--        <appender-ref ref="FILE" />-->
+<!--    </root>-->
+
     <root level="info">
         <appender-ref ref="CONSOLE" />
         <appender-ref ref="FILE" />
     </root>
 
     <!-- 特定包的日志级别 -->
-    <logger name="cn.zhangheng" level="debug" />
+    <logger name="cn.zhangheng" level="info" />
 </configuration>

@@ -6,6 +6,7 @@ package cn.zhangheng.douyin.browser; /**
  * @description:
  */
 
+import cn.zhangheng.browser.API;
 import cn.zhangheng.browser.PlaywrightBrowser;
 import cn.zhangheng.common.bean.Constant;
 import cn.zhangheng.douyin.DouYinRoom;
@@ -32,18 +33,14 @@ public class DouyinPlaywright {
     }
 
     public static void request(DouYinRoom room) {
-        try (PlaywrightBrowser browser = new PlaywrightBrowser(Constant.User_Agent)) {
+        PlaywrightBrowser browser = null;
+        try {
+            browser = new PlaywrightBrowser(Constant.User_Agent);
             Page page = browser.newPage();
+            API api = new API(TARGET_REQUEST_PREFIX);
             Consumer<Request> handler = request -> {
                 // 过滤需要的接口（例如包含 "api"、"data" 等关键词的接口）
-                String url = request.url();
-                if ("GET".equalsIgnoreCase(request.method()) && url.startsWith(TARGET_REQUEST_PREFIX)) {
-                    room.setData_url(url);
-                    // 获取请求头
-                    String user_agent = request.headers().get("user-agent");
-                    room.setUser_agent(user_agent);
-                    DouyinPlaywright.log.debug("直播{}开启\n===== 直播监听 URL: {}\n===== 用户代理: {}", room.isLiving() ? "已" : "未", url, user_agent);
-                }
+                getRequestApi(room, request, api);
             };
             page.onRequest(handler);
 
@@ -59,18 +56,15 @@ public class DouyinPlaywright {
 
             if (room.isLiving()) {
                 // 等待一段时间，确保异步请求被捕获
-                try {
-//                    int random = RandomUtil.createRandom(2, 5);
-                    TimeUnit.SECONDS.sleep(3);
-                } catch (InterruptedException ignored) {
-                }
+                browser.waitForTargetRequest(page, TARGET_REQUEST_PREFIX, 10_000);
             }
 //            page.offRequest(handler);
+        } finally {
+            if (browser != null) {
+                browser.close();
+            }
         }
     }
-
-
-
 
 
     public static void main(String[] args) {

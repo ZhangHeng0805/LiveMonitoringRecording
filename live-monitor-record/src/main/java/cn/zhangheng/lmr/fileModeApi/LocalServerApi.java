@@ -10,7 +10,9 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.UnsupportedEncodingException;
+import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
+import java.net.ServerSocket;
 import java.net.URLEncoder;
 
 /**
@@ -38,6 +40,7 @@ public class LocalServerApi {
             try {
                 server = HttpServer.create(new InetSocketAddress(port), 0);
                 server.createContext("/", new TextFileHandler("Monitor.html", "text/html"));
+                server.createContext("/DouYinVideoPares.html", new TextFileHandler("DouYinVideoPares.html", "text/html"));
                 server.createContext("/img", new StreamFileHandler("/img/"));
                 server.createContext("/js", new StreamFileHandler("/js/", "text/javascript"));
                 server.createContext("/css", new StreamFileHandler("/css/", "text/css"));

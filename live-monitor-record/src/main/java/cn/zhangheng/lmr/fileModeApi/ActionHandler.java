@@ -6,7 +6,9 @@ import cn.zhangheng.common.service.MonitorMain;
 import cn.zhangheng.common.bean.Room;
 import cn.zhangheng.common.bean.enums.MonitorStatus;
 import cn.zhangheng.common.record.Recorder;
+import cn.zhangheng.douyin.DouYinVideo;
 import cn.zhangheng.douyin.browser.DouYinBrowserFactory;
+import cn.zhangheng.douyin.browser.DouYinVideoParse;
 import cn.zhangheng.lmr.FileModeMain;
 import cn.zhangheng.lmr.Main;
 import com.sun.net.httpserver.HttpExchange;
@@ -70,6 +72,9 @@ public class ActionHandler extends JSONHandler {
             } else {
                 msg.setCode(1);
             }
+        } else if (indexPath.startsWith("videoParsing")) {
+            Map<String, String> query = parseQuery(httpExchange);
+            videoParsing(msg, query);
         } else {
             msg.setCode(1);
             msg.setMessage("访问的接口路径不存在！" + prefix + indexPath);
@@ -186,6 +191,21 @@ public class ActionHandler extends JSONHandler {
         res.put("remainingThreads", remainingThreads);
         msg.setObj(res);
         msg.setMessage(StrUtil.format("核心线程数: {}， 正在工作的线程数: {}, 剩余可用线程数: {}", corePoolSize, activeCount, remainingThreads));
+    }
+
+    private void videoParsing(Message msg, Map<String, String> query) {
+        try {
+            String url = query.get("url");
+            if (url == null) {
+                throw new IllegalArgumentException("解析URl缺省！");
+            }
+            DouYinVideo parse = DouYinVideoParse.parse(url);
+            msg.setObj(parse);
+            msg.setMessage("解析成功！");
+        } catch (Exception e) {
+            msg.setCode(1);
+            msg.setMessage(e.getMessage());
+        }
     }
 
     private boolean checkActionKey(Map<String, String> query, Message msg) {

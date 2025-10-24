@@ -1,5 +1,6 @@
 package cn.zhangheng.browser;
 
+import cn.hutool.core.util.StrUtil;
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.Cookie;
 import com.microsoft.playwright.options.LoadState;
@@ -13,6 +14,8 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
 
 /**
  * @author: ZhangHeng
@@ -56,6 +59,18 @@ public class PlaywrightBrowser implements AutoCloseable {
                 }
             }
         }
+
+        @Override
+        public void removed(String threadId, BrowserContext value) {
+            if (value != null && value.browser().isConnected()) {
+                try {
+                    value.close();
+                    log.debug("线程[{}]的BrowserContext已关闭", threadId);
+                } catch (Throwable e) {
+                    log.error("Error closing browser context[{}]: {}", threadId, e.getMessage());
+                }
+            }
+        }
     });
 
     private static final MyThreadLocal<AtomicInteger> pageCount = new MyThreadLocal<>();
@@ -83,12 +98,16 @@ public class PlaywrightBrowser implements AutoCloseable {
     private final String userAgent;
 
     public PlaywrightBrowser(String userAgent) {
+        this(userAgent,true);
+    }
+
+    public PlaywrightBrowser(String userAgent,boolean headless) {
         this.userAgent = userAgent;
         try {
             // 先初始化Playwright
             playwright = Playwright.create();
             // 再初始化浏览器（若失败，需关闭已创建的Playwright）
-            browser = playwright.chromium().launch(getLaunchOptions(userAgent));
+            browser = playwright.chromium().launch(getLaunchOptions(userAgent,headless));
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 if (isRunning()) {
                     //程序关闭，自动关闭浏览器
@@ -107,9 +126,9 @@ public class PlaywrightBrowser implements AutoCloseable {
     /**
      * 浏览器启动配置
      */
-    public static BrowserType.LaunchOptions getLaunchOptions(String userAgent) {
+    public static BrowserType.LaunchOptions getLaunchOptions(String userAgent,boolean headless) {
         return new BrowserType.LaunchOptions()
-                .setHeadless(true) // 无头模式：生产环境建议true
+                .setHeadless(headless) // 无头模式：生产环境建议true
                 .setArgs(Arrays.asList(
                         "--disable-blink-features=AutomationControlled",
                         "--user-agent=" + userAgent,
@@ -149,7 +168,7 @@ public class PlaywrightBrowser implements AutoCloseable {
                 }
                 // 重新创建浏览器
                 try {
-                    browser = playwright.chromium().launch(getLaunchOptions(userAgent));
+                    browser = playwright.chromium().launch(getLaunchOptions(userAgent,true));
                     log.info("浏览器重新启动成功");
                 } catch (Exception e) {
                     throw new RuntimeException("重新启动浏览器失败", e);
@@ -187,7 +206,7 @@ public class PlaywrightBrowser implements AutoCloseable {
     }
 
     // 解析 Cookie 字符串为 Playwright 的 Cookie 对象
-    public static List<Cookie> parseCookieString(String targetDomain,String cookieStr) {
+    public static List<Cookie> parseCookieString(String targetDomain, String cookieStr) {
         // 例如：访问抖音网页版填 ".douyin.com"（带点表示所有子域名生效），访问其他网站需替换
 //        String targetDomain = ".douyin.com";
 
@@ -207,7 +226,7 @@ public class PlaywrightBrowser implements AutoCloseable {
             String cookieValue = keyValue[1].trim();
 
             // 创建Cookie对象（旧版本：直接给字段赋值）
-            Cookie cookie = new Cookie(cookieName,cookieValue);
+            Cookie cookie = new Cookie(cookieName, cookieValue);
 //            cookie.name = cookieName;       // Cookie名称
 //            cookie.value = cookieValue;     // Cookie值
             cookie.domain = targetDomain;   // 必选：绑定的域名
@@ -252,19 +271,81 @@ public class PlaywrightBrowser implements AutoCloseable {
             );
 //            }
         } catch (Exception e) {
-            log.error("页面导航失败:{} ,{} ", url, ThrowableUtil.getAllCauseMessage(e));
+            if (!(e instanceof PlaywrightException && e.getMessage().startsWith("Object doesn't exist:"))) {
+                log.error("页面导航失败:{} ,{} ", url, ThrowableUtil.getAllCauseMessage(e));
 //            throw new RuntimeException("导航到" + url + "失败", e);
+            }
         }
         return page;
     }
 
+
+    public boolean waitForTargetRequest(Page page, String target_request_prefix, long navigateTimeoutMs) {
+        AtomicReference<Boolean> flag = new AtomicReference<>(false);
+        try {
+            // 1. 定义请求匹配规则：Predicate<Request>
+            Predicate<Request> requestPredicate = request ->
+                    "GET".equalsIgnoreCase(request.method()) &&
+                            request.url().startsWith(target_request_prefix);
+
+            // 2. 定义请求匹配后的回调逻辑（Runnable）
+            Runnable callback = () -> {
+                flag.set(true);
+                log.debug("已捕获目标请求！");
+                // 这里可以执行你原本在“请求匹配后”要做的事，比如：
+                // - 标记请求已捕获
+                // - 记录请求信息
+                // - 触发后续流程
+            };
+
+            // 3. 配置等待选项（超时配置毫秒）
+            Page.WaitForRequestOptions waitOptions = new Page.WaitForRequestOptions()
+                    .setTimeout(navigateTimeoutMs);
+
+            // 4. 注册“匹配规则 + 回调 + 等待选项”
+            page.waitForRequest(requestPredicate, waitOptions, callback);
+            log.debug("已注册目标请求监听器，将在请求匹配时执行回调");
+        } catch (Exception e) {
+            log.warn("注册请求监听器时发生异常", e);
+        }
+        return flag.get();
+    }
+
+    public boolean waitForTargetResponse(Page page, String target_request_prefix, long navigateTimeoutMs) {
+        AtomicReference<Boolean> flag = new AtomicReference<>(false);
+        try {
+            // 1. 定义响应匹配规则：Predicate<Request>
+            Predicate<Response> requestPredicate = response ->
+                    response.url().startsWith(target_request_prefix)&& StrUtil.isNotBlank(response.text());
+
+            // 2. 定义响应匹配后的回调逻辑（Runnable）
+            Runnable callback = () -> {
+                flag.set(true);
+                log.debug("已捕获目标响应！");
+                // 这里可以执行你原本在“请求匹配后”要做的事，比如：
+            };
+
+            // 3. 配置等待选项（超时配置毫秒）
+            Page.WaitForResponseOptions waitOptions = new Page.WaitForResponseOptions()
+                    .setTimeout(navigateTimeoutMs);
+
+            // 4. 注册“匹配规则 + 回调 + 等待选项”
+            page.waitForResponse(requestPredicate, waitOptions, callback);
+            log.debug("已注册目标响应监听器，将在响应匹配时执行回调");
+        } catch (Exception e) {
+            log.warn("注册响应监听器时发生异常", e);
+        }
+        return flag.get();
+    }
+
+
     /**
      * 清理页面状态（cookies、权限、localStorage）
      */
-    private void clearPageState(Page page) {
+    public void clearPageState(Page page) {
         if (page == null) return;
         try {
-            page.evaluate("localStorage.clear(); sessionStorage.clear();"); // 补充清理sessionStorage
+//            page.evaluate("localStorage.clear(); sessionStorage.clear();"); // 补充清理sessionStorage
             page.context().clearCookies();
         } catch (Exception e) {
             log.warn("清理页面状态失败", e);
@@ -290,12 +371,14 @@ public class PlaywrightBrowser implements AutoCloseable {
                 // 关闭页面（可选：触发beforeunload事件）
                 page.close(new Page.CloseOptions().setRunBeforeUnload(false));
             }
-            if (count % 150 == 0) {
-                // 每50次关闭一次
+            if (count % 100 == 0) {
+                // 每100次关闭一次
                 closeContext();
             }
         } catch (Throwable e) {
-            log.error("关闭页面失败：{}", e.getMessage());
+            if (!(e instanceof PlaywrightException && e.getMessage().startsWith("Object doesn't exist:"))) {
+                log.error("关闭页面失败：{}", e.getMessage());
+            }
         }
     }
 
@@ -305,11 +388,8 @@ public class PlaywrightBrowser implements AutoCloseable {
     }
 
     public void closeContext() {
-        BrowserContext browserContext = context.get();
-        if (browserContext != null && browserContext.browser().isConnected()) {
-            browserContext.close();
-            context.remove();
-        }
+        //移除后监听会自动关闭BrowserContext
+        context.remove();
     }
 
     /**
@@ -326,8 +406,7 @@ public class PlaywrightBrowser implements AutoCloseable {
                 log.warn("关闭浏览器失败", e);
             } finally {
                 browser = null; // 标记为null，避免重复操作
-                context.clear();
-                pageCount.clear();
+                clear();
             }
         }
 

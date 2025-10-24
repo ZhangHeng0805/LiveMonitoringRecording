@@ -28,6 +28,7 @@ public class RequestUtils {
         connection.setRequestMethod("GET");
         connection.setConnectTimeout(connectTimeout);
         connection.setReadTimeout(readTimeout);
+//        connection.setDoOutput(true);
         if (headers != null&& !headers.isEmpty()) {
             for (Map.Entry<String, String> entry : headers.entrySet()) {
                 connection.setRequestProperty(entry.getKey(), entry.getValue());
