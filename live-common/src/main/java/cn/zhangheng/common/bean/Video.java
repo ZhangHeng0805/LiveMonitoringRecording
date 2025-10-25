@@ -2,8 +2,6 @@ package cn.zhangheng.common.bean;
 
 import lombok.Data;
 
-import java.util.Date;
-
 /**
  * @author: ZhangHeng
  * @email: zhangheng_0805@163.com

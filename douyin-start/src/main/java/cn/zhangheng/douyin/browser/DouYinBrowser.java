@@ -13,7 +13,6 @@ import org.slf4j.LoggerFactory;
 import java.io.Closeable;
 import java.net.URL;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
 
 import static cn.zhangheng.douyin.browser.DouYinBrowserFactory.*;
 

@@ -238,6 +238,10 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                     String tooltip = "【" + recorder.getDefinition() + "】" + recorder.getProgressMsg();
                     trayIconUtil.setToolTip(statistics + "\n" + tooltip);
                     log.info(tooltip);
+                    if (recorder.getDownloadSize() > 15L * 1024 * 1024 * 1024) {
+                        recorder.stop(false);
+                        log.info("录制文件大小超过15G，自动结束录制");
+                    }
                 } else {
                     trayIconUtil.setToolTip(statistics);
                 }
