@@ -35,7 +35,7 @@ public class DouyinPlaywright {
     public static void request(DouYinRoom room) {
         PlaywrightBrowser browser = null;
         try {
-            browser = new PlaywrightBrowser(Constant.User_Agent);
+            browser = new PlaywrightBrowser(Constant.User_Agent,true);
             Page page = browser.newPage();
             API api = new API(TARGET_REQUEST_PREFIX);
             Consumer<Request> handler = request -> {
@@ -57,6 +57,11 @@ public class DouyinPlaywright {
             if (room.isLiving()) {
                 // 等待一段时间，确保异步请求被捕获
                 browser.waitForTargetRequest(page, TARGET_REQUEST_PREFIX, 10_000);
+            }else {
+//                try {
+//                    TimeUnit.SECONDS.sleep(20);
+//                } catch (InterruptedException ignored) {
+//                }
             }
 //            page.offRequest(handler);
         } finally {

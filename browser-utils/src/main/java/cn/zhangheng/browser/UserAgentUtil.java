@@ -36,12 +36,12 @@ public class UserAgentUtil {
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 OPR/109.0.0.0",
     };
 
-    public static String getUser_Agent() {
+    public String getUser_Agent() {
         int random = RandomUtil.createRandom(0, User_Agents.length);
         return User_Agents[random];
     }
 
     public static void main(String[] args) {
-        System.out.println(getUser_Agent());
+        System.out.println(new UserAgentUtil().getUser_Agent());
     }
 }

@@ -82,6 +82,7 @@ public class DouYinBrowser implements Closeable {
 
             // 提取页面源码中的房间信息
             String pageSource = page.content();
+
             extractRoomInfo(room, pageSource);
 
             // 若直播中，等待目标请求完成（替代固定休眠，更高效）

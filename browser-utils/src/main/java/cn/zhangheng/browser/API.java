@@ -19,5 +19,11 @@ public class API {
     private final String urlPrefix;
     private String dataUrl;
     private Map<String,String> headers;
+
+    public void setHeaders(Map<String, String> headers) {
+        headers.entrySet().removeIf(next -> next.getKey().startsWith(":"));
+        this.headers = headers;
+    }
+
     private String responseBody;
 }

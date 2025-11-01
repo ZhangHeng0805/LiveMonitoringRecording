@@ -39,13 +39,13 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
     public static void main(String[] args) {
         long sta = System.currentTimeMillis();
         Setting setting = new Setting();
-        DouYinRoom info = new DouYinRoom("622216334529");
+        DouYinRoom info = new DouYinRoom("541976200890");
 //        DouYinRoom info = new DouYinRoom("兰小美认证信息.txt");
 //        DouYinRoom info = new DouYinRoom("870887192950-7547373102502578971");
 //        DouYinRoom info = new DouYinRoom("816560967344-7549211978108029696-uu子.txt");
         info.setSetting(setting);
         DouYinRoomService douYinRoomService = new DouYinRoomService(info);
-        douYinRoomService.refresh();
+//        douYinRoomService.refresh();
         System.out.println("耗时：" + (System.currentTimeMillis() - sta));
         System.out.println(JSONUtil.toJsonPrettyStr(info));
     }

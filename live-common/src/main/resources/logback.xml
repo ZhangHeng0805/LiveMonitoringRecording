@@ -35,5 +35,5 @@
     </root>
 
     <!-- 特定包的日志级别 -->
-    <logger name="cn.zhangheng" level="info" />
+    <logger name="cn.zhangheng" level="debug" />
 </configuration>

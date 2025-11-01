@@ -96,6 +96,7 @@ public class PlaywrightBrowser implements AutoCloseable {
                     "});";
 
     private final String userAgent;
+    private final UserAgentUtil userAgentUtil;
 
     public PlaywrightBrowser(String userAgent) {
         this(userAgent,true);
@@ -103,6 +104,7 @@ public class PlaywrightBrowser implements AutoCloseable {
 
     public PlaywrightBrowser(String userAgent,boolean headless) {
         this.userAgent = userAgent;
+        this.userAgentUtil=new UserAgentUtil();
         try {
             // 先初始化Playwright
             playwright = Playwright.create();
@@ -191,7 +193,7 @@ public class PlaywrightBrowser implements AutoCloseable {
             }
             // 创建新 Context 并覆盖 ThreadLocal
             browserContext = browser.newContext(new Browser.NewContextOptions()
-                    .setUserAgent(UserAgentUtil.getUser_Agent()));
+                    .setUserAgent(userAgentUtil.getUser_Agent()));
             context.set(browserContext);
         }
         if (pageCount.get() == null) {

@@ -114,7 +114,6 @@ public class DouYinBrowserFactory {
         // 匹配目标GET请求
         if ("GET".equalsIgnoreCase(request.method()) && url.startsWith(TARGET_REQUEST_PREFIX)) {
             Map<String, String> headers = request.allHeaders();
-            headers.entrySet().removeIf(next -> next.getKey().startsWith(":"));
             api.setDataUrl(url);
             api.setHeaders(headers);
             room.setApi(api);
