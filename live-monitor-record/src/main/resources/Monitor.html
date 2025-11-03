@@ -738,11 +738,10 @@
                                         </span>
                                     </div>
 
-                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm text-gray-600">
+                                    <div class="grid grid-cols-2 md:grid-cols-[3fr,1fr,1fr,2fr] gap-2 text-sm text-gray-600">
                                         <div class="flex items-center">
                                             <i class="fa fa-clock-o text-gray-400 mr-1"></i>
-                                            <span class="record-time">
-                                                ${recorder.msg ? recorder.msg.split(" / ")[0] : "0秒"}</span>
+                                            <span class="record-time">${recorder.msg ? recorder.msg.split(" / ")[0] : "0秒"}</span>
                                         </div>
                                         <div class="flex items-center">
                                             <i class="fa fa-file-video-o text-gray-400 mr-1"></i>
