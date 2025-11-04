@@ -366,15 +366,15 @@ public class PlaywrightBrowser implements AutoCloseable {
             // 根据isPageClear策略清理状态
             if (Boolean.TRUE.equals(isPageClear)) {
                 clearPageState(page); // 强制清理
-            } else if (isPageClear == null && count % 30 == 0) {
-                clearPageState(page); // 每30次清理一次
+            } else if (isPageClear == null && count % 10 == 0) {
+                clearPageState(page); // 每10次清理一次
             }
             if (!page.isClosed()) {
                 // 关闭页面（可选：触发beforeunload事件）
                 page.close(new Page.CloseOptions().setRunBeforeUnload(false));
             }
-            if (count % 100 == 0) {
-                // 每100次关闭一次
+            if (count % 30 == 0) {
+                // 每30次关闭一次
                 closeContext();
             }
         } catch (Throwable e) {

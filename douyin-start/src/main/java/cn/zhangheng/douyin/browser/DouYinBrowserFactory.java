@@ -76,6 +76,10 @@ public class DouYinBrowserFactory {
             String avatar = UnicodeUtil.toString(extractStr(pageSource, AVATAR_PATTERN, null));
             room.setAvatar(avatar);
         }
+        if(room.isLiving()){
+            room.setAvatar(null);
+            room.setNickname(null);
+        }
     }
 
     /**
