@@ -57,8 +57,8 @@ public abstract class Room {
     protected Platform platform;
 
     public void setSetting(Setting setting) {
+        this.setting = setting;
         if (setting != null) {
-            this.setting = setting;
             initSetting(setting);
         }
     }
@@ -67,12 +67,16 @@ public abstract class Room {
         if (StrUtil.isBlank(this.cookie) && StrUtil.isNotBlank(cookie)) {
             this.cookie = cookie;
             log.debug("{}直播间[{}]设置Cookie：{}", getPlatform().name, id, cookie);
+        } else {
+            this.cookie = null;
         }
     }
 
     public void setNickname(String nickname) {
         if (nickname != null && !"null".equals(nickname)) {
             this.nickname = nickname;
+        } else {
+            this.nickname = null;
         }
     }
 
