@@ -64,12 +64,12 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
     private int tryRecordSec = 1;
     private final AtomicBoolean isForceStop = new AtomicBoolean(false);//是否强制停止
 
-    public void setIsForceStop(boolean is) {
-        isForceStop.set(is);
-    }
-
     public boolean getIsRunning() {
         return isRunning.get();
+    }
+
+    public void setIsForceStop(boolean is) {
+        isForceStop.set(is);
     }
 
     public boolean getIsForceStop() {
@@ -478,9 +478,9 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
 
             @Override
             public boolean closeClick(ActionEvent e) {
-                isForceStop.set(true);//退出监听循环
+                setIsForceStop(true);//退出监听循环
                 exit();
-                return !RunMode.FILE.equals(room.getSetting().getRunMode());//不要终止程序
+                return !RunMode.FILE.equals(room.getSetting().getRunMode());//判断是否终止程序
             }
 
             @Override

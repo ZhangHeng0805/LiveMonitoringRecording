@@ -8,6 +8,7 @@ import com.alibaba.excel.write.metadata.WriteSheet;
 import com.alibaba.excel.write.metadata.style.WriteCellStyle;
 import com.alibaba.excel.write.style.HorizontalCellStyleStrategy;
 import com.alibaba.excel.write.style.column.SimpleColumnWidthStyleStrategy;
+import com.zhangheng.util.ThrowableUtil;
 import com.zhangheng.util.TimeUtil;
 import org.apache.poi.ss.usermodel.HorizontalAlignment;
 import org.apache.poi.ss.usermodel.VerticalAlignment;
@@ -20,6 +21,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -36,13 +38,47 @@ public class MonitorDataTableGenerate {
     private static final Pattern pattern = Pattern.compile(regex);
 
     public static void main(String[] args) throws IOException {
+        System.out.println("=====直播监听数据log文件数据封装成Excel=====");
+        Scanner scanner = new Scanner(System.in);
+        while (true) {
+            System.out.print("请输入监听log文件保存目录路径(输入0退出): ");
+            String p = scanner.nextLine();
+            if (!"0".equals(p)) {
+                try {
+                    Path path = Paths.get(p);
+                    File file = path.toFile();
+                    if (file.exists() && file.isDirectory()) {
+                        String name = file.getName();
+                        if (name.startsWith("[") && name.endsWith("]")) {
+                            findRoomDir(path);
+                        } else if (name.startsWith("2")) {
+                            findMonitorFile(path);
+                        } else {
+                            throw new RuntimeException(p + " 不是一个监听文件保存目录路径");
+                        }
+                    } else {
+                        throw new RuntimeException(p + " 不是一个已存在的目录路径");
+                    }
+                } catch (Exception e) {
+                    System.err.println("程序发生异常："+ ThrowableUtil.toString(e));
+//                    e.printStackTrace();
+                }
+            } else {
+                break;
+            }
+        }
+        System.out.println("程序退出！");
+
 //        Path path1 = Paths.get("D:\\直播录屏\\live-monitor-record\\【星曦向荣】直播监听工具\\抖音\\[小兰花]");
 //        findRoomDir(path1);
-
-        Path path2 = Paths.get("D:\\直播录屏\\live-monitor-record\\【星曦向荣】直播监听工具\\抖音\\[小兰花]\\2025-11-01");
-        findMonitorFile(path2);
+//
+//        Path path2 = Paths.get("D:\\直播录屏\\live-monitor-record\\【星曦向荣】直播监听工具\\抖音\\[小兰花]\\2025-11-17");
+//        Path path2 = Paths.get("D:\\直播录屏\\live-monitor-record\\【星曦向荣】直播监听工具\\抖音\\[兰小美]\\2025-11-18");
+//        Path path2 = Paths.get("【星曦向荣】直播监听工具/抖音/[超级喜欢uu子]/2025-09-24");
+//        findMonitorFile(path2);
 
     }
+
     private static List<Path> findRoomDir(Path roomDir) {
         List<Path> datas = new ArrayList<>();
         File file = roomDir.toFile();
@@ -67,7 +103,9 @@ public class MonitorDataTableGenerate {
         if (file.exists() && file.isDirectory()) {
             File[] files = file.listFiles();
             if (files != null) {
-                String xlsxName = Paths.get(dateDir.toString(), dateDir.toFile().getName() + "监听数据.xlsx").toString();
+                String n = dateDir.getParent().toFile().getName();
+                n = n.startsWith("[") && n.endsWith("]") ? n : "";
+                String xlsxName = Paths.get(dateDir.toString(), dateDir.toFile().getName() + n + "直播监听数据.xlsx").toString();
                 try (ExcelWriter excelWriter = EasyExcel.write(xlsxName).build()) {
                     int index = 0;
                     for (File f : files) {
