@@ -21,7 +21,7 @@ public class Constant {
     //默认最大监听线程
     public final static int maxMonitorThreads = 10;
     //默认监听平台服务端口
-    public final static int monitorServerPort=8005;
+    public final static int monitorServerPort = 8005;
     //设备标识ID
     public final static String deviceUniqueId = new DeviceInfoCollector().getDeviceUniqueId();
 

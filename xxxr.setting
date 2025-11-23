@@ -17,6 +17,10 @@ record.ffmpegPath=bin/ffmpeg.exe
 record.isLoop=true
 #监听间隔时长（秒）
 monitor.delayIntervalSec=10
+#是否隐藏监听浏览器
+#monitor.browser.headless=true
+#监听浏览器是否每次打开页面时重置状态
+monitor.browser.isPageClear=false
 #直播开始时触发的快捷键(小写，多个组合之间逗号分割，例：alt+tab,ctrl+s)
 living.start.shortcut=
 #直播结束时触发的快捷键

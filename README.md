@@ -27,63 +27,25 @@
 ├─ live-monitor-record [主程序模块，集成所有平台功能]
 ```
 
-## 配置说明
 
-配置文件：`xxxr.setting`
-
-```properties
-# FLV播放器服务端口
-server.flvPlayer.port=8000
-
-# 息知通知地址（可选）
-# notice.xiZhi.url=https://xizhi.qqoq.net/xxx.send
-# notice.xiZhi.url=https://xizhi.qqoq.net/xxx.channel
-
-# 是否转换录制的视频为MP4格式（需要配置FFmpeg）
-record.FlvToMp4=true
-
-# 录制类型：0-Java录制，1-FFmpeg录制
-record.type=1
-
-# FFmpeg可执行文件路径
-record.ffmpegPath=bin/ffmpeg.exe
-
-# 激活凭证文件路径（可选）
-# activation.filePath=xxxr-activation.lic
-
-# 是否循环监听直播（直播结束后重新监听）
-record.isLoop=true
-
-# 监听间隔时间（秒）
-monitor.delayIntervalSec=10
-
-# 直播开始/结束触发的快捷键（英文小写，逗号分隔）
-living.start.shortcut=
-living.end.shortcut=
-
-# 各平台Cookie配置（可直接配置或通过文件引用，文件引用示例 file:Bili_Cookie.txt）
-Cookie.Bilibili=
-Cookie.DouYin=
-Cookie.KuaiShou=
-```
 
 ## 运行环境
 
 - **JDK版本**：JDK 1.8 或更高
 - **操作系统**：
     - 使用Java跨平台语言，理论上支持Windows，MacOS，Linux等所有主流操作系统，目前只验证了Windows操作系统
-
+- **运行环境**：
+  - JDK 1.8 或更高
+  - 配置文件 xxxr.setting
+  - 激活凭证文件 xxxr-activation.lic (联系作者获取)
+  - ffmpeg工具，根据不同的操作系统去下载对应的ffmpeg，下载完成后在配置文件中配置ffmpeg路径
 ## 启动方式
 
 ### 通用启动方式
 
 1. **编译打包**：项目打包后会在 `target/` 目录生成可执行 JAR 文件，**注意：运行程序需要激活凭证文件，获取文件请联系作者**
-2. **运行环境**：
-   - JDK 1.8 或更高
-   - 配置文件 xxxr.setting
-   - 激活凭证文件 xxxr-activation.lic (联系作者获取)
-   - ffmpeg工具，根据不同的操作系统去下载对应的ffmpeg，下载完成后在配置文件中配置ffmpeg路径
-3. **运行脚本命令**：
+
+2. **运行脚本命令**：
 
     - **集成模块**（支持抖音/B站）：
       ```bash
@@ -117,14 +79,14 @@ Cookie.KuaiShou=
   "platform": "DouYin",
   //直播设置中的配置可选填，填写后覆盖配置文件中的配置
   "setting": {
+    "runMode": "FILE",
     //选填，监听刷新间隔时间
     "delayIntervalSec": 30,
     //选填，监听通知接口地址
     "xiZhiUrl": "息知通知接口地址",
     //选填，根据直播平台配置Cookie
     "cookieBili": "B站Cookie",
-    "cookieDouYin": "抖音Cookie",
-    "runMode": "FILE"
+    "cookieDouYin": "抖音Cookie"
   }
 }
 ```
@@ -166,6 +128,48 @@ Cookie.KuaiShou=
 若使用FFmpeg录制，**必须通过右键退出**，否则可能导致录制进程未终止。
 2. **监控可视化界面操作**：
 打开直播监控界面后，可通过点击**停止监控**的操作按钮实现停止运行，若所有直播监控都停止了，那么程序将自动终止。
+
+## 配置说明
+
+配置文件：`xxxr.setting`
+
+```properties
+# FLV播放器服务端口
+server.flvPlayer.port=8000
+
+# 息知通知地址（可选）
+# notice.xiZhi.url=https://xizhi.qqoq.net/xxx.send
+# notice.xiZhi.url=https://xizhi.qqoq.net/xxx.channel
+
+# 是否转换录制的视频为MP4格式（需要配置FFmpeg）
+record.FlvToMp4=true
+
+# 录制类型：0-Java录制，1-FFmpeg录制
+record.type=1
+
+# FFmpeg可执行文件路径
+record.ffmpegPath=bin/ffmpeg.exe
+
+# 激活凭证文件路径（默认路径: xxxr-activation.lic）
+# activation.filePath=xxxr-activation.lic
+
+# 是否循环监听直播（直播结束后重新监听）
+record.isLoop=true
+
+# 监听间隔时间（秒）
+monitor.delayIntervalSec=10
+#是否隐藏浏览器（默认隐藏）
+#monitor.browserHeadless=true
+
+# 直播开始/结束触发的快捷键（英文小写，逗号分隔）
+living.start.shortcut=
+living.end.shortcut=
+
+# 各平台Cookie配置（可直接配置或通过文件引用，文件引用示例 file:Bili_Cookie.txt）
+Cookie.Bilibili=
+Cookie.DouYin=
+Cookie.KuaiShou=
+```
 
 ## 开发者信息
 - **作者**：ZhangHeng0805（星曦向荣）

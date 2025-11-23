@@ -1,12 +1,18 @@
 package cn.zhangheng.douyin.browser;
 
 import cn.hutool.core.text.UnicodeUtil;
+import cn.hutool.core.util.StrUtil;
 import cn.zhangheng.browser.API;
+import cn.zhangheng.browser.PlaywrightBrowser;
 import cn.zhangheng.douyin.DouYinRoom;
+import com.microsoft.playwright.BrowserContext;
+import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Request;
 import com.microsoft.playwright.Response;
 import lombok.extern.slf4j.Slf4j;
 
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
@@ -53,10 +59,15 @@ public class DouYinBrowserFactory {
     /**
      * 提取直播间信息（独立方法，便于维护）
      */
-    static void extractRoomInfo(DouYinRoom room, String pageSource) {
+    static boolean extractRoomInfo(DouYinRoom room, Page page) {
+        if (page.title().contains("验证码")){
+            log.warn("浏览器触发验证码验证机制！");
+            return false;
+        }
+        String pageSource = page.content();
         if (pageSource == null) {
             log.warn("页面源码为空，无法提取房间信息");
-            return;
+            return false;
         }
         int index = pageSource.lastIndexOf("\\\"homeStore\\\":");
         if (index > 0) {
@@ -79,6 +90,16 @@ public class DouYinBrowserFactory {
         if(room.isLiving()){
             room.setAvatar(null);
             room.setNickname(null);
+        }
+        return true;
+    }
+
+    static void setRoomCookie(DouYinRoom room, Page page, String roomUrl) throws MalformedURLException {
+        BrowserContext context = page.context();
+        if (StrUtil.isNotBlank(room.getCookie()) && context.cookies(roomUrl).isEmpty()) {
+            String host = new URL(roomUrl).getHost();
+            context.addCookies(PlaywrightBrowser.parseCookieString(host, room.getCookie()));
+            log.debug("{}设置cookie成功！", host);
         }
     }
 
@@ -121,7 +142,7 @@ public class DouYinBrowserFactory {
             api.setDataUrl(url);
             api.setHeaders(headers);
             room.setApi(api);
-            log.debug("直播状态: {}\n===== 监听URL: {}\n===== User-Agent: {}",
+            log.debug("直播状态: {}\n===== 监听URL: {}\n===== 请求头: {}",
                     room.isLiving() ? "已开启" : "未开启", api.getDataUrl(), api.getHeaders());
         }
     }

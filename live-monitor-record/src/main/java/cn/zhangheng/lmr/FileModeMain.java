@@ -10,6 +10,7 @@ import cn.zhangheng.common.activation.WarnException;
 import cn.zhangheng.common.bean.Constant;
 import cn.zhangheng.common.bean.Room;
 import cn.zhangheng.common.bean.Setting;
+import cn.zhangheng.common.bean.enums.RunMode;
 import cn.zhangheng.common.util.TrayIconUtil;
 import cn.zhangheng.douyin.browser.DouYinBrowserFactory;
 import cn.zhangheng.lmr.fileModeApi.LocalServerApi;
@@ -130,6 +131,9 @@ public class FileModeMain {
             String id = json.getStr("id");
             Room.Platform platform = json.get("platform", Room.Platform.class);
             Setting setting = json.get("setting", Setting.class);
+            if (setting != null) {
+                setting.setRunMode(RunMode.FILE);
+            }
             //运行监听
             String key = platform.name() + "-" + id;
             Thread.currentThread().setName(key);

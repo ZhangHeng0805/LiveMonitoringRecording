@@ -4,6 +4,7 @@ import cn.hutool.core.util.StrUtil;
 import cn.zhangheng.browser.API;
 import cn.zhangheng.browser.PlaywrightBrowser;
 import cn.zhangheng.common.bean.Constant;
+import cn.zhangheng.common.bean.Setting;
 import cn.zhangheng.douyin.DouYinRoom;
 import com.microsoft.playwright.*;
 import com.zhangheng.util.ThrowableUtil;
@@ -12,6 +13,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
 import java.net.URL;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import static cn.zhangheng.douyin.browser.DouYinBrowserFactory.*;
@@ -40,7 +43,10 @@ public class DouYinBrowser implements Closeable {
 //    private static final String TARGET_REQUEST_PREFIX = "https://live.douyin.com/webcast/room/web/enter/";
 
     DouYinBrowser() {
-        browser = new PlaywrightBrowser(Constant.User_Agent);
+        Setting setting = new Setting();
+        boolean headless = !Objects.equals(setting.getBrowserHeadless(), Boolean.FALSE);
+        browser = new PlaywrightBrowser(Constant.User_Agent, headless);
+        browser.setIsPageClear(setting.getBrowserIsPageClear());
     }
 
 
@@ -60,12 +66,7 @@ public class DouYinBrowser implements Closeable {
             checkAndInitBrowser();
             page = browser.newPage();
 
-            BrowserContext context = page.context();
-            if (StrUtil.isNotBlank(room.getCookie()) && context.cookies(roomUrl).isEmpty()) {
-                String host = new URL(roomUrl).getHost();
-                context.addCookies(PlaywrightBrowser.parseCookieString(host, room.getCookie()));
-                log.debug("{}设置cookie成功！", host);
-            }
+            setRoomCookie(room, page, roomUrl);
 //            log.debug("=== 对 {} 生效的 Cookie 共 {} 个 ===", roomUrl, context.cookies(roomUrl).size());
 
             // 注册请求监听器（提取目标请求信息）
@@ -81,9 +82,9 @@ public class DouYinBrowser implements Closeable {
             browser.navigatePage(roomUrl, page);
 
             // 提取页面源码中的房间信息
-            String pageSource = page.content();
+//            String pageSource = page.content();
 
-            extractRoomInfo(room, pageSource);
+            boolean b = extractRoomInfo(room, page);
 
             // 若直播中，等待目标请求完成（替代固定休眠，更高效）
             if (room.isLiving()) {
@@ -91,6 +92,9 @@ public class DouYinBrowser implements Closeable {
             }
             page.offRequest(requestHandler);
 //            page.offResponse(responsehandler);
+            if (!b) {
+                TimeUnit.SECONDS.sleep(10);
+            }
         } catch (Throwable e) {
             if (!(e instanceof PlaywrightException && e.getMessage().startsWith("Object doesn't exist:"))) {
                 log.error("处理直播间[{}]时发生异常,{}", roomUrl, ThrowableUtil.getAllCauseMessage(e)); // 记录完整堆栈

@@ -74,6 +74,18 @@ public class Setting {
      */
     @PropertyValue("record.isLoop")
     private volatile boolean isLoop;
+
+    /**
+     * 是否隐藏监听浏览器，默认隐藏
+     */
+    @PropertyValue("monitor.browser.headless")
+    private volatile Boolean browserHeadless;
+
+    /**
+     * 浏览器是否每次打开页面时重置状态，null时默认次数清理
+     */
+    @PropertyValue("monitor.browser.isPageClear")
+    private volatile Boolean browserIsPageClear;
     /**
      * 监听间隔延时（秒）
      */

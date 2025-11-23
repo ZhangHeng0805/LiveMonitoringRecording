@@ -97,19 +97,21 @@ public class PlaywrightBrowser implements AutoCloseable {
 
     private final String userAgent;
     private final UserAgentUtil userAgentUtil;
+    private final boolean headless;
 
     public PlaywrightBrowser(String userAgent) {
-        this(userAgent,true);
+        this(userAgent, true);
     }
 
-    public PlaywrightBrowser(String userAgent,boolean headless) {
+    public PlaywrightBrowser(String userAgent, boolean headless) {
         this.userAgent = userAgent;
-        this.userAgentUtil=new UserAgentUtil();
+        this.userAgentUtil = new UserAgentUtil();
+        this.headless = headless;
         try {
             // 先初始化Playwright
             playwright = Playwright.create();
             // 再初始化浏览器（若失败，需关闭已创建的Playwright）
-            browser = playwright.chromium().launch(getLaunchOptions(userAgent,headless));
+            browser = playwright.chromium().launch(getLaunchOptions(userAgent, headless));
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 if (isRunning()) {
                     //程序关闭，自动关闭浏览器
@@ -128,7 +130,7 @@ public class PlaywrightBrowser implements AutoCloseable {
     /**
      * 浏览器启动配置
      */
-    public static BrowserType.LaunchOptions getLaunchOptions(String userAgent,boolean headless) {
+    public static BrowserType.LaunchOptions getLaunchOptions(String userAgent, boolean headless) {
         return new BrowserType.LaunchOptions()
                 .setHeadless(headless) // 无头模式：生产环境建议true
                 .setArgs(Arrays.asList(
@@ -140,6 +142,14 @@ public class PlaywrightBrowser implements AutoCloseable {
                         "--remote-debugging-port=0" // 禁用远程调试端口，避免安全风险
                 ))
                 .setSlowMo(50); // 轻微延迟，模拟真人操作（可选）
+    }
+
+    public BrowserType.LaunchOptions getLaunchOptions(boolean headless) {
+        return getLaunchOptions(userAgent, headless);
+    }
+
+    public BrowserType.LaunchOptions getLaunchOptions() {
+        return getLaunchOptions(userAgent, headless);
     }
 
     /**
@@ -170,7 +180,7 @@ public class PlaywrightBrowser implements AutoCloseable {
                 }
                 // 重新创建浏览器
                 try {
-                    browser = playwright.chromium().launch(getLaunchOptions(userAgent,true));
+                    browser = playwright.chromium().launch(getLaunchOptions());
                     log.info("浏览器重新启动成功");
                 } catch (Exception e) {
                     throw new RuntimeException("重新启动浏览器失败", e);
@@ -194,6 +204,7 @@ public class PlaywrightBrowser implements AutoCloseable {
             // 创建新 Context 并覆盖 ThreadLocal
             browserContext = browser.newContext(new Browser.NewContextOptions()
                     .setUserAgent(userAgentUtil.getUser_Agent()));
+//                    .setUserAgent(userAgent));
             context.set(browserContext);
         }
         if (pageCount.get() == null) {
@@ -203,7 +214,7 @@ public class PlaywrightBrowser implements AutoCloseable {
         }
         Page page = browserContext.newPage();
         // 创建新页面并注入反检测脚本
-        page.addInitScript(initScript);
+//        page.addInitScript(initScript);
         return page;
     }
 
@@ -318,7 +329,7 @@ public class PlaywrightBrowser implements AutoCloseable {
         try {
             // 1. 定义响应匹配规则：Predicate<Request>
             Predicate<Response> requestPredicate = response ->
-                    response.url().startsWith(target_request_prefix)&& StrUtil.isNotBlank(response.text());
+                    response.url().startsWith(target_request_prefix) && StrUtil.isNotBlank(response.text());
 
             // 2. 定义响应匹配后的回调逻辑（Runnable）
             Runnable callback = () -> {

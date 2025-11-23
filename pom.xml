@@ -15,6 +15,7 @@
         <module>live-common</module>
         <module>live-monitor-record</module>
         <module>kuaishou-start</module>
+        <!--该模块为可选，可直接注释掉-->
         <module>activation-tool</module>
         <module>browser-utils</module>
     </modules>

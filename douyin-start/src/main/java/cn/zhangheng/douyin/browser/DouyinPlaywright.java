@@ -6,15 +6,20 @@ package cn.zhangheng.douyin.browser; /**
  * @description:
  */
 
+import cn.hutool.core.util.StrUtil;
 import cn.zhangheng.browser.API;
 import cn.zhangheng.browser.PlaywrightBrowser;
 import cn.zhangheng.common.bean.Constant;
+import cn.zhangheng.common.bean.Setting;
 import cn.zhangheng.douyin.DouYinRoom;
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.LoadState;
+import com.zhangheng.util.ThrowableUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -34,9 +39,19 @@ public class DouyinPlaywright {
 
     public static void request(DouYinRoom room) {
         PlaywrightBrowser browser = null;
+        // 校验房间URL有效性
+        String roomUrl = room.getRoomUrl();
+        if (roomUrl == null || roomUrl.trim().isEmpty()) {
+            log.error("直播间URL为空，无法发起请求");
+            return;
+        }
         try {
-            browser = new PlaywrightBrowser(Constant.User_Agent,true);
+            Setting setting = room.getSetting();
+            boolean headless = !Objects.equals(setting.getBrowserHeadless(), Boolean.FALSE);
+            browser = new PlaywrightBrowser(Constant.User_Agent, headless);
+            browser.setIsPageClear(setting.getBrowserIsPageClear());
             Page page = browser.newPage();
+            setRoomCookie(room, page, roomUrl);
             API api = new API(TARGET_REQUEST_PREFIX);
             Consumer<Request> handler = request -> {
                 // 过滤需要的接口（例如包含 "api"、"data" 等关键词的接口）
@@ -48,22 +63,27 @@ public class DouyinPlaywright {
             browser.navigatePage(room.getRoomUrl(), page);
 
             // 5. 获取页面源码
-            String pageSource = page.content();
+//            String pageSource = page.content();
+
 //            System.out.println("页面源码长度: " + pageSource.length());
 //            System.out.println(pageSource);
             // 6. 提取信息
-            DouYinBrowserFactory.extractRoomInfo(room, pageSource);
+            DouYinBrowserFactory.extractRoomInfo(room, page);
 
             if (room.isLiving()) {
                 // 等待一段时间，确保异步请求被捕获
                 browser.waitForTargetRequest(page, TARGET_REQUEST_PREFIX, 10_000);
-            }else {
-//                try {
-//                    TimeUnit.SECONDS.sleep(20);
-//                } catch (InterruptedException ignored) {
-//                }
+            } else {
+                try {
+                    TimeUnit.SECONDS.sleep(10);
+                } catch (InterruptedException ignored) {
+                }
             }
 //            page.offRequest(handler);
+        } catch (Throwable e) {
+            if (!(e instanceof PlaywrightException && e.getMessage().startsWith("Object doesn't exist:"))) {
+                log.error("处理直播间[{}]时发生异常,{}", roomUrl, ThrowableUtil.getAllCauseMessage(e)); // 记录完整堆栈
+            }
         } finally {
             if (browser != null) {
                 browser.close();
