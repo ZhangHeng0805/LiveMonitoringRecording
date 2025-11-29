@@ -1,4 +1,4 @@
-package cn.zhangheng.browser;
+package cn.zhangheng.common.util;
 
 import com.zhangheng.util.RandomUtil;
 
@@ -54,4 +54,5 @@ public class UserAgentUtil {
         if (index >= User_Agents.length) index = 0;
         return User_Agents[index++];
     }
+
 }

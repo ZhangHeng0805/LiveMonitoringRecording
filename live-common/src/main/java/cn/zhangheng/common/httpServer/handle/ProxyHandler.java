@@ -91,7 +91,8 @@ public class ProxyHandler extends MyHandler {
 
             // 处理目标服务器响应
             int responseCode = targetConn.getResponseCode();
-            log.debug("Target response code: {} for URL: {}", responseCode, targetConn.getURL());
+            if (responseCode != 200)
+                log.debug("Target response code: {} for URL: {}", responseCode, targetConn.getURL());
 
             // 获取响应流（需手动管理流关闭）
             targetStream = getTargetInputStream(targetConn, responseCode);
@@ -110,7 +111,7 @@ public class ProxyHandler extends MyHandler {
 
             // 传输视频流（需手动关闭流）
             clientOs = httpExchange.getResponseBody();
-            copyStreamWithClientCheck(targetStream, clientOs,contentLength);
+            copyStreamWithClientCheck(targetStream, clientOs, contentLength);
 
         } catch (SocketTimeoutException e) {
             log.error("Connection timed out for URL: {}", params.get("url"), e);
@@ -145,7 +146,7 @@ public class ProxyHandler extends MyHandler {
     private boolean isStreamClosedException(IOException e) {
         // 方式1：通过异常类名判断（最直接）
         String exceptionClassName = e.getClass().getName();
-        if ("sun.net.httpserver.StreamClosedException".equals(exceptionClassName)) {
+        if ("sun.net.httpserver.StreamClosedException" .equals(exceptionClassName)) {
             return true;
         }
 
@@ -195,11 +196,11 @@ public class ProxyHandler extends MyHandler {
             if (key == null) continue;
 
             // 跳过不需要传递的头
-            if ("referer".equalsIgnoreCase(key)) {
+            if ("referer" .equalsIgnoreCase(key)) {
                 continue;
             }
             // 重写Host头为目标服务器Host
-            if ("Host".equalsIgnoreCase(key)) {
+            if ("Host" .equalsIgnoreCase(key)) {
                 target.setRequestProperty(key, targetHost);
                 continue;
             }
@@ -218,7 +219,7 @@ public class ProxyHandler extends MyHandler {
             String key = entry.getKey();
             if (key.startsWith("header_")) {
                 // JDK8使用String.substring处理前缀
-                String headerName = key.substring("header_".length());
+                String headerName = key.substring("header_" .length());
                 target.setRequestProperty(headerName, entry.getValue());
             }
         }
@@ -294,8 +295,8 @@ public class ProxyHandler extends MyHandler {
             if (key == null) continue;
 
             // 保留 Accept-ranges 头，告知客户端支持范围请求
-            if ("Accept-ranges".equalsIgnoreCase(key)) {
-                target.getResponseHeaders().add(key, String.join(",",entry.getValue()));
+            if ("Accept-ranges" .equalsIgnoreCase(key)) {
+                target.getResponseHeaders().add(key, String.join(",", entry.getValue()));
                 continue;
             }
 
@@ -359,9 +360,9 @@ public class ProxyHandler extends MyHandler {
      * 判断是否需要请求体
      */
     private boolean needsRequestBody(String method) {
-        return "POST".equalsIgnoreCase(method) ||
-                "PUT".equalsIgnoreCase(method) ||
-                "PATCH".equalsIgnoreCase(method);
+        return "POST" .equalsIgnoreCase(method) ||
+                "PUT" .equalsIgnoreCase(method) ||
+                "PATCH" .equalsIgnoreCase(method);
     }
 
     /**

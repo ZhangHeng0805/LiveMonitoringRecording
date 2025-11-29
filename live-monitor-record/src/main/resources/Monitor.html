@@ -311,7 +311,8 @@
     <!-- 页脚 -->
     <footer class="mt-12 text-center text-sm text-gray-500 pb-8 animate-fade" style="animation-delay: 0.2s">
         <p>
-            © 2025 <a class="text-primary" href="https://zhangheng0805.github.io/XXXR-Page/" target="_blank">星曦向荣</a>直播监听工具 | 数据更新时间:
+            © 2025 <a class="text-primary" href="https://zhangheng0805.github.io/XXXR-Page/"
+                      target="_blank">星曦向荣</a>直播监听工具 | 数据更新时间:
             <span id="footer-update-time">加载中...</span>
         </p>
         <p class="mt-1">
@@ -338,6 +339,7 @@
 <script>
     const fullUrl = window.location.href;
     const MainUrl = getMainUrl();
+
     function getMainUrl() {
         // 初始化默认基础URL
         let mainUrl = "http://localhost:8005/";
@@ -370,7 +372,7 @@
 
     // 配置参数
     const REFRESH_INTERVAL = 30; // 刷新间隔（秒）
-    const platformName = {DouYin: "抖音", Bili: "Bilibili"};
+    const platformName = {DouYin: "抖音", Bili: "Bilibili", KuaiShou: "快手"};
     let refreshTimer = null;
     // let viewerUpdateTimers = []; // 存储观众数更新定时器
     // let recordTimeUpdateTimers = []; // 存储录制时间更新定时器

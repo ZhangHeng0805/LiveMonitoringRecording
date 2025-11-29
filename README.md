@@ -75,7 +75,7 @@
   "isRecord": true,
   //直播间ID
   "id": "622216334529",
-  //直播平台[DouYin:抖音,Bili:B站]
+  //直播平台[DouYin:抖音,Bili:B站,KuaiShou:快手]
   "platform": "DouYin",
   //直播设置中的配置可选填，填写后覆盖配置文件中的配置
   "setting": {
@@ -86,7 +86,8 @@
     "xiZhiUrl": "息知通知接口地址",
     //选填，根据直播平台配置Cookie
     "cookieBili": "B站Cookie",
-    "cookieDouYin": "抖音Cookie"
+    "cookieDouYin": "抖音Cookie",
+    "cookieKuaiShou": "快手Cookie"
   }
 }
 ```

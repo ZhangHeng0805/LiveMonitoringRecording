@@ -97,6 +97,7 @@ public class PlaywrightBrowser implements AutoCloseable {
 
     private final String userAgent;
     private final boolean headless;
+    private final UserAgentUtil userAgentUtil;
 
     public PlaywrightBrowser(String userAgent) {
         this(userAgent, true);
@@ -105,6 +106,7 @@ public class PlaywrightBrowser implements AutoCloseable {
     public PlaywrightBrowser(String userAgent, boolean headless) {
         this.userAgent = userAgent;
         this.headless = headless;
+        this.userAgentUtil = new UserAgentUtil();
         try {
             // 先初始化Playwright
             playwright = Playwright.create();
@@ -201,7 +203,7 @@ public class PlaywrightBrowser implements AutoCloseable {
             }
             // 创建新 Context 并覆盖 ThreadLocal
             browserContext = browser.newContext(new Browser.NewContextOptions()
-                    .setUserAgent(UserAgentUtil.get()));
+                    .setUserAgent(userAgentUtil.get()));
 //                    .setUserAgent(userAgent));
             context.set(browserContext);
         }
@@ -296,7 +298,7 @@ public class PlaywrightBrowser implements AutoCloseable {
         try {
             // 1. 定义请求匹配规则：Predicate<Request>
             Predicate<Request> requestPredicate = request ->
-                    "GET".equalsIgnoreCase(request.method()) &&
+                    "GET" .equalsIgnoreCase(request.method()) &&
                             request.url().startsWith(target_request_prefix);
 
             // 2. 定义请求匹配后的回调逻辑（Runnable）

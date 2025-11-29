@@ -1,13 +1,16 @@
 package cn.zhangheng.kuaishou.service;
 
 import cn.hutool.core.text.UnicodeUtil;
+import cn.hutool.core.util.StrUtil;
 import cn.hutool.http.Header;
 import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
+import cn.zhangheng.common.bean.Constant;
 import cn.zhangheng.common.service.RoomService;
+import cn.zhangheng.common.util.UserAgentUtil;
 import cn.zhangheng.kuaishou.bean.KuaiShouRoom;
 import cn.zhangheng.kuaishou.util.InitialStateExtractor;
 
@@ -23,46 +26,64 @@ import java.util.Map;
  * @description:
  */
 public class KuaiShouService extends RoomService<KuaiShouRoom> {
-    private String cookieStr = "did=web_bec7a4478cae400ca13b46730b6380ed; clientid=3; did=web_bec7a4478cae400ca13b46730b6380ed; client_key=65890b29; kpn=GAME_ZONE; kwpsecproductname=PCLive; kuaishou.live.bfb1s=3e261140b0cf7444a0ba411c6f227d88; kwssectoken=Unr42xCL187Gl5Y9UahgPIhxv9hE4BGTGme7esVao/zKtIk0pPFyPAFNEtojF6mNm1I7W33Vu/spUe4PKlIHTw==; kwscode=10051eaba4b351a85f5e7cd1a7a8d2e4d12be582296db3cd133b7afa2c78e711; kwfv1=PnGU+9+Y8008S+nH0U+0mjPf8fP08f+98f+nLlwnrIP9+Sw/ZFGfzY+eGlGf+f+e4SGfbYP0QfGnLFwBLU80mYG9pDG/cU8fbDG/QS8BPFPnrU+9LEwerl+9PIGf+jwnbfG/bYPnpf+0H7+/PM+0L7G/8f+/DhwBLUP0zSwBrl+9P=";
+    private static String cookieStr = "did=web_bec7a4478cae400ca13b46730b6380ed; clientid=3; did=web_bec7a4478cae400ca13b46730b6380ed; client_key=65890b29; kpn=GAME_ZONE; kwpsecproductname=PCLive; kuaishou.live.bfb1s=3e261140b0cf7444a0ba411c6f227d88; kwssectoken=Unr42xCL187Gl5Y9UahgPIhxv9hE4BGTGme7esVao/zKtIk0pPFyPAFNEtojF6mNm1I7W33Vu/spUe4PKlIHTw==; kwscode=10051eaba4b351a85f5e7cd1a7a8d2e4d12be582296db3cd133b7afa2c78e711; kwfv1=PnGU+9+Y8008S+nH0U+0mjPf8fP08f+98f+nLlwnrIP9+Sw/ZFGfzY+eGlGf+f+e4SGfbYP0QfGnLFwBLU80mYG9pDG/cU8fbDG/QS8BPFPnrU+9LEwerl+9PIGf+jwnbfG/bYPnpf+0H7+/PM+0L7G/8f+/DhwBLUP0zSwBrl+9P=";
+
+    private final UserAgentUtil userAgentUtil;
+
 
     protected KuaiShouService(KuaiShouRoom room) {
         super(room);
+        this.userAgentUtil = new UserAgentUtil();
         refresh();
     }
 
     public static void main(String[] args) {
 //        KuaiShouRoom room = new KuaiShouRoom("liujian0627");
 //        KuaiShouRoom room = new KuaiShouRoom("KPL704668133");
-        KuaiShouRoom room = new KuaiShouRoom("3xg62wetq66kquy");
-        KuaiShouService service = new KuaiShouService(room);
+//        KuaiShouRoom room = new KuaiShouRoom("3xg62wetq66kquy");
+//        KuaiShouService service = new KuaiShouService(room);
 //        service.refresh(false);
-        System.out.println(JSONUtil.parseObj(room).toStringPretty());
+//        System.out.println(JSONUtil.parseObj(room).toStringPretty());
 
-//        HttpResponse execute = HttpRequest.get("https://live.kuaishou.cn/").execute();
+//        String url = "https://live.kuaishou.cn/";
+//        HttpResponse execute = HttpRequest.get(url)
+//                .header(Header.USER_AGENT, Constant.User_Agent)
+//                .header(Header.REFERER, url)
+//                .header(Header.COOKIE, cookieStr)
+//                .header(Header.ACCEPT, "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
+//                .execute();
 //        System.out.println(execute.getCookieStr());
     }
 
     @Override
     public void refresh(boolean force) {
-        JSONObject data = getData();
-        initRoom(data, force);
-        room.setUpdateTime(new Date());
+        try {
+            JSONObject data = getData();
+            if (initRoom(data, force)) {
+                room.setUpdateTime(new Date());
+            }
+        } catch (Exception e) {
+            log.error("快手refresh错误", e);
+        }
+
     }
 
     @Override
     public HttpRequest get(String url) {
-        HttpRequest header = super.get(url)
+        HttpRequest header = HttpRequest.get(url)
+                .timeout(30_000)
+                .header(Header.USER_AGENT, userAgentUtil.get())
                 .header(Header.REFERER, room.getRoomUrl())
                 .header(Header.ACCEPT, "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
                 .header("dnt", "1")
-                .header("sec-ch-ua", "\"Not;A=Brand\";v=\"99\", \"Microsoft Edge\";v=\"139\", \"Chromium\";v=\"139\"")
+//                .header("sec-ch-ua", "\"Not;A=Brand\";v=\"99\", \"Microsoft Edge\";v=\"139\", \"Chromium\";v=\"139\"")
                 .header("sec-ch-ua-mobile", "?0")
-                .header("sec-ch-ua-platform", "\"Windows\"")
+//                .header("sec-ch-ua-platform", "\"Windows\"")
                 .header("sec-fetch-dest", "document")
                 .header("sec-fetch-mode", "navigate")
                 .header("sec-fetch-site", "same-origin")
-                .header("sec-fetch-user", "?1")
-                .header("upgrade-insecure-requests", "1")
+//                .header("sec-fetch-user", "?1")
+//                .header("upgrade-insecure-requests", "1")
                 ;
         if (room.getCookie() != null) {
             return header.header(Header.COOKIE, room.getCookie());
@@ -78,18 +99,33 @@ public class KuaiShouService extends RoomService<KuaiShouRoom> {
             cookieStr = response.getCookieStr();
             String body = response.body();
             String initialState = InitialStateExtractor.extractInitialState(body);
+            if (StrUtil.isBlank(initialState)) {
+                log.warn("获取body异常：" + body);
+            }
             return new JSONObject(initialState);
         }
     }
 
-    private void initRoom(JSONObject jsonObject, boolean isStream) {
+    private boolean initRoom(JSONObject jsonObject, boolean isStream) {
+        if (jsonObject == null || jsonObject.isEmpty()) {
+            log.warn("获取的JsonObject为空");
+            return false;
+        }
         JSONObject playList = jsonObject.getJSONObject("liveroom").getJSONArray("playList").getJSONObject(0);
-        room.setLiving(playList.getBool("isLiving"));
-        JSONObject author = playList.getJSONObject("author");
-        if (room.getNickname() == null)
-            room.setNickname(author.getStr("name"));
+
         if (!playList.isNull("errorType")) {
             log.warn("接口异常：" + playList.getJSONObject("errorType").toString());
+            return false;
+        }
+        if (playList.getBool("isLiving") != null) {
+            room.setLiving(playList.getBool("isLiving"));
+        }
+        JSONObject author = playList.getJSONObject("author");
+        if (room.getNickname() == null) {
+            room.setNickname(author.getStr("name"));
+        }
+        if (room.getAvatar() == null) {
+            room.setAvatar(UnicodeUtil.toString(author.getStr("avatar")));
         }
         if (room.isLiving()) {
             if (room.getTitle() == null) {
@@ -100,9 +136,7 @@ public class KuaiShouService extends RoomService<KuaiShouRoom> {
             if (room.isLiving() && room.getStartTime() == null) {
                 room.setStartTime(new Date(author.getLong("timestamp")));
             }
-            if (room.getAvatar() == null) {
-                room.setAvatar(UnicodeUtil.toString(author.getStr("avatar")));
-            }
+
             JSONObject liveStream = playList.getJSONObject("liveStream");
             if (room.getCover() == null) {
                 room.setCover(UnicodeUtil.toString(liveStream.getStr("poster")));
@@ -112,10 +146,11 @@ public class KuaiShouService extends RoomService<KuaiShouRoom> {
             room.setLikeCount(counts.getStr("liked"));
 
             if (room.getStreams() != null && !isStream) {
-                return;
+                return true;
             }
             initStream(liveStream.getJSONObject("playUrls").getJSONObject("h264"));
         }
+        return true;
     }
 
     private void initStream(JSONObject jsonObject) {
