@@ -30,6 +30,9 @@ public class KuaiShouService extends RoomService<KuaiShouRoom> {
 
     private final UserAgentUtil userAgentUtil;
 
+    private String userAgent = Constant.User_Agent;
+    private int count = 0;
+
 
     protected KuaiShouService(KuaiShouRoom room) {
         super(room);
@@ -72,7 +75,7 @@ public class KuaiShouService extends RoomService<KuaiShouRoom> {
     public HttpRequest get(String url) {
         HttpRequest header = HttpRequest.get(url)
                 .timeout(30_000)
-                .header(Header.USER_AGENT, userAgentUtil.get())
+                .header(Header.USER_AGENT, userAgent)
                 .header(Header.REFERER, room.getRoomUrl())
                 .header(Header.ACCEPT, "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
                 .header("dnt", "1")
@@ -85,6 +88,10 @@ public class KuaiShouService extends RoomService<KuaiShouRoom> {
 //                .header("sec-fetch-user", "?1")
 //                .header("upgrade-insecure-requests", "1")
                 ;
+        if (count % 5 == 0) {
+            userAgent = userAgentUtil.get();
+        }
+        count++;
         if (room.getCookie() != null) {
             return header.header(Header.COOKIE, room.getCookie());
         } else if (cookieStr != null) {

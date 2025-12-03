@@ -73,11 +73,12 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
 
     @Override
     public void refresh(boolean force) {
+        boolean success = false;
         if (!room.isLiving() || room.getApi() == null || room.getApi().getDataUrl() == null) {
             if (RunMode.FILE.equals(room.getSetting().getRunMode())) {
-                DouYinBrowserFactory.getBrowser().request(room);
+                success = DouYinBrowserFactory.getBrowser().request(room);
             } else {
-                DouyinPlaywright.request(room);
+                success = DouyinPlaywright.request(room);
             }
         }
         if (room.isLiving() && room.getApi() != null && room.getApi().getDataUrl() != null) {
@@ -86,7 +87,9 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
             }
             getData(force);
         }
-        room.setUpdateTime(new Date());
+        if (success) {
+            room.setUpdateTime(new Date());
+        }
     }
 
     public void getData(boolean force) {

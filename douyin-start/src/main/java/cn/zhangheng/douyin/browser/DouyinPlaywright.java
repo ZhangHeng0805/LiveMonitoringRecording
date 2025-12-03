@@ -37,13 +37,13 @@ public class DouyinPlaywright {
     private DouyinPlaywright() {
     }
 
-    public static void request(DouYinRoom room) {
+    public static boolean request(DouYinRoom room) {
         PlaywrightBrowser browser = null;
         // 校验房间URL有效性
         String roomUrl = room.getRoomUrl();
         if (roomUrl == null || roomUrl.trim().isEmpty()) {
             log.error("直播间URL为空，无法发起请求");
-            return;
+            return false;
         }
         try {
             Setting setting = room.getSetting();
@@ -68,7 +68,7 @@ public class DouyinPlaywright {
 //            System.out.println("页面源码长度: " + pageSource.length());
 //            System.out.println(pageSource);
             // 6. 提取信息
-            DouYinBrowserFactory.extractRoomInfo(room, page);
+            boolean b = extractRoomInfo(room, page);
 
             if (room.isLiving()) {
                 // 等待一段时间，确保异步请求被捕获
@@ -80,6 +80,7 @@ public class DouyinPlaywright {
                 }
             }
 //            page.offRequest(handler);
+            return b;
         } catch (Throwable e) {
             if (!(e instanceof PlaywrightException && e.getMessage().startsWith("Object doesn't exist:"))) {
                 log.error("处理直播间[{}]时发生异常,{}", roomUrl, ThrowableUtil.getAllCauseMessage(e)); // 记录完整堆栈
@@ -89,6 +90,7 @@ public class DouyinPlaywright {
                 browser.close();
             }
         }
+        return false;
     }
 
 

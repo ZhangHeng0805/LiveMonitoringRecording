@@ -42,6 +42,7 @@ public class BilibiliService extends RoomService<BiliRoom> {
         if (room.isLiving()) {
             room_stream();
         }
+        room.setUpdateTime(new Date());
     }
 
     private void initQn() {

@@ -53,12 +53,12 @@ public class DouYinBrowser implements Closeable {
     /**
      * 发起请求并提取直播间信息
      */
-    public void request(DouYinRoom room) {
+    public boolean request(DouYinRoom room) {
         // 校验房间URL有效性
         String roomUrl = room.getRoomUrl();
         if (roomUrl == null || roomUrl.trim().isEmpty()) {
             log.error("直播间URL为空，无法发起请求");
-            return;
+            return false;
         }
 
         Page page = null;
@@ -95,6 +95,7 @@ public class DouYinBrowser implements Closeable {
             if (!b) {
                 TimeUnit.SECONDS.sleep(10);
             }
+            return b;
         } catch (Throwable e) {
             if (!(e instanceof PlaywrightException && e.getMessage().startsWith("Object doesn't exist:"))) {
                 log.error("处理直播间[{}]时发生异常,{}", roomUrl, ThrowableUtil.getAllCauseMessage(e)); // 记录完整堆栈
@@ -105,6 +106,7 @@ public class DouYinBrowser implements Closeable {
                 browser.closePage(page);
             }
         }
+        return false;
     }
 
 
