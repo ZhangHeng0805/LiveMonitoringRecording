@@ -173,6 +173,10 @@ public class ActionHandler extends JSONHandler {
                 int delayIntervalSec = Integer.parseInt(query.get("delayIntervalSec"));
                 monitorMain.getRoom().getSetting().setDelayIntervalSec(delayIntervalSec);
             }
+            if (query.containsKey("convertFlvToMp4")) {
+                boolean convertFlvToMp4 = Boolean.parseBoolean(query.get("convertFlvToMp4"));
+                monitorMain.getRoom().getSetting().setConvertFlvToMp4(convertFlvToMp4);
+            }
             msg.setMessage("设置成功!");
         } catch (Exception e) {
             msg.setCode(1);

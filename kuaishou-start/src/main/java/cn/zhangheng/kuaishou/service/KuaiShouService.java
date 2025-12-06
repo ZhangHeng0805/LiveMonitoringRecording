@@ -37,6 +37,7 @@ public class KuaiShouService extends RoomService<KuaiShouRoom> {
     protected KuaiShouService(KuaiShouRoom room) {
         super(room);
         this.userAgentUtil = new UserAgentUtil();
+        callIndex(room.getPlatform().getMainUrl());
         refresh();
     }
 
@@ -48,14 +49,14 @@ public class KuaiShouService extends RoomService<KuaiShouRoom> {
 //        service.refresh(false);
 //        System.out.println(JSONUtil.parseObj(room).toStringPretty());
 
+
 //        String url = "https://live.kuaishou.cn/";
 //        HttpResponse execute = HttpRequest.get(url)
 //                .header(Header.USER_AGENT, Constant.User_Agent)
-//                .header(Header.REFERER, url)
-//                .header(Header.COOKIE, cookieStr)
+//                .header(Header.COOKIE, cokie)
 //                .header(Header.ACCEPT, "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
 //                .execute();
-//        System.out.println(execute.getCookieStr());
+//        System.out.println(JSONUtil.parseObj(execute.headers()));
     }
 
     @Override
@@ -73,25 +74,37 @@ public class KuaiShouService extends RoomService<KuaiShouRoom> {
 
     @Override
     public HttpRequest get(String url) {
+        String mainUrl = room.getPlatform().getMainUrl();
         HttpRequest header = HttpRequest.get(url)
-                .timeout(30_000)
-                .header(Header.USER_AGENT, userAgent)
-                .header(Header.REFERER, room.getRoomUrl())
-                .header(Header.ACCEPT, "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
-                .header("dnt", "1")
-//                .header("sec-ch-ua", "\"Not;A=Brand\";v=\"99\", \"Microsoft Edge\";v=\"139\", \"Chromium\";v=\"139\"")
-                .header("sec-ch-ua-mobile", "?0")
-//                .header("sec-ch-ua-platform", "\"Windows\"")
-                .header("sec-fetch-dest", "document")
-                .header("sec-fetch-mode", "navigate")
-                .header("sec-fetch-site", "same-origin")
-//                .header("sec-fetch-user", "?1")
-//                .header("upgrade-insecure-requests", "1")
-                ;
-        if (count % 5 == 0) {
+                .header(Header.REFERER, mainUrl)
+                .header(Header.ORIGIN, mainUrl.substring(0, mainUrl.lastIndexOf("/")));
+        if (count % 10 == 0) {
             userAgent = userAgentUtil.get();
+            callIndex(mainUrl);
         }
         count++;
+        return setHeader(header);
+    }
+
+    private void callIndex(String mainUrl) {
+        try (HttpResponse execute = setHeader(HttpRequest.get(mainUrl)).execute()) {
+            int status = execute.getStatus();
+            if (status != 200) {
+                log.warn("访问{}主页响应状态码为:[{}]-{}", mainUrl, status, userAgent);
+            }
+        }
+    }
+
+    private HttpRequest setHeader(HttpRequest header) {
+        header = header
+                .timeout(30_000)
+                .header(Header.USER_AGENT, userAgent)
+                .header(Header.ACCEPT, "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
+                .header(Header.ACCEPT_LANGUAGE, "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6")
+                .header(Header.ACCEPT_ENCODING, "gzip, deflate, br")
+//                .header(Header.CONNECTION, "keep-alive")
+                .header(Header.CACHE_CONTROL, "max-age=0")
+        ;
         if (room.getCookie() != null) {
             return header.header(Header.COOKIE, room.getCookie());
         } else if (cookieStr != null) {
@@ -107,7 +120,7 @@ public class KuaiShouService extends RoomService<KuaiShouRoom> {
             String body = response.body();
             String initialState = InitialStateExtractor.extractInitialState(body);
             if (StrUtil.isBlank(initialState)) {
-                log.warn("获取body异常：" + body);
+                log.warn("[{}]获取body异常：{}",response.getStatus(), body);
             }
             return new JSONObject(initialState);
         }

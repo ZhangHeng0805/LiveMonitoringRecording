@@ -267,78 +267,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
     protected abstract String statistics(LogUtil logUtil, R room);
 
 
-//    protected abstract FlvStreamRecorder getRecord(R room, boolean isConvert);
-
-//    protected Recorder getRecord(R room, boolean isConvert) {
-//        LinkedHashMap<String, String> streams = room.getStreams();
-//        Map.Entry<String, String> stream = streams.entrySet().iterator().next();
-//        String definition = stream.getKey();//清晰度
-//        String flvUrl = stream.getValue();
-//        String fileName = "【" + FileUtil.filterFileName(room.getNickname()) + "】" + room.getPlatform().getName() + "直播录制" + TimeUtil.toTime(new Date(), "yyyy-MM-dd HH-mm-ss") + "[" + FileUtil.filterFileName(room.getTitle()) + "].flv";
-//        String path = Paths.get(LogUtil.getBasePathStr(room), fileName).toFile().getPath();
-//        Recorder streamRecorder;
-//        switch (recorderType) {
-//            case 1:
-//                try {
-//                    String ffmpegPath = setting.getFfmpegPath();
-//                    streamRecorder = new FFmpegFlvRecorder(flvUrl, path, definition, ffmpegPath);
-//                } catch (IllegalArgumentException e) {
-//                    log.warn(e.getMessage());
-//                    streamRecorder = new FlvStreamRecorder(flvUrl, path, definition);
-//                }
-//                break;
-//            default:
-//                streamRecorder = new FlvStreamRecorder(flvUrl, path, definition);
-//                break;
-//        }
-//        FlvStreamRecorder.ProgressCallback progressCallback = new Recorder.ProgressCallback() {
-//            @Override
-//            public void onStart(String url, String saveFilePath, String definition) {
-//                Recorder.ProgressCallback.super.onStart(url, saveFilePath, definition);
-//                trayIconUtil.setStartRecordStatue(true);
-//
-//            }
-//
-//            @Override
-//            public void onComplete(String saveFilePath, long totalBytes, long totalDurationMS) {
-//                Recorder.ProgressCallback.super.onComplete(saveFilePath, totalBytes, totalDurationMS);
-//                flvToMp4(saveFilePath);
-//                try {
-//                    TimeUnit.SECONDS.sleep(1);
-//                } catch (InterruptedException ignored) {
-//                }
-//                tryRecord(room, isConvert);
-//            }
-//
-//            @Override
-//            public void onError(Throwable throwable, String saveFilePath) {
-//                Recorder.ProgressCallback.super.onError(throwable, saveFilePath);
-//                flvToMp4(saveFilePath);
-//                if (throwable instanceof InterruptedException) {
-//                    return;
-//                }
-//                if (isRunning.get()) {
-//                    try {
-//                        TimeUnit.SECONDS.sleep(tryRecordSec);
-//                    } catch (InterruptedException ignored) {
-//                    } finally {
-//                        if (tryRecordSec < 10) {
-//                            tryRecordSec++;
-//                        } else {
-//                            tryRecordSec = 1;
-//                        }
-//                    }
-//                }
-//                tryRecord(room, isConvert);
-//            }
-//        };
-//
-//        streamRecorder.setProgressCallback(progressCallback);
-//        streamRecorder.setRoom(room);
-//        return streamRecorder;
-//    }
-
-    private void flvToMp4(String path) {
+    private void completeRecordFile(String path) {
         Path srcPath = Paths.get(path);
         if (!Files.exists(srcPath) || Files.isDirectory(srcPath)) {
             log.warn("{}文件不存在，或不是一个文件", path);
@@ -395,7 +324,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
 
             @Override
             public void recorderComplete(String saveFilePath, long totalBytes, long totalDurationMS) {
-                flvToMp4(saveFilePath);
+                completeRecordFile(saveFilePath);
                 try {
                     TimeUnit.SECONDS.sleep(1);
                 } catch (InterruptedException ignored) {
@@ -406,7 +335,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             @Override
             public void recorderError(Throwable throwable, String saveFilePath) {
                 log.error("FLV录制中发生异常：" + ThrowableUtil.getAllCauseMessage(throwable));
-                flvToMp4(saveFilePath);
+                completeRecordFile(saveFilePath);
                 if (throwable instanceof InterruptedException) {
                     return;
                 }

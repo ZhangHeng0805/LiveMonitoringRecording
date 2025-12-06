@@ -781,7 +781,7 @@
                                           <span class="text-success"><i class="fa fa-play mr-1"></i>开始录制</span>
                                       </button>`
         }
-                                    <button onclick="actionSetting('${item.key}',${item.room.setting.delayIntervalSec})" class="inline-flex items-center px-3 py-1.5 bg-gray-500 border text-white border-gray-300 rounded-lg text-sm hover:bg-gray-800 transition-colors">
+                                    <button onclick="actionSetting('${item.key}',${item.room.setting.delayIntervalSec},${item.room.setting.convertFlvToMp4})" class="inline-flex items-center px-3 py-1.5 bg-gray-500 border text-white border-gray-300 rounded-lg text-sm hover:bg-gray-800 transition-colors">
                                         <span class="text-white"> <i class="fa fa-cog mr-1"></i>设置</span>
                                     </button>
                                    </div>
@@ -919,7 +919,7 @@
                                        </button>`
         }
                                   <button onclick="
-                                    actionSetting('${item.key}',${item.room.setting.delayIntervalSec})"  class="inline-flex items-center px-3 py-1.5 bg-gray-500 border text-white border-gray-300 rounded-lg text-sm hover:bg-gray-800 transition-colors">
+                                    actionSetting('${item.key}',${item.room.setting.delayIntervalSec},${item.room.setting.convertFlvToMp4})"  class="inline-flex items-center px-3 py-1.5 bg-gray-500 border text-white border-gray-300 rounded-lg text-sm hover:bg-gray-800 transition-colors">
                                     <span class="text-white"> <i class="fa fa-cog mr-1"></i>设置</span>
                                   </button>
                                 </div>
@@ -961,7 +961,7 @@
         });
     }
 
-    function actionSetting(roomKey, delayIntervalSec) {
+    function actionSetting(roomKey, delayIntervalSec,convertFlvToMp4) {
         showActionBeforeModal((key) => {
             console.log("操作设置", roomKey, delayIntervalSec);
             setModalContent(
@@ -973,6 +973,15 @@
                       id="delayIntervalSec"
                       class="input-field"
                       placeholder="请设置直播间刷新频率">
+                </div>
+                <div id="convertFileContainer" class="mb-4">
+                  <label class="flex items-center space-x-2 cursor-pointer">
+                    <input type="checkbox"
+                        id="convertFlvToMp4"
+                        class="h-4 w-4 text-primary focus:ring-primary"
+                        ${convertFlvToMp4 ? 'checked' : ''}>
+                    <span class="text-sm font-medium text-gray-700">转换录制文件(FLV转MP4)</span>
+                  </label>
                 </div>
                 <p id="inputError" class="mt-1 text-sm text-red-600 hidden"></p>`,
                 [
@@ -987,15 +996,29 @@
                         className:
                             "bg-primary text-white hover:bg-primary/90 focus:ring-primary",
                         onClick: () => {
-                            let delayIntervalSec = document.getElementById("delayIntervalSec").value;
+                            const delayIntervalSecInput = document.getElementById("delayIntervalSec").value;
+                            const convertFlvToMp4Checked = document.getElementById("convertFlvToMp4").checked;
+                            const errorElement = document.getElementById("inputError");
+                            // 简单的输入验证
+                            if (delayIntervalSecInput && (isNaN(delayIntervalSecInput) || Number(delayIntervalSecInput) < 1)) {
+                                errorElement.textContent = "刷新频率必须是大于0的数字";
+                                errorElement.classList.remove("hidden");
+                                return;
+                            }
+                            errorElement.classList.add("hidden");
+
                             closeModal();
-                            actionRequest("setting", {key: roomKey, actionKey: key, delayIntervalSec: delayIntervalSec})
-                                .then(msg => {
-                                    showActionAfterModal(msg);
-                                    if (msg.code === 0) {
-                                        handleManualRefresh();
-                                    }
-                                })
+                            actionRequest("setting", {
+                                key: roomKey,
+                                actionKey: key,
+                                delayIntervalSec: delayIntervalSecInput,
+                                convertFlvToMp4: convertFlvToMp4Checked
+                            }).then(msg => {
+                                showActionAfterModal(msg);
+                                if (msg.code === 0) {
+                                    handleManualRefresh();
+                                }
+                            })
                         },
                     },
                 ]

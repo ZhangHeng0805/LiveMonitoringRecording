@@ -13,7 +13,6 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.file.Paths;
 import java.util.Date;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -38,7 +37,7 @@ public class RecorderTask {
         this.setting = setting;
     }
 
-    protected Recorder getRecorder(Room room, boolean isConvert) {
+    protected Recorder getRecorder(Room room) {
         Map<String, String> streams = room.getStreams();
         if (streams == null || streams.isEmpty()) {
             throw new IllegalArgumentException("房间没有可用的流信息");
@@ -75,9 +74,7 @@ public class RecorderTask {
                 if (actionListener != null) {
                     actionListener.recorderComplete(saveFilePath, totalBytes, totalDurationMS);
                 }
-                if (isConvert) {
-                    videoConvert(saveFilePath);
-                }
+
             }
 
             @Override
@@ -85,9 +82,6 @@ public class RecorderTask {
                 Recorder.ProgressCallback.super.onError(throwable, saveFilePath);
                 if (actionListener != null) {
                     actionListener.recorderError(throwable, saveFilePath);
-                }
-                if (isConvert) {
-                    videoConvert(saveFilePath);
                 }
             }
         };
@@ -97,15 +91,12 @@ public class RecorderTask {
         return streamRecorder;
     }
 
-    private void videoConvert(String saveFilePath) {
-        //flv转mp4
-    }
 
 
     public void run(Room room) {
         try {
             asyncTaskQueue.submit(() -> {
-                Recorder recorder = getRecorder(room, setting.isConvertFlvToMp4());
+                Recorder recorder = getRecorder(room);
                 if (actionListener != null) {
                     actionListener.onRecorderCreated(recorder);
                 }

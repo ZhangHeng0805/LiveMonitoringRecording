@@ -78,6 +78,9 @@ public class ApiHandler extends JSONHandler {
         setting.remove("activateVoucherPath");
         setting.remove("recordType");
         setting.remove("flvPlayerPort");
+        setting.remove("browserIsPageClear");
+        setting.remove("browserHeadless");
+        setting.remove("maxMonitorThreads");
         if (StrUtil.isBlank(setting.getStr("xiZhiUrl"))) {
             setting.putOnce("isNotice", Boolean.FALSE);
         } else {

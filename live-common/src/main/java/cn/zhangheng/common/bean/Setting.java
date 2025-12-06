@@ -92,6 +92,15 @@ public class Setting {
     @PropertyValue("monitor.delayIntervalSec")
     private volatile int delayIntervalSec = Constant.delayIntervalSec;
 
+    public void setDelayIntervalSec(int delayIntervalSec) {
+        //不能小于系统默认值
+        if (delayIntervalSec < Constant.delayIntervalSec) {
+            this.delayIntervalSec = Constant.delayIntervalSec;
+        } else {
+            this.delayIntervalSec = delayIntervalSec;
+        }
+    }
+
     public int getDelayIntervalSec() {
         //不能小于系统默认值
         if (delayIntervalSec < Constant.delayIntervalSec) {
