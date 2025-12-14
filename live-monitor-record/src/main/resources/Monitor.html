@@ -963,9 +963,9 @@
 
     function actionSetting(roomKey, delayIntervalSec,convertFlvToMp4) {
         showActionBeforeModal((key) => {
-            console.log("操作设置", roomKey, delayIntervalSec);
+            // console.log("操作设置", roomKey, delayIntervalSec);
             setModalContent(
-                "操作设置",
+                `${roomKey} 监听设置`,
                 `<div id="inputContainer" class="mb-4">
                   <label for="delayIntervalSec" class="block text-sm font-medium text-gray-700 mb-1">刷新频率(s)</label>
                   <input type="number"
@@ -983,6 +983,13 @@
                     <span class="text-sm font-medium text-gray-700">转换录制文件(FLV转MP4)</span>
                   </label>
                 </div>
+                <div id="cookieContainer" class="mb-4">
+                  <label for="cookieValue" class="block text-sm font-medium text-gray-700 mb-1">Cookie设置</label>
+                  <textarea
+                      id="cookieValue"
+                      class="input-field w-full min-h-[100px] resize-y"
+                      placeholder="请输入Cookie内容"></textarea>
+                </div>
                 <p id="inputError" class="mt-1 text-sm text-red-600 hidden"></p>`,
                 [
                     {
@@ -998,6 +1005,7 @@
                         onClick: () => {
                             const delayIntervalSecInput = document.getElementById("delayIntervalSec").value;
                             const convertFlvToMp4Checked = document.getElementById("convertFlvToMp4").checked;
+                            const cookieValueInput = document.getElementById("cookieValue").value.trim();
                             const errorElement = document.getElementById("inputError");
                             // 简单的输入验证
                             if (delayIntervalSecInput && (isNaN(delayIntervalSecInput) || Number(delayIntervalSecInput) < 1)) {
@@ -1012,7 +1020,8 @@
                                 key: roomKey,
                                 actionKey: key,
                                 delayIntervalSec: delayIntervalSecInput,
-                                convertFlvToMp4: convertFlvToMp4Checked
+                                convertFlvToMp4: convertFlvToMp4Checked,
+                                cookie: cookieValueInput // 添加Cookie参数
                             }).then(msg => {
                                 showActionAfterModal(msg);
                                 if (msg.code === 0) {

@@ -177,6 +177,12 @@ public class ActionHandler extends JSONHandler {
                 boolean convertFlvToMp4 = Boolean.parseBoolean(query.get("convertFlvToMp4"));
                 monitorMain.getRoom().getSetting().setConvertFlvToMp4(convertFlvToMp4);
             }
+            if (query.containsKey("cookie")) {
+                String cookie = query.get("cookie");
+                if (StrUtil.isNotBlank(cookie)) {
+                    monitorMain.getRoom().setCookie(cookie);
+                }
+            }
             msg.setMessage("设置成功!");
         } catch (Exception e) {
             msg.setCode(1);

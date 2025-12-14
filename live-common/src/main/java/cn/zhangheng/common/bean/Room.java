@@ -64,7 +64,7 @@ public abstract class Room {
     }
 
     public void setCookie(String cookie) {
-        if (StrUtil.isBlank(this.cookie) && StrUtil.isNotBlank(cookie)) {
+        if (StrUtil.isNotBlank(cookie)) {
             this.cookie = cookie;
             log.debug("{}直播间[{}]设置Cookie：{}", getPlatform().name, id, cookie);
         } else {

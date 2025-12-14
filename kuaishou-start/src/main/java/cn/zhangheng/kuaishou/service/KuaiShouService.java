@@ -102,7 +102,7 @@ public class KuaiShouService extends RoomService<KuaiShouRoom> {
                 .header(Header.ACCEPT, "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
                 .header(Header.ACCEPT_LANGUAGE, "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6")
                 .header(Header.ACCEPT_ENCODING, "gzip, deflate, br")
-//                .header(Header.CONNECTION, "keep-alive")
+                .header(Header.CONNECTION, "keep-alive")
                 .header(Header.CACHE_CONTROL, "max-age=0")
         ;
         if (room.getCookie() != null) {

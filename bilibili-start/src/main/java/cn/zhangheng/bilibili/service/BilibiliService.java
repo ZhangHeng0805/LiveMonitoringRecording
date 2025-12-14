@@ -159,33 +159,6 @@ public class BilibiliService extends RoomService<BiliRoom> {
         }
     }
 
-    //    private void room_stream1() {
-//        try (HttpResponse execute = HttpRequest.get("https://api.live.bilibili.com/room/v1/Room/playUrl?quality=4&cid=" + room.getRoom_id()).header("User-Agent", Constant.User_Agent).execute()) {
-//            String body = execute.body();
-//            if (JSONUtil.isTypeJSON(body)) {
-//                JSONObject entries = JSONUtil.parseObj(body);
-//                if (entries.getInt("code") == 0) {
-//                    JSONObject data = entries.getJSONObject("data");
-//                    Integer currentQuality = data.getInt("current_quality");
-//                    String desc = "原画";
-//                    for (int i = 0; i < data.getJSONArray("quality_description").size(); i++) {
-//                        JSONObject entries1 = data.getJSONArray("quality_description").getJSONObject(i);
-//                        if (entries1.getInt("qn").equals(currentQuality)) {
-//                            desc = entries1.getStr("desc");
-//                        }
-//                    }
-//                    LinkedHashMap<String, String> streams = new LinkedHashMap<>();
-//                    for (int i = 0; i < data.getJSONArray("durl").size(); i++) {
-//                        JSONObject entries1 = data.getJSONArray("durl").getJSONObject(i);
-//                        streams.put(desc + entries1.getInt("order"), entries1.getStr("url"));
-//                    }
-//                    room.setStreams(streams);
-//                } else {
-//                    log.warn("room_stream失败：" + entries.getStr("message"));
-//                }
-//            }
-//        }
-//    }
     private void room_stream() {
         room_stream(true);
     }
@@ -204,7 +177,7 @@ public class BilibiliService extends RoomService<BiliRoom> {
                     JSONObject codec = data.getJSONObject("playurl_info").getJSONObject("playurl").getJSONArray("stream").getJSONObject(0).getJSONArray("format").getJSONObject(0).getJSONArray("codec").getJSONObject(0);
                     String desc = qn.get(codec.getInt("current_qn", 10000));
                     String base_url = codec.getStr("base_url");
-                    Map<String, String> streams = room.getStreams() != null ? room.getStreams() : new LinkedHashMap<>();
+                    Map<String, String> streams =  new LinkedHashMap<>();
                     JSONObject urls = codec.getJSONArray("url_info").getJSONObject(0);
                     String url = urls.getStr("host") + base_url + urls.getStr("extra");
                     streams.put(desc, url);
