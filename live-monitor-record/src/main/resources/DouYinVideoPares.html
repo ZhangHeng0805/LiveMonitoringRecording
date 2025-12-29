@@ -334,8 +334,8 @@
             const videoPlayer=document.getElementById('videoPlayer');
             // 填充视频信息
             // videoPlayer.innerHTML = `<source src="${rootUrl+'proxy?url='+encodeURIComponent(data.videoUrl)+'&header_Referer='+link}" >`;
-            // videoPlayer.src=rootUrl+'proxy?url='+encodeURIComponent(data.videoUrl)+'&header_Referer='+link;
-            videoPlayer.src=data.videoUrl;
+            videoPlayer.src=rootUrl+'proxy?url='+encodeURIComponent(data.videoUrl)+'&header_Referer='+link;
+            // videoPlayer.src=data.videoUrl;
             //抖音视频不支持跨域播放，展示隐藏
             // videoPlayer.classList.add("hidden");
             document.getElementById('videoTitle').textContent = data.title;
@@ -344,7 +344,12 @@
             document.getElementById('videoSpecifications').innerHTML = data.videoSpecifications;
             document.getElementById('downloadVideoBtn').title = data.videoUrl;
             if (data.audioUrl) {
-                document.getElementById('audioPlayer').innerHTML = `<source src="${data.audioUrl}" type="audio/mpeg">`;
+                const audioPlayer = document.getElementById('audioPlayer');
+                if (!audioPlayer.paused) {
+                    audioPlayer.pause();
+                }
+                audioPlayer.src = data.audioUrl;
+                // document.getElementById('audioPlayer').innerHTML = `<source src="${data.audioUrl}" type="audio/mpeg">`;
                 document.getElementById('downloadAudioBtn').title = data.audioUrl;
             }else {
                 document.getElementById("tab-audio").classList.add("hidden")
@@ -533,7 +538,8 @@
         function downloadFile(url, fileName) {
             // 创建隐藏的a标签
             const link = document.createElement('a');
-            link.target="_blank";
+            link.target = "_blank"; // 打开新窗口
+            link.rel = "noreferrer noopener"; // 禁用Referer + 安全优化
             link.href = url; // 下载链接（可以是 blob: 或 http(s): 协议）
             
             // 指定文件名（可选，部分浏览器可能忽略）

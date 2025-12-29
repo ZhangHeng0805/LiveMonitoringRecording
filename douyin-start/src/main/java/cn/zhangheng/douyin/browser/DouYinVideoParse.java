@@ -117,8 +117,8 @@ public class DouYinVideoParse {
         if (dataUrl != null) {
             Map<String, String> headers = api.getHeaders();
             headers.remove("accept-encoding");
-            System.out.println(dataUrl);
-            System.out.println(JSONUtil.parseObj(headers).toStringPretty());
+//            System.out.println(dataUrl);
+//            System.out.println(JSONUtil.parseObj(headers).toStringPretty());
             HttpURLConnection connection = null;
             try {
                 connection = RequestUtils.getRequest(dataUrl, headers);
@@ -140,7 +140,7 @@ public class DouYinVideoParse {
         jsonConfig.setIgnoreError(true);
         if (JSONUtil.isTypeJSON(data)) {
             JSONObject obj = JSONUtil.parseObj(data, jsonConfig);
-            System.out.println(obj);
+//            System.out.println(obj);
             if (obj.getInt("status_code") == 0) {
                 JSONObject awemeDetail = obj.getJSONObject("aweme_detail");
                 if (awemeDetail != null) {
