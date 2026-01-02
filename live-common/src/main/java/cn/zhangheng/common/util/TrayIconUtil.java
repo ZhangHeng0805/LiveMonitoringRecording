@@ -19,6 +19,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+
 /**
  * @author: ZhangHeng
  * @email: zhangheng_0805@163.com
@@ -184,43 +185,54 @@ public class TrayIconUtil {
             trayIcon.setToolTip(title);
     }
 
-    public synchronized void shutdown() {
-        // 1. 快速检查：若不在注册表中，直接返回（避免重复移除）
+    public void shutdown() {
+        // 快速检查：若不在注册表中，直接返回（避免重复移除）
         if (!iconRegistry.containsKey(threadKey)) {
             log.debug("线程[{}]：图标不在注册表中，无需移除", threadKey);
             return;
         }
-        // 2. 强制在EDT线程中执行移除操作（关键！）
-        SwingUtilities.invokeLater(() -> {
-            // 3. 双重校验：确保图标仍存在且系统托盘可用
-            if (trayIcon == null) {
-                log.debug("线程[{}]：图标已释放或未创建，跳过移除", threadKey);
-                iconRegistry.remove(threadKey); // 同步清理注册表
-                return;
+        // 判断当前线程是否为EDT，避免在EDT中调用invokeAndWait导致死锁
+        if (SwingUtilities.isEventDispatchThread()) {
+            // 如果当前已是EDT，直接执行任务（无需通过invokeAndWait）
+            shutdownTrayIconTask();
+        } else {
+            try {
+                SwingUtilities.invokeAndWait(this::shutdownTrayIconTask);
+            }catch (InterruptedException ignored){
+            }catch (InvocationTargetException e) {
+                throw new RuntimeException(e);
             }
-            // 4. 同步操作systemTray，避免并发冲突
-            synchronized (systemTray) {
-                try {
-                    // 先从系统托盘移除图标（native操作）
-                    systemTray.remove(trayIcon);
-                    log.debug("线程[{}]：系统托盘已移除图标", threadKey);
+        }
+    }
 
-                    // 再清理本地资源
-                    trayIcon = null;
+    private void shutdownTrayIconTask() {
+        // 双重校验：确保图标仍存在且系统托盘可用
+        if (trayIcon == null) {
+            log.debug("线程[{}]：图标已释放或未创建，跳过移除", threadKey);
+            iconRegistry.remove(threadKey); // 同步清理注册表
+            return;
+        }
+        // 同步操作systemTray，避免并发冲突
+        synchronized (systemTray) {
+            try {
+                // 先从系统托盘移除图标（native操作）
+                systemTray.remove(trayIcon);
+                log.debug("线程[{}]：系统托盘已移除图标", threadKey);
 
-                    // 最后从注册表移除
-                    iconRegistry.remove(threadKey);
-                    log.debug("线程[{}]：图标完全移除，当前总数: {}", threadKey, iconRegistry.size());
+                // 再清理本地资源
+                trayIcon = null;
 
-                } catch (Throwable e) {
-                    // 捕获所有异常（包括native层可能抛出的Error）
-                    log.error("线程[{}]：移除图标时发生异常", threadKey, e);
-                    // 即使失败，也强制清理注册表，避免状态不一致
-                    iconRegistry.remove(threadKey);
-                }
+                // 最后从注册表移除
+                iconRegistry.remove(threadKey);
+                log.debug("线程[{}]：图标完全移除，当前总数: {}", threadKey, iconRegistry.size());
+
+            } catch (Throwable e) {
+                // 捕获所有异常（包括native层可能抛出的Error）
+                log.error("线程[{}]：移除图标时发生异常", threadKey, e);
+                // 即使失败，也强制清理注册表，避免状态不一致
+                iconRegistry.remove(threadKey);
             }
-
-        });
+        }
     }
 
     private void addActionListener(PopupMenu pop) {
@@ -230,6 +242,14 @@ public class TrayIconUtil {
         openRoomMenu = new MenuItem("Open Room");
         playFlvVideo = new MenuItem("Play Flv Video");
         openMonitorMenu = new MenuItem("Open Monitor");
+        Font boldFont = new Font(null, Font.BOLD, 14);
+        closeMenu.setFont(boldFont);
+
+        pop.add(closeMenu);
+        pop.add(openRoomMenu);
+        pop.add(playFlvVideo);
+        pop.add(openMonitorMenu);
+
         openMonitorMenu.addActionListener(e -> {
             if (clickListener != null) {
                 String url = clickListener.openMonitor(e);
@@ -239,11 +259,6 @@ public class TrayIconUtil {
                 }
             }
         });
-
-        pop.add(closeMenu);
-        pop.add(openRoomMenu);
-        pop.add(playFlvVideo);
-        pop.add(openMonitorMenu);
         startRecordMenu.addActionListener(e -> {
             if (clickListener == null || clickListener.startRecordClick(e)) {
                 log.debug("点击事件: 开始录制");
