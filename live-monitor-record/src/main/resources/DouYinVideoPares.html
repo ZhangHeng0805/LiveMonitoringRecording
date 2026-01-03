@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <link rel="icon" href="img/favicon.ico" type="image/x-icon"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer">
     <title>【星曦向荣】抖音视频作品解析</title>
     <!-- 引入Tailwind CSS -->
     <script src="js/tailwindcss-3.4.17.js"></script>
@@ -334,8 +335,8 @@
             const videoPlayer=document.getElementById('videoPlayer');
             // 填充视频信息
             // videoPlayer.innerHTML = `<source src="${rootUrl+'proxy?url='+encodeURIComponent(data.videoUrl)+'&header_Referer='+link}" >`;
-            videoPlayer.src=rootUrl+'proxy?url='+encodeURIComponent(data.videoUrl)+'&header_Referer='+link;
-            // videoPlayer.src=data.videoUrl;
+            // videoPlayer.src=rootUrl+'proxy?url='+encodeURIComponent(data.videoUrl)+'&header_Referer='+link;
+            videoPlayer.src=data.videoUrl;
             //抖音视频不支持跨域播放，展示隐藏
             // videoPlayer.classList.add("hidden");
             document.getElementById('videoTitle').textContent = data.title;
