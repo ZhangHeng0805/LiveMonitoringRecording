@@ -16,7 +16,7 @@ record.ffmpegPath=bin/ffmpeg.exe
 #是否循环监听直播（直播结束后，重新监听）
 record.isLoop=true
 #监听间隔时长（秒）
-monitor.delayIntervalSec=10
+monitor.delayIntervalSec=30
 #是否隐藏监听浏览器
 #monitor.browser.headless=true
 #监听浏览器是否每次打开页面时重置状态

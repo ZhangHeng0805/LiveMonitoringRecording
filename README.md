@@ -1,6 +1,6 @@
 # LiveMonitoringRecording
 
-直播监控录制工具，使用Java编写，支持抖音/B站/~~快手~~平台的直播间监控与录制。配合[息知](https://xz.qqoq.net/)通知平台，可实现开播和下播通知功能。
+直播监控录制工具，使用Java编写，支持抖音/B站/快手平台的直播间监控与录制。配合[息知](https://xz.qqoq.net/)通知平台，可实现开播和下播通知功能。
 
 ## 功能特性
 
@@ -39,7 +39,7 @@
   - 配置文件 xxxr.setting
   - 激活凭证文件 xxxr-activation.lic (联系作者获取)
   - ffmpeg工具，根据不同的操作系统去下载对应的ffmpeg，下载完成后在配置文件中配置ffmpeg路径
-## 启动方式
+## 启动方式 : [说明文档](instructions.md)
 
 ### 通用启动方式
 
@@ -70,6 +70,7 @@
 3. **监听文件启动**：通过读取监听文件（文件名后缀为```.room.json```）的形式启动，一个直播间一个监听文件，将要监听的直播文件统一放入同一文件夹中，程序启动后会自动读取指定目录中的监听文件，可以一个进程同时监听多个直播间，
 监听文件格式：
 ```json
+//复制粘贴时，请去掉注释内容
 {
   //是否录制
   "isRecord": true,
@@ -83,15 +84,15 @@
     //选填，监听刷新间隔时间
     "delayIntervalSec": 30,
     //选填，监听通知接口地址
-    "xiZhiUrl": "息知通知接口地址",
+    "xiZhiUrl": "",
     //选填，根据直播平台配置Cookie
-    "cookieBili": "B站Cookie",
-    "cookieDouYin": "抖音Cookie",
-    "cookieKuaiShou": "快手Cookie"
+    "cookieBili": "",
+    "cookieDouYin": "",
+    "cookieKuaiShou": ""
   }
 }
 ```
-- **集成模块**（支持抖音/B站）：
+- **集成模块**：
   ```bash
   java -cp live-monitor-record-x.x.jar cn.zhangheng.lmr.FileModeMain [监听文件目录]
   ```
