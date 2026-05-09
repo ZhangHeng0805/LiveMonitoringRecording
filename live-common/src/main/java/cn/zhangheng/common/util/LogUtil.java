@@ -67,7 +67,7 @@ public class LogUtil {
         }
         this.logPath = Paths.get(basePath, nowTime + "监听.log");
         logger = new AsyncBatchLogger(logPath);
-        Path coverPath = Paths.get(basePath, "cover.jpg");
+        Path coverPath = Paths.get(basePath, nowTime+"封面.jpg");
         if (!Files.exists(coverPath) && room.getCover() != null) {
             HttpUtil.downloadFile(room.getCover(), coverPath.toFile());
         }

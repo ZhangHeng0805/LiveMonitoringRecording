@@ -18,6 +18,7 @@
         <!--该模块为可选，可直接注释掉-->
         <module>activation-tool</module>
         <module>browser-utils</module>
+        <module>douyin-fetcher</module>
     </modules>
 
     <properties>

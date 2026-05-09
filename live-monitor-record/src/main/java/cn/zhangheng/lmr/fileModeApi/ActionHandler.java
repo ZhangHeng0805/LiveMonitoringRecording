@@ -38,46 +38,68 @@ public class ActionHandler extends JSONHandler {
     public void handle(HttpExchange httpExchange) throws IOException {
         String indexPath = getIndexPath(httpExchange, prefix);
         Message msg = new Message();
-        if (indexPath.startsWith("monitor")) {
-            Map<String, String> query = parseQuery(httpExchange);
-            if (checkActionKey(query, msg)) {
-                actionMonitor(msg, query);
+        try {
+            if (indexPath.startsWith("monitor")) {
+                Map<String, String> query = parseQuery(httpExchange);
+                if (checkActionKey(query, msg) && checkRoomKey(query, msg)) {
+                    actionMonitor(msg, query);
+                } else {
+                    msg.setCode(1);
+                }
+            } else if (indexPath.startsWith("record")) {
+                Map<String, String> query = parseQuery(httpExchange);
+                if (checkActionKey(query, msg) && checkRoomKey(query, msg)) {
+                    actionRecord(msg, query);
+                } else {
+                    msg.setCode(1);
+                }
+            } else if (indexPath.startsWith("setting")) {
+                Map<String, String> query = parseQuery(httpExchange);
+                if (checkActionKey(query, msg) && checkRoomKey(query, msg)) {
+                    actionSetting(msg, query);
+                } else {
+                    msg.setCode(1);
+                }
+            } else if (indexPath.startsWith("refresh")) {
+                Map<String, String> query = parseQuery(httpExchange);
+                if (checkRoomKey(query, msg)) {
+                    actionRefresh(msg, query);
+                } else {
+                    msg.setCode(1);
+                }
+            } else if (indexPath.startsWith("getThread")) {
+                getThread(msg);
+            } else if (indexPath.startsWith("getCount")) {
+                msg.setObj(DouYinBrowserFactory.getBrowser().getCount());
+            } else if (indexPath.startsWith("clear")) {
+                Map<String, String> query = parseQuery(httpExchange);
+                if (checkActionKey(query, msg)) {
+                    DouYinBrowserFactory.getBrowser().threadLocalClear();
+                    msg.setMessage("清理成功！");
+                } else {
+                    msg.setCode(1);
+                }
+            } else if (indexPath.startsWith("close")) {
+                Map<String, String> query = parseQuery(httpExchange);
+                if (checkActionKey(query, msg)) {
+                    boolean b = DouYinBrowserFactory.closeBrowser();
+                    msg.setCode(b ? 0 : 1);
+                    msg.setMessage("浏览器重启" + (b ? "成功" : "失败"));
+                } else {
+                    msg.setCode(1);
+                }
+            } else if (indexPath.startsWith("videoParsing")) {
+                Map<String, String> query = parseQuery(httpExchange);
+                videoParsing(msg, query);
             } else {
                 msg.setCode(1);
+                msg.setMessage("访问的接口路径不存在！" + prefix + indexPath);
             }
-        } else if (indexPath.startsWith("record")) {
-            Map<String, String> query = parseQuery(httpExchange);
-            if (checkActionKey(query, msg)) {
-                actionRecord(msg, query);
-            } else {
-                msg.setCode(1);
-            }
-        } else if (indexPath.startsWith("setting")) {
-            Map<String, String> query = parseQuery(httpExchange);
-            if (checkActionKey(query, msg)) {
-                actionSetting(msg, query);
-            } else {
-                msg.setCode(1);
-            }
-        } else if (indexPath.startsWith("refresh")) {
-            Map<String, String> query = parseQuery(httpExchange);
-            actionRefresh(msg, query);
-        } else if (indexPath.startsWith("getThread")) {
-            getThread(msg);
-        } else if (indexPath.startsWith("clear")) {
-            Map<String, String> query = parseQuery(httpExchange);
-            if (checkActionKey(query, msg)) {
-                DouYinBrowserFactory.getBrowser().clear();
-                msg.setMessage("清理成功！");
-            } else {
-                msg.setCode(1);
-            }
-        } else if (indexPath.startsWith("videoParsing")) {
-            Map<String, String> query = parseQuery(httpExchange);
-            videoParsing(msg, query);
-        } else {
+        } catch (Throwable throwable) {
             msg.setCode(1);
-            msg.setMessage("访问的接口路径不存在！" + prefix + indexPath);
+            msg.setTitle("接口异常！");
+            msg.setMessage(ThrowableUtil.getAllCauseMessage(throwable));
+            throwable.printStackTrace();
         }
 //        System.out.println(msg);
         responseJson(httpExchange, msg);
@@ -143,7 +165,6 @@ public class ActionHandler extends JSONHandler {
 
     private synchronized void actionRefresh(Message msg, Map<String, String> query) {
         String key = query.get("key");
-        boolean flag = Boolean.parseBoolean(query.get("flag"));
         Main main = FileModeMain.getMainMap().get(key);
         if (main == null) {
             msg.setCode(1);
@@ -224,14 +245,22 @@ public class ActionHandler extends JSONHandler {
             msg.setMessage("操作秘钥不能为空！");
             return false;
         }
-        String key = query.get("key");
-        Main main = FileModeMain.getMainMap().get(key);
-        if (main == null) {
-            msg.setMessage("标识不存在！");
-            return false;
-        }
         if (!actionKey.equals(Constant.deviceUniqueId)) {
             msg.setMessage("操作秘钥错误！");
+            return false;
+        }
+        return true;
+    }
+
+    private boolean checkRoomKey(Map<String, String> query, Message msg) {
+        String key = query.get("key");
+        if (StrUtil.isBlank(key)) {
+            msg.setMessage("直播间标识不能为空！");
+            return false;
+        }
+        Main main = FileModeMain.getMainMap().get(key);
+        if (main == null) {
+            msg.setMessage("直播间标识[" + key + "]不存在！");
             return false;
         }
         return true;

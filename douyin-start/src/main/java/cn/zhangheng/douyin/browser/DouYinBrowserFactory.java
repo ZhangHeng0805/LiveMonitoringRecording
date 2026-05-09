@@ -2,13 +2,11 @@ package cn.zhangheng.douyin.browser;
 
 import cn.hutool.core.text.UnicodeUtil;
 import cn.hutool.core.util.StrUtil;
-import cn.zhangheng.browser.API;
+import cn.zhangheng.browser.BrowserAPI;
 import cn.zhangheng.browser.PlaywrightBrowser;
 import cn.zhangheng.douyin.DouYinRoom;
-import com.microsoft.playwright.BrowserContext;
-import com.microsoft.playwright.Page;
-import com.microsoft.playwright.Request;
-import com.microsoft.playwright.Response;
+import com.microsoft.playwright.*;
+import com.microsoft.playwright.options.LoadState;
 import lombok.extern.slf4j.Slf4j;
 
 import java.net.MalformedURLException;
@@ -30,17 +28,26 @@ import java.util.regex.Pattern;
 @Slf4j
 public class DouYinBrowserFactory {
 
-    static final Pattern STATUS_STR_PATTERN = Pattern.compile("\\\\\"status_str\\\\\":\\\\\"([^\"]+)\\\\\"");
-    static final Pattern NICKNAME_PATTERN = Pattern.compile("\\\\\"nickname\\\\\":\\\\\"([^\"]+)\\\\\"");
-    static final Pattern AVATAR_PATTERN = Pattern.compile("\\\\\"url_list\\\\\":\\[\\\\\"([^\"]+)\\\\\"");
-    static final String TARGET_REQUEST_PREFIX = "https://live.douyin.com/webcast/room/web/enter/";
+    public static final Pattern STATUS_STR_PATTERN = Pattern.compile("\\\\\"status_str\\\\\":\\\\\"([^\"]+)\\\\\"");
+    public static final Pattern NICKNAME_PATTERN = Pattern.compile("\\\\\"nickname\\\\\":\\\\\"([^\"]+)\\\\\"");
+    public static final Pattern AVATAR_PATTERN = Pattern.compile("\\\\\"url_list\\\\\":\\[\\\\\"([^\"]+)\\\\\"");
+    public static final String TARGET_REQUEST_PREFIX = "https://live.douyin.com/webcast/room/web/enter/";
 
-    private static volatile DouYinBrowser browser = new DouYinBrowser();
+    // 1. 必须声明为 null，volatile 保证多线程可见性、禁止指令重排
+    private static volatile DouYinBrowser browser = null;
 
+    // 私有构造，禁止外部实例化
+    private DouYinBrowserFactory() {
+    }
+
+    // 2. 标准双重检查锁（DCL）单例，线程安全
     public static DouYinBrowser getBrowser() {
-        if (browser == null) {  // 第一次检查
-            synchronized (DouYinBrowserFactory.class) {  // 加锁
-                if (browser == null) {  // 第二次检查
+        // 第一次检查：不加锁，提升性能
+        if (browser == null) {
+            // 加锁：保证同一时间只有一个线程初始化
+            synchronized (DouYinBrowserFactory.class) {
+                // 第二次检查：防止多线程同时进入第一层判断
+                if (browser == null) {
                     browser = new DouYinBrowser();
                 }
             }
@@ -48,19 +55,30 @@ public class DouYinBrowserFactory {
         return browser;
     }
 
-
-    public static synchronized void closeBrowser() {
-        if (browser != null) {
-            browser.close();
-            browser = null;
+    // 3. 安全关闭：必须和getBrowser用同一把锁，保证原子性
+    public static boolean closeBrowser() {
+        synchronized (DouYinBrowserFactory.class) {
+            if (browser != null) {
+                try {
+                    browser.close();
+                    return true;
+                } catch (Exception e) {
+                    log.warn("Failed to close browser", e);
+                } finally {
+                    browser = null;
+                }
+            }
         }
+        return false;
     }
 
     /**
      * 提取直播间信息（独立方法，便于维护）
      */
     static boolean extractRoomInfo(DouYinRoom room, Page page) {
-        if (page.title().contains("验证码")){
+        String title = safeGetTitle(page);
+
+        if (title.contains("验证码")) {
             log.warn("浏览器触发验证码验证机制！");
             return false;
         }
@@ -74,24 +92,53 @@ public class DouYinBrowserFactory {
             pageSource = pageSource.substring(index);
         }
         // 提取直播状态
-        String status = extractStr(pageSource, STATUS_STR_PATTERN, null);
-        room.setLiving("2".equals(status));
+        room.setLiving(extractLivingStatus(pageSource));
 
         // 提取昵称（避免重复提取）
         if (room.getNickname() == null) {
-            String nickname = extractStr(pageSource, NICKNAME_PATTERN,
-                    new HashSet<>(Collections.singletonList("$undefined")));
+            String nickname = extractNickname(pageSource);
             room.setNickname(nickname);
         }
         if (room.getAvatar() == null) {
             String avatar = UnicodeUtil.toString(extractStr(pageSource, AVATAR_PATTERN, null));
             room.setAvatar(avatar);
         }
-        if(room.isLiving()){
+        if (room.isLiving()) {
             room.setAvatar(null);
             room.setNickname(null);
         }
         return true;
+    }
+
+    public static boolean extractLivingStatus(String pageSource) {
+        String status = extractStr(pageSource, STATUS_STR_PATTERN, null);
+        return "2".equals(status);
+    }
+
+    public static String extractNickname(String pageSource) {
+        String nickname = extractStr(pageSource, NICKNAME_PATTERN,
+                new HashSet<>(Collections.singletonList("$undefined")));
+        return nickname;
+    }
+
+    // 封装安全获取标题的方法（加重试）
+    private static String safeGetTitle(Page page) {
+        int retry = 5;
+        while (retry > 0) {
+            try {
+                return page.title();
+            } catch (Throwable e) {
+                retry--;
+                if (retry == 0) throw e;
+                // 重试前等待上下文稳定
+                page.waitForLoadState(LoadState.DOMCONTENTLOADED);
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException ignored) {
+                }
+            }
+        }
+        return "";
     }
 
     static void setRoomCookie(DouYinRoom room, Page page, String roomUrl) throws MalformedURLException {
@@ -110,7 +157,7 @@ public class DouYinBrowserFactory {
      * @param excludeValues 需要排除的值集合（如{"", "0", "null"}）
      * @return 第一个不在排除集合中的值；若所有值都被排除，返回null
      */
-    static String extractStr(String content, Pattern pattern, Set<String> excludeValues) {
+    public static String extractStr(String content, Pattern pattern, Set<String> excludeValues) {
         // 参数校验：避免空指针
         if (content == null) {
             return null;
@@ -134,25 +181,31 @@ public class DouYinBrowserFactory {
         return null;
     }
 
-    public static void getRequestApi(DouYinRoom room, Request request, API api) {
+    static void getRequestApi(DouYinRoom room, Request request) {
+        getRequestApi(room, request, TARGET_REQUEST_PREFIX);
+    }
+
+    static void getRequestApi(DouYinRoom room, Request request, String TARGET_REQUEST_PREFIX) {
+        if (request == null) return;
         String url = request.url();
         // 匹配目标GET请求
-        if ("GET".equalsIgnoreCase(request.method()) && url.startsWith(TARGET_REQUEST_PREFIX)) {
+        if (url.startsWith(TARGET_REQUEST_PREFIX)) {
+            BrowserAPI browserApi = room.getBrowserApi();
             Map<String, String> headers = request.allHeaders();
-            api.setDataUrl(url);
-            api.setHeaders(headers);
-            room.setApi(api);
-            log.debug("直播状态: {}\n===== 监听URL: {}\n===== 请求头: {}",
-                    room.isLiving() ? "已开启" : "未开启", api.getDataUrl(), api.getHeaders());
+            browserApi.setDataUrl(url);
+            browserApi.setHeaders(headers);
+            if (room.isLiving())
+                log.debug(room.getId() + "-直播状态: 已开启\n===== 监听URL: {}\n===== 请求头: {}",
+                        browserApi.getDataUrl(), browserApi.getHeaders());
         }
     }
 
-    public static void getResponseApi(DouYinRoom room, Response response, API api) {
+    static void getResponseApi(DouYinRoom room, Response response) {
         String url = response.url();
-        if (url.startsWith(api.getUrlPrefix())) {
-            api.setDataUrl(url);
-            api.setResponseBody(response.text());
-            room.setApi(api);
+        if (url.startsWith(TARGET_REQUEST_PREFIX)) {
+            BrowserAPI browserApi = room.getBrowserApi();
+            browserApi.setDataUrl(url);
+            browserApi.setResponseBody(response.text());
         }
     }
 }

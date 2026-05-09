@@ -25,12 +25,14 @@ public class KuaiShouMain extends MonitorMain<KuaiShouRoom, KuaiShouMonitor> {
 
     @Override
     protected String statistics(LogUtil logUtil, KuaiShouRoom room) {
-        if (room.isLiving()) {
+        if (room.isLiving() || room.getLikeCount() != null) {
             String info = "粉丝数：" + room.getFollowers() + "，点赞数：" + room.getLikeCount();
-            try {
-                logUtil.log(info);
-            } catch (Exception e) {
-                log.warn("{} #统计日志产生异常：{}", info, ThrowableUtil.getAllCauseMessage(e));
+            if (logUtil != null) {
+                try {
+                    logUtil.log(info);
+                } catch (Exception e) {
+                    log.warn("{} #统计日志产生异常：{}", info, ThrowableUtil.getAllCauseMessage(e));
+                }
             }
             return info;
         }

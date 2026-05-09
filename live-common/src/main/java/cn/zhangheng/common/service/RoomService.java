@@ -32,10 +32,6 @@ public abstract class RoomService<T extends Room> {
         //注意：子类调用super()方法后，需要调用refresh方法初始化room对象
     }
 
-    public void refresh() {
-        refresh(false);
-    }
-
     /**
      * 刷新直播间数据
      *

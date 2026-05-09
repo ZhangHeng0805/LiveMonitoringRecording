@@ -11,14 +11,19 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class MyThreadLocal<T> {
     private final ConcurrentHashMap<String, T> map = new ConcurrentHashMap<>();
-    private Listener listener;
+    private final Listener listener;
 
     public MyThreadLocal(Listener listener) {
         this.listener = listener;
     }
 
+
     public MyThreadLocal() {
         this(null);
+    }
+
+    public ConcurrentHashMap<String, T> getAll() {
+        return map;
     }
 
     public T get() {
@@ -34,13 +39,18 @@ public class MyThreadLocal<T> {
         map.put(Thread.currentThread().getName(), value);
     }
 
-    public void remove() {
-        String name = Thread.currentThread().getName();
+    public void remove(String name) {
+
         T removedValue = map.remove(name);
         // 通知监听器移除了值
         if (listener != null && removedValue != null) {
             listener.removed(name, removedValue);
         }
+    }
+
+    public void remove() {
+        String name = Thread.currentThread().getName();
+        remove(name);
     }
 
     /**

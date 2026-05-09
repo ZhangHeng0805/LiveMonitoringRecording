@@ -6,8 +6,6 @@ package cn.zhangheng.douyin.browser; /**
  * @description:
  */
 
-import cn.hutool.core.util.StrUtil;
-import cn.zhangheng.browser.API;
 import cn.zhangheng.browser.PlaywrightBrowser;
 import cn.zhangheng.common.bean.Constant;
 import cn.zhangheng.common.bean.Setting;
@@ -18,11 +16,8 @@ import com.zhangheng.util.ThrowableUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 
 import static cn.zhangheng.douyin.browser.DouYinBrowserFactory.*;
 
@@ -38,26 +33,26 @@ public class DouyinPlaywright {
     }
 
     public static boolean request(DouYinRoom room) {
-        PlaywrightBrowser browser = null;
         // 校验房间URL有效性
         String roomUrl = room.getRoomUrl();
         if (roomUrl == null || roomUrl.trim().isEmpty()) {
             log.error("直播间URL为空，无法发起请求");
             return false;
         }
+        PlaywrightBrowser browser = null;
         try {
             Setting setting = room.getSetting();
             boolean headless = !Objects.equals(setting.getBrowserHeadless(), Boolean.FALSE);
             browser = new PlaywrightBrowser(Constant.User_Agent, headless);
             browser.setIsPageClear(setting.getBrowserIsPageClear());
+//            browser.setUpdateContextCounts(setting.getUpdateContextCounts());
             Page page = browser.newPage();
             setRoomCookie(room, page, roomUrl);
-            API api = new API(TARGET_REQUEST_PREFIX);
-            Consumer<Request> handler = request -> {
-                // 过滤需要的接口（例如包含 "api"、"data" 等关键词的接口）
-                getRequestApi(room, request, api);
-            };
-            page.onRequest(handler);
+//            Consumer<Request> handler = request -> {
+//                // 过滤需要的接口（例如包含 "api"、"data" 等关键词的接口）
+//                getRequestApi(room, request);
+//            };
+//            page.onRequest(handler);
 
             // 4. 访问抖音页面
             browser.navigatePage(room.getRoomUrl(), page);
@@ -72,7 +67,8 @@ public class DouyinPlaywright {
 
             if (room.isLiving()) {
                 // 等待一段时间，确保异步请求被捕获
-                browser.waitForTargetRequest(page, TARGET_REQUEST_PREFIX, 10_000);
+                Request request = browser.waitForTargetRequest(page, TARGET_REQUEST_PREFIX, 10_000);
+                getRequestApi(room, request);
             } else {
                 try {
                     TimeUnit.SECONDS.sleep(10);

@@ -1,5 +1,7 @@
 package cn.zhangheng.common.service;
 
+import cn.hutool.core.codec.Base64Encoder;
+import cn.hutool.http.HttpUtil;
 import cn.hutool.json.JSONUtil;
 import cn.zhangheng.common.bean.Constant;
 import cn.zhangheng.common.bean.Room;
@@ -13,6 +15,7 @@ import cn.zhangheng.common.util.NotificationUtil;
 import cn.zhangheng.common.util.TrayIconUtil;
 import cn.zhangheng.common.video.FlvToMp4;
 import cn.zhangheng.common.video.player.LocalServerFlvPlayer;
+import com.zhangheng.file.FileOperation;
 import com.zhangheng.file.FileUtil;
 import com.zhangheng.util.EncryptUtil;
 import com.zhangheng.util.NetworkUtil;
@@ -20,8 +23,10 @@ import com.zhangheng.util.ThrowableUtil;
 import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import sun.misc.BASE64Encoder;
 
 import java.awt.event.ActionEvent;
+import java.io.File;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.file.Files;
@@ -108,12 +113,17 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         try {
             this.room = room;
             roomMonitor = getRoomMonitor(room);
+            int i = 1;
             while (getIsRunning() && room.getNickname() == null) {
+                if (i == 6) {
+                    throw new RuntimeException(room.getRoomUrl() + " 直播间初始化异常；获取直播间信息失败");
+                }
                 try {
-                    TimeUnit.SECONDS.sleep(1);
+                    TimeUnit.SECONDS.sleep(i);
                 } catch (InterruptedException ignored) {
                 }
                 roomMonitor.refresh(false);
+                i++;
             }
             Thread.currentThread().setName(room.getNickname() + "-main-" + room.getPlatform().name());
             RoomMonitor.RoomListener<R> listener = getRoomListener(room, isRecord);
@@ -189,6 +199,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                 } else {
                     while (getIsRunning() && (room.getStreams() == null || room.getStreams().isEmpty())) {
                         roomMonitor.refresh(true);
+                        log.warn("直播已开启，未获取到直播源信息，重试中。。。");
                         try {
                             TimeUnit.SECONDS.sleep(1);
                         } catch (InterruptedException ignored) {
@@ -375,10 +386,12 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
 
     private void tryRecord(R room) {
         trayIconUtil.setStartRecordStatue(false);
-        try {
-            roomMonitor.refresh(true);
-        } catch (Exception e) {
-            log.error("直播监听刷新异常：" + ThrowableUtil.getAllCauseMessage(e), e);
+        if (room.isLiving()) {
+            try {
+                roomMonitor.refresh(true);
+            } catch (Exception e) {
+                log.error("直播监听刷新异常：" + ThrowableUtil.getAllCauseMessage(e), e);
+            }
         }
         if (room.isLiving() && isRunning.get() && recordFlag.get()) {
             if (recorderTask != null) {
@@ -490,32 +503,41 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         flvPlayer.stop(true);
     }
 
-    public void xiZhiSendMsg(NotificationUtil notificationUtil, Room room) {
+    public void xiZhiSendMsg(NotificationUtil notificationUtil, R room) {
         String title = "**" + room.getNickname() + ", " + room.getPlatform().getName() + (room.isLiving() ? "开播了！ " + room.getTitle() : "下播了！") + "**\t\n";
-        String webUrl = room.isLiving() ? "- 直播间地址: [进入直播间](" + room.getRoomUrl() + ")" : "";
-        String playUrl = "";
-        //B站请求头限制，无法在线播放
-        if (room.isLiving() && room.getPlatform() != Room.Platform.Bili) {
-            Map<String, String> streams = room.getStreams();
-            Iterator<Map.Entry<String, String>> iterator = streams.entrySet().iterator();
-            String qn, flvUrl;
-            Map.Entry<String, String> entry = iterator.next();
-            qn = entry.getKey();
-            flvUrl = entry.getValue().startsWith("http:") ? entry.getValue().replace("http:", "https:") : entry.getValue();
-            try {
+        String content = "";
+        if (room.isLiving()) {
+            content += "- 直播间地址: [点击进入直播间](" + room.getRoomUrl() + ")";
+            //B站请求头限制，无法在线播放
+            if (room.getPlatform() != Room.Platform.Bili) {
+                Map<String, String> streams = room.getStreams();
+                Iterator<Map.Entry<String, String>> iterator = streams.entrySet().iterator();
+                String qn, flvUrl;
+                Map.Entry<String, String> entry = iterator.next();
+                qn = entry.getKey();
+                flvUrl = entry.getValue().startsWith("http:") ? entry.getValue().replace("http:", "https:") : entry.getValue();
+                try {
 //                String encode = URLEncoder.encode(flvUrl, "UTF-8");//使用URLEncoder编码
-                String encode = EncryptUtil.enBase64Str(flvUrl);//使用Base64Encoder编码
-                String url = "https://zhangheng0805.github.io/FLVPlayer/?url=" + encode;
-                playUrl = "\t\n- 播放地址: [" + qn + " 纯享版在线观看](" + url + ")";
-            } catch (Exception ignored) {
+                    String encode = EncryptUtil.enBase64Str(flvUrl);//使用Base64Encoder编码
+                    String url = "https://zhangheng0805.github.io/FLVPlayer/?url=" + encode;
+                    content += "\t\n- 播放地址: [" + qn + " 纯享版点击在线观看](" + url + ")";
+                } catch (Exception ignored) {
+                }
             }
+        } else {
+            content += "\t\n- " + statistics(null, room);
         }
         try {
+//            content += "\t\n ![直播封面](data:image/jpeg;base64," + Base64Encoder.encode(HttpUtil.downloadBytes(room.getCover())) + ")";
             String footer = "\t\n------\t\n"
                     + "\t\n **个人链接:**\t [微信公众号](" + Constant.WeChatOfficialAccount + ") / [Bilibili](https://b23.tv/fmqmfNv)"
 //                    + " / [抖音](https://v.douyin.com/cubL5sg7sNE/)"
                     + " / [程序项目](https://github.com/ZhangHeng0805/LiveMonitoringRecording)";
-            notificationUtil.xiZhiSendMsg(Constant.Application, URLEncoder.encode(title + webUrl + playUrl + footer, "UTF-8"));
+            notificationUtil.xiZhiSendMsg(Constant.Application,
+//                    URLEncoder.encode(
+                            title + content + footer
+//                            , "UTF-8")
+            );
         } catch (Exception e) {
             log.error("xiZhiSendMsg发生异常：" + ThrowableUtil.getAllCauseMessage(e));
         }

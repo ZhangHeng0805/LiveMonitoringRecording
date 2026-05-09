@@ -87,6 +87,11 @@ public class Setting {
     @PropertyValue("monitor.browser.isPageClear")
     private volatile Boolean browserIsPageClear;
     /**
+     * 更新BrowserContext的请求次数，请求次数达到时自动更换BrowserContext,最小为10，<=0时不更新
+     */
+    @PropertyValue("monitor.browser.updateContextCounts")
+    private volatile Integer updateContextCounts;
+    /**
      * 监听间隔延时（秒）
      */
     @PropertyValue("monitor.delayIntervalSec")

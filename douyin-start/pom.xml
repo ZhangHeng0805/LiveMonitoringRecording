@@ -32,6 +32,12 @@
                 <version>${xxxr.version}</version>
                 <scope>compile</scope>
             </dependency>
+            <dependency>
+                <groupId>cn.zhangheng.record</groupId>
+                <artifactId>douyin-fetcher</artifactId>
+                <version>3.5</version>
+                <scope>compile</scope>
+            </dependency>
 
 
             <dependency>

@@ -49,7 +49,7 @@ public abstract class Room {
 
 
     private String cookie;
-    //直播间地址
+    //直播间的地址
     protected String roomUrl;
 
     private volatile Setting setting;
@@ -107,7 +107,7 @@ public abstract class Room {
     }
 
     /**
-     * 初始化直播间地址
+     * 初始化直播间的地址
      *
      * @return
      */

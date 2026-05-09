@@ -85,7 +85,9 @@ public class ProxyHandler extends MyHandler {
 
             // 获取目标响应信息
             int responseCode = targetConn.getResponseCode();
-            log.debug("Target response code: {} for URL: {}", responseCode, targetConn.getURL());
+            if (responseCode != 200) {
+                log.debug("Target response code: {} for URL: {}", responseCode, targetConn.getURL());
+            }
 
             // 关键修复1：对重定向/无响应体响应码特殊处理，强制设置contentLength为-1
             long contentLength = getAdaptedContentLength(targetConn, responseCode);

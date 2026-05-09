@@ -3,8 +3,7 @@ package cn.zhangheng.douyin;
 
 import cn.hutool.core.annotation.PropIgnore;
 import cn.hutool.core.util.StrUtil;
-import cn.zhangheng.browser.API;
-import cn.zhangheng.common.bean.Constant;
+import cn.zhangheng.browser.BrowserAPI;
 import cn.zhangheng.common.bean.Room;
 import cn.zhangheng.common.bean.Setting;
 import lombok.Getter;
@@ -19,6 +18,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static cn.zhangheng.douyin.browser.DouYinBrowserFactory.TARGET_REQUEST_PREFIX;
+
 /**
  * @author: ZhangHeng
  * @email: zhangheng_0805@163.com
@@ -31,12 +32,9 @@ import java.util.Map;
 @ToString
 public class DouYinRoom extends Room {
     private static final Logger log = LoggerFactory.getLogger(DouYinRoom.class);
-//    @PropIgnore
-//    private String data_url;
-//    @PropIgnore
-//    private String user_agent = Constant.User_Agent;
+
     @PropIgnore
-    private API api;
+    private BrowserAPI browserApi;
     //总观看人数
     private String totalUserStr;
     //当前在线人数
@@ -86,12 +84,10 @@ public class DouYinRoom extends Room {
     @Override
     public void reset() {
         super.reset();
-//        setData_url(null);
-//        setUser_agent(null);
         setTotalUserStr(null);
         setUserCountStr(null);
         setCoverList(null);
-        setApi(null);
+        setBrowserApi(null);
     }
 
     /**

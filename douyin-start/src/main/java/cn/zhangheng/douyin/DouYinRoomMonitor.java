@@ -1,6 +1,9 @@
 package cn.zhangheng.douyin;
 
+import cn.zhangheng.browser.BrowserAPI;
 import cn.zhangheng.common.service.RoomMonitor;
+
+import static cn.zhangheng.douyin.browser.DouYinBrowserFactory.TARGET_REQUEST_PREFIX;
 
 /**
  * @author: ZhangHeng
@@ -17,6 +20,7 @@ public class DouYinRoomMonitor extends RoomMonitor<DouYinRoom,DouYinRoomService>
 
     @Override
     protected DouYinRoomService getRoomService(DouYinRoom room) {
+        room.setBrowserApi(new BrowserAPI(TARGET_REQUEST_PREFIX));
         return new DouYinRoomService(room);
     }
 

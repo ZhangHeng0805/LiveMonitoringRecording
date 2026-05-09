@@ -21,6 +21,8 @@ monitor.delayIntervalSec=30
 #monitor.browser.headless=true
 #监听浏览器是否每次打开页面时重置状态
 monitor.browser.isPageClear=false
+#更新BrowserContext的请求次数，默认不更新
+#monitor.browser.updateContextCounts=50
 #直播开始时触发的快捷键(小写，多个组合之间逗号分割，例：alt+tab,ctrl+s)
 living.start.shortcut=
 #直播结束时触发的快捷键

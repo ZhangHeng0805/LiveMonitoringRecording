@@ -26,12 +26,14 @@ public class DouYinMain extends MonitorMain<DouYinRoom, DouYinRoomMonitor> {
 
     @Override
     protected String statistics(LogUtil logUtil, DouYinRoom room) {
-        if (room.isLiving()) {
+        if (room.isLiving() || room.getUserCountStr() != null) {
             String info = "在线人数：" + room.getUserCountStr() + "，点赞数：" + room.getLikeCount() + "，总观看人数：" + room.getTotalUserStr();
-            try {
-                logUtil.log(info);
-            } catch (Exception e) {
-                log.warn("{} #统计日志产生异常：{}", info, ThrowableUtil.getAllCauseMessage(e));
+            if (logUtil != null) {
+                try {
+                    logUtil.log(info);
+                } catch (Exception e) {
+                    log.warn("{} #统计日志产生异常：{}", info, ThrowableUtil.getAllCauseMessage(e));
+                }
             }
             return info;
         }

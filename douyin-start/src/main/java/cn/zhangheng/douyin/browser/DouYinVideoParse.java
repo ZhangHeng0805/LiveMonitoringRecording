@@ -5,7 +5,7 @@ import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONConfig;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
-import cn.zhangheng.browser.API;
+import cn.zhangheng.browser.BrowserAPI;
 import cn.zhangheng.browser.PlaywrightBrowser;
 import cn.zhangheng.common.bean.Constant;
 import cn.zhangheng.common.bean.Setting;
@@ -14,6 +14,7 @@ import cn.zhangheng.douyin.DouYinVideo;
 import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.TimeoutError;
+import com.microsoft.playwright.options.WaitForSelectorState;
 import com.zhangheng.util.ThrowableUtil;
 import com.zhangheng.util.TimeUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -56,14 +57,16 @@ public class DouYinVideoParse {
     }
 
     public static DouYinVideo parse(String shareUrl, Setting setting) {
-        API api = new API("https://www.douyin.com/aweme/v1/web/aweme/detail/");
+        BrowserAPI browserApi = new BrowserAPI("https://www.douyin.com/aweme/v1/web/aweme/detail/");
 //        API api = new API("https://www.douyin.com/aweme/v1/web/aweme/post/");
         boolean success = false;
         String link = extractDouyinLink(shareUrl);
         if (link == null) {
             return null;
         }
-        try (PlaywrightBrowser browser = new PlaywrightBrowser(Constant.User_Agent)) {
+        PlaywrightBrowser browser = null;
+        try {
+            browser = new PlaywrightBrowser(Constant.User_Agent);
             Page page = browser.newPage();
             //设置cookie
             if (setting != null) {
@@ -90,21 +93,28 @@ public class DouYinVideoParse {
 //            });
             page.onResponse(response -> {
                 String url = response.url();
-                if (url.startsWith(api.getUrlPrefix())) {
-                    api.setResponseBody(response.text());
+                if (url.startsWith(browserApi.getUrlPrefix())) {
+                    browserApi.setResponseBody(response.text());
                 }
             });
 
-            page.navigate(link);
+            browser.navigatePage(link, page);
+
+            checkVideoSelectors(page);
 
 //            success = browser.waitForTargetRequest(page, api.getUrlPrefix(), 10_000);
-            success = browser.waitForTargetResponse(page, api.getUrlPrefix(), 10_000);
-        } catch (TimeoutError e) {
+//            success = browser.waitForTargetResponse(page, api.getUrlPrefix(), 10_000);
+            success = StrUtil.isNotBlank(browserApi.getResponseBody());
+        } catch (Throwable e) {
             log.error(ThrowableUtil.getAllCauseMessage(e));
+        } finally {
+            if (browser != null) {
+                browser.close();
+            }
         }
         if (success) {
 //            String data = getData(api);
-            String data = api.getResponseBody();
+            String data = browserApi.getResponseBody();
             return handleData(data);
         } else {
             throw new RuntimeException("未解析到视频信息");
@@ -112,10 +122,28 @@ public class DouYinVideoParse {
 
     }
 
-    private static String getData(API api) {
-        String dataUrl = api.getDataUrl();
+    private static void checkVideoSelectors(Page page) {
+        // 抖音直播间核心元素（优先级从高到低，可根据实际情况调整）
+        String[] liveSelectors = {
+                ".xg-video-container",
+        };
+        for (String selector : liveSelectors) {
+            try {
+//                    System.out.println("等待核心元素加载：" + selector);
+                page.waitForSelector(selector, new Page.WaitForSelectorOptions()
+                        .setState(WaitForSelectorState.VISIBLE) // 必须可见，而非仅存在
+                        .setTimeout(5_000));
+                break; // 找到任意一个核心元素即可
+            } catch (TimeoutError e) {
+                log.warn("元素 " + selector + " 加载超时，尝试下一个...");
+            }
+        }
+    }
+
+    private static String getData(BrowserAPI browserApi) {
+        String dataUrl = browserApi.getDataUrl();
         if (dataUrl != null) {
-            Map<String, String> headers = api.getHeaders();
+            Map<String, String> headers = browserApi.getHeaders();
             headers.remove("accept-encoding");
 //            System.out.println(dataUrl);
 //            System.out.println(JSONUtil.parseObj(headers).toStringPretty());

@@ -41,8 +41,11 @@ public class NotificationUtil {
         if (StrUtil.isBlank(xiZhiUrl)) {
             return;
         }
+        System.out.println(content);
         HttpResponse execute = HttpRequest.post(xiZhiUrl)
-                .timeout(10_000)
+//                .timeout(10_000)
+                .setReadTimeout(30_000)
+                .setConnectionTimeout(10_000)
                 .form("title", title)
                 .form("content", content)
                 .execute();
@@ -54,7 +57,7 @@ public class NotificationUtil {
                 log.error("息知API消息发送异常：" + body);
             }
         } else {
-            log.error("息知API消息发送失败：" + body);
+            log.error("息知API消息发送失败[{}]：{}", execute.getStatus(), body);
         }
     }
 
@@ -75,7 +78,7 @@ public class NotificationUtil {
             return;
         }
         try {
-            ShortcutKeys.wechatSendMsg( weChatTarget, msg);
+            ShortcutKeys.wechatSendMsg(weChatTarget, msg);
         } catch (InterruptedException e) {
             log.error("微信客户端发送信息失败：" + ThrowableUtil.getAllCauseMessage(e));
         }

@@ -12,18 +12,31 @@ import java.util.Map;
  * @description:
  */
 @Data
-public class API {
-    public API(String urlPrefix) {
+public class BrowserAPI {
+    public BrowserAPI(String urlPrefix) {
         this.urlPrefix = urlPrefix;
     }
+
+    //接口前缀，根据前缀匹配url
     private final String urlPrefix;
+    //接口数据url
     private String dataUrl;
-    private Map<String,String> headers;
+
+    public void setDataUrl(String dataUrl) {
+        this.dataUrl = dataUrl;
+        this.updateTimes = System.currentTimeMillis();
+    }
+
+    //接口请求头
+    private Map<String, String> headers;
 
     public void setHeaders(Map<String, String> headers) {
         headers.entrySet().removeIf(next -> next.getKey().startsWith(":"));
         this.headers = headers;
     }
 
+    //接口响应体
     private String responseBody;
+
+    private long updateTimes = 0;
 }

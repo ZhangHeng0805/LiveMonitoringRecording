@@ -4,7 +4,6 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import cn.zhangheng.common.activation.ActivationUtil;
-import cn.zhangheng.common.activation.DeviceInfoCollector;
 import cn.zhangheng.common.activation.ErrorException;
 import cn.zhangheng.common.activation.WarnException;
 import cn.zhangheng.common.bean.Constant;
@@ -76,7 +75,7 @@ public class FileModeMain {
                 TrayIconUtil iconUtil = TrayIconUtil.getInstance(Constant.Application);
                 iconUtil.notifyMessage(errorException.getMessage(), TrayIcon.MessageType.ERROR);
                 iconUtil.shutdown();
-                log.error(message, errorException);
+                log.error("启动失败！{}",message);
                 return;
             } catch (WarnException warnException) {
                 TrayIconUtil iconUtil = TrayIconUtil.getInstance(Constant.Application);
@@ -96,10 +95,14 @@ public class FileModeMain {
                 ThreadPool.execute(() -> {
                     startMonitor(file);
                 });
+                try {
+                    TimeUnit.SECONDS.sleep(i);
+                } catch (InterruptedException ignored) {
+                }
             }
 
         } catch (Exception e) {
-            log.error(e.getMessage(), e);
+                log.error(e.getMessage(), e);
         } finally {
             if (ThreadPool != null) {
                 ThreadPool.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
@@ -122,6 +125,7 @@ public class FileModeMain {
     }
 
     public static void startMonitor(Path file) {
+        String key = null;
         try {
             //解析文件
             String s = String.join("", Files.readAllLines(file));
@@ -135,7 +139,7 @@ public class FileModeMain {
                 setting.setRunMode(RunMode.FILE);
             }
             //运行监听
-            String key = platform.name() + "-" + id;
+            key = platform.name() + "-" + id;
             Thread.currentThread().setName(key);
             executeFileMap.put(key, file);
             Main main = new Main();
@@ -145,13 +149,16 @@ public class FileModeMain {
             log.debug("{} 监听文件开始运行!", file);
             main.start(setting, id, platform, isRecord);
             log.debug("{} 监听文件结束运行!", file);
-            endMonitor(key);
+
         } catch (Exception e) {
             log.error(file + " 监听发生异常:" + e.getMessage(), e);
+        } finally {
+            endMonitor(key);
         }
     }
 
     private static void endMonitor(String key) {
+        if (key == null) return;
         runCount.decrementAndGet();
         Main remove = mainMap.get(key);
         Room.Platform platform = remove.getRoom().getPlatform();

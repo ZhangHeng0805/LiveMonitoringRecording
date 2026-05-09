@@ -25,7 +25,7 @@ public abstract class RoomMonitor<R extends Room, S extends RoomService<R>> exte
     @Getter
     private final R room;
     private final S roomService;
-    private int runCount = 0;
+//    private int runCount = 0;
     @Setter
     private RoomListener<R> listener = null;
     // 用于保存任务所在的工作线程
@@ -45,10 +45,10 @@ public abstract class RoomMonitor<R extends Room, S extends RoomService<R>> exte
 
     @Override
     public void run(boolean isAsync) throws ExecutionException {
-        runCount++;
-        if (runCount > 1) {
-            refresh(false);
-        }
+//        runCount++;
+//        if (runCount > 1) {
+//            refresh(false);
+//        }
         if (mainExecutors.isShutdown() || mainExecutors.isTerminated()) {
             mainExecutors = Executors.newFixedThreadPool(1);
         }

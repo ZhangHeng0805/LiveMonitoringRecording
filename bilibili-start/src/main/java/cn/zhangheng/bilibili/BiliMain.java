@@ -28,12 +28,14 @@ public class BiliMain extends MonitorMain<BiliRoom, BiliMonitor> {
 
     @Override
     protected String statistics(LogUtil logUtil, BiliRoom room) {
-        if (room.isLiving()) {
+        if (room.isLiving()||room.getViewers()>0) {
             String info = "粉丝数：" + room.getFollowers() + "，观看人数：" + room.getViewers();
-            try {
-                logUtil.log(info);
-            } catch (Exception e) {
-                log.warn("{} #统计日志产生异常：{}", info, ThrowableUtil.getAllCauseMessage(e));
+            if (logUtil != null) {
+                try {
+                    logUtil.log(info);
+                } catch (Exception e) {
+                    log.warn("{} #统计日志产生异常：{}", info, ThrowableUtil.getAllCauseMessage(e));
+                }
             }
             return info;
         }

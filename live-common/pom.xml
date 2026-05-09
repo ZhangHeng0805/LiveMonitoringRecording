@@ -27,6 +27,12 @@
 <!--            <artifactId>javafx-web</artifactId>-->
 <!--            <version>17.0.2</version>-->
 <!--        </dependency>-->
+        <!-- Java-WebSocket 客户端依赖 -->
+        <dependency>
+            <groupId>org.java-websocket</groupId>
+            <artifactId>Java-WebSocket</artifactId>
+            <version>1.5.4</version>
+        </dependency>
     </dependencies>
 
     <properties>

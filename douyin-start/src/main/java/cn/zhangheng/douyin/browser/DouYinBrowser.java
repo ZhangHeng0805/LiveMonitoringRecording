@@ -1,21 +1,26 @@
 package cn.zhangheng.douyin.browser;
 
-import cn.hutool.core.util.StrUtil;
-import cn.zhangheng.browser.API;
+import cn.zhangheng.browser.BrowserCounter;
 import cn.zhangheng.browser.PlaywrightBrowser;
 import cn.zhangheng.common.bean.Constant;
 import cn.zhangheng.common.bean.Setting;
 import cn.zhangheng.douyin.DouYinRoom;
 import com.microsoft.playwright.*;
+import com.microsoft.playwright.options.WaitForSelectorState;
+import com.microsoft.playwright.options.WaitUntilState;
+import com.zhangheng.util.RandomUtil;
 import com.zhangheng.util.ThrowableUtil;
+import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
-import java.net.URL;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static cn.zhangheng.douyin.browser.DouYinBrowserFactory.*;
 
@@ -29,24 +34,36 @@ import static cn.zhangheng.douyin.browser.DouYinBrowserFactory.*;
  */
 public class DouYinBrowser implements Closeable {
 
-    // 正则表达式模式（静态编译，提升性能）
-//    private static final Pattern STATUS_STR_PATTERN = Pattern.compile("\\\\\"status_str\\\\\":\\\\\"([^\"]+)\\\\\"");
-//    private static final Pattern NICKNAME_PATTERN = Pattern.compile("\\\\\"nickname\\\\\":\\\\\"([^\"]+)\\\\\"");
-//    private static final Pattern AVATAR_PATTERN = Pattern.compile("\\\\\"url_list\\\\\":\\[\\\\\"([^\"]+)\\\\\"");
     private static final Logger log = LoggerFactory.getLogger(DouYinBrowser.class);
+
+    @Getter
+    private static final Map<String, BrowserCounter> counters = new ConcurrentHashMap<>();
+    private static final AtomicInteger totalCount = new AtomicInteger(0);
+
+    //关闭浏览器的请求次数
+    private final int closeBrowserCount = 10000;
 
     // 线程安全的浏览器实例（volatile确保多线程可见性）
     private volatile PlaywrightBrowser browser;
-    private final API api = new API(TARGET_REQUEST_PREFIX);
-
-    // 目标请求URL前缀（提取为常量，便于维护）
-//    private static final String TARGET_REQUEST_PREFIX = "https://live.douyin.com/webcast/room/web/enter/";
 
     DouYinBrowser() {
-        Setting setting = new Setting();
-        boolean headless = !Objects.equals(setting.getBrowserHeadless(), Boolean.FALSE);
-        browser = new PlaywrightBrowser(Constant.User_Agent, headless);
-        browser.setIsPageClear(setting.getBrowserIsPageClear());
+        browser = createBrowser();
+    }
+
+
+    public Map<String, ?> getCount() {
+        Map<String, Integer> browserCount = browser.getAllCount();
+        Map<String, Object> data = new HashMap<>();
+        Map<String, Object> totalCounter = new HashMap<>();
+        data.put("browserCount", browserCount);
+        for (Map.Entry<String, BrowserCounter> entry : getCounters().entrySet()) {
+            BrowserCounter value = entry.getValue();
+            totalCounter.put(value.getThreadName(), value);
+        }
+        totalCounter.put("total", totalCount.get());
+        data.put("totalCounter", totalCounter);
+
+        return data;
     }
 
 
@@ -62,38 +79,48 @@ public class DouYinBrowser implements Closeable {
         }
 
         Page page = null;
+//        Consumer<Request> requestHandler = null;
+//        Consumer<Response> responsehandler = null;
         try {
             checkAndInitBrowser();
-            page = browser.newPage();
-
+            synchronized (this) {
+                page = browser.newPage();
+            }
             setRoomCookie(room, page, roomUrl);
 //            log.debug("=== 对 {} 生效的 Cookie 共 {} 个 ===", roomUrl, context.cookies(roomUrl).size());
 
             // 注册请求监听器（提取目标请求信息）
-            Consumer<Request> requestHandler = request -> {
-                getRequestApi(room, request, api);
-            };
-//            Consumer<Response> responsehandler = response -> {
+//            requestHandler = request -> {
+//                getRequestApi(room, request);
+//            };
+//            responsehandler = response -> {
 //                getResponseApi(room, response, api);
 //            };
-            page.onRequest(requestHandler);
+//            page.onRequest(requestHandler);
 //            page.onResponse(responsehandler);
             // 导航到直播间页面
-            browser.navigatePage(roomUrl, page);
+            page = browser.navigatePage(roomUrl, page);
 
-            // 提取页面源码中的房间信息
-//            String pageSource = page.content();
-
+            //提取界面信息
             boolean b = extractRoomInfo(room, page);
 
             // 若直播中，等待目标请求完成（替代固定休眠，更高效）
             if (room.isLiving()) {
-                browser.waitForTargetRequest(page, TARGET_REQUEST_PREFIX, 10_000);
+                Request request;
+                try {
+                    request = browser.waitForTargetRequest(page, TARGET_REQUEST_PREFIX, 10_000);
+                } catch (Exception e) {
+                    log.info("页面刷新，重新监听请求！");
+                    page.reload(new Page.ReloadOptions().setTimeout(10_000).setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
+                    request = browser.waitForTargetRequest(page, TARGET_REQUEST_PREFIX, 10_000);
+                }
+                getRequestApi(room, request);
+//                browser.waitForTarget(room.getBrowserApi(), 10_000);
             }
-            page.offRequest(requestHandler);
+//            page.offRequest(requestHandler);
 //            page.offResponse(responsehandler);
             if (!b) {
-                TimeUnit.SECONDS.sleep(10);
+                TimeUnit.SECONDS.sleep(RandomUtil.createRandom(5, 10));
             }
             return b;
         } catch (Throwable e) {
@@ -101,14 +128,50 @@ public class DouYinBrowser implements Closeable {
                 log.error("处理直播间[{}]时发生异常,{}", roomUrl, ThrowableUtil.getAllCauseMessage(e)); // 记录完整堆栈
             }
         } finally {
+//            if (requestHandler != null) {
+//                page.offRequest(requestHandler);
+//            }
             // 确保页面关闭，释放资源
             if (browser != null) {
                 browser.closePage(page);
+            }
+            //统计请求
+            BrowserCounter counter = counters.getOrDefault(roomUrl, new BrowserCounter(roomUrl));
+            counter.add();
+            totalCount.incrementAndGet();
+            if (!counters.containsKey(roomUrl)) {
+                counters.put(roomUrl, counter);
+            }
+            if (totalCount.get() % closeBrowserCount == 0) {
+                closeBrowser();
+                log.debug("请求总次数达到{}次，重启浏览器！", totalCount.get());
             }
         }
         return false;
     }
 
+    /**
+     * 检查抖音直播间页面核心元素是否显示
+     *
+     * @param page
+     */
+    private void checkliveSelectors(Page page) {
+        // 抖音直播间核心元素（优先级从高到低，可根据实际情况调整）
+        String[] liveSelectors = {
+                ".xgplayer-fullscreen-parent",
+        };
+        for (String selector : liveSelectors) {
+            try {
+//                    System.out.println("等待核心元素加载：" + selector);
+                page.waitForSelector(selector, new Page.WaitForSelectorOptions()
+                        .setState(WaitForSelectorState.VISIBLE) // 必须可见，而非仅存在
+                        .setTimeout(10_000));
+                break; // 找到任意一个核心元素即可
+            } catch (TimeoutError e) {
+                log.warn("元素 " + selector + " 加载超时，尝试下一个...");
+            }
+        }
+    }
 
     /**
      * 检查并初始化浏览器（线程安全）
@@ -119,12 +182,22 @@ public class DouYinBrowser implements Closeable {
             closeBrowser();
             // 初始化新浏览器
             try {
-                browser = new PlaywrightBrowser(Constant.User_Agent);
+                browser = createBrowser();
                 log.info("浏览器实例初始化成功");
             } catch (Exception e) {
                 throw new RuntimeException("初始化浏览器失败", e);
             }
         }
+    }
+
+    private PlaywrightBrowser createBrowser() {
+        Setting setting = new Setting();
+        boolean headless = !Objects.equals(setting.getBrowserHeadless(), Boolean.FALSE);
+        PlaywrightBrowser browser = new PlaywrightBrowser(Constant.User_Agent, headless);
+        browser.setIsPageClear(setting.getBrowserIsPageClear());
+        browser.setUpdateContextCounts(setting.getUpdateContextCounts());
+        browser.startAutoClearContextThread(300);
+        return browser;
     }
 
     /**
@@ -149,61 +222,11 @@ public class DouYinBrowser implements Closeable {
         }
     }
 
-    public void clear() {
+    public void threadLocalClear() {
         if (browser != null) {
-            browser.clear();
+            browser.threadLocalClear();
         }
     }
-
-    /**
-     * 提取直播间信息（状态、昵称等）
-     */
-    /*private static void extractRoomInfo(DouYinRoom room, String pageSource) {
-        if (pageSource == null) {
-            log.warn("页面源码为空，无法提取房间信息");
-            return;
-        }
-
-        // 提取直播状态（"2"表示直播中）
-        String status = extractStr(pageSource, STATUS_STR_PATTERN, new HashSet<>(Collections.singletonList("")));
-        room.setLiving("2".equals(status));
-//        log.debug("提取到直播状态: {}（{}）", status, room.isLiving() ? "直播中" : "未直播");
-
-        // 仅在昵称未设置时提取（避免重复提取）
-        if (room.getNickname() == null) {
-            String nickname = extractStr(pageSource, NICKNAME_PATTERN,
-                    new HashSet<>(Collections.singletonList("$undefined")));
-            room.setNickname(nickname);
-            log.debug("提取到主播昵称: {}", nickname);
-        }
-        if (room.getAvatar()==null){
-            String avatar = UnicodeUtil.toString(extractStr(pageSource, AVATAR_PATTERN, null));
-            room.setAvatar(avatar);
-        }
-    }*/
-
-    /**
-     * 通用正则提取方法（处理转义字符和排除无效值）
-     */
-    /*public static String extractStr(String content, Pattern pattern, Set<String> excludeValues) {
-        if (content == null || pattern == null) {
-            return null;
-        }
-
-        Matcher matcher = pattern.matcher(content);
-        while (matcher.find()) {
-            // 提取并处理可能的转义字符（如\" -> "）
-            String value = matcher.group(1)
-                    .trim()
-                    .replace("\\\\\"", "\""); // 处理转义的双引号
-
-            // 排除无效值
-            if (excludeValues == null || !excludeValues.contains(value)) {
-                return value;
-            }
-        }
-        return null;
-    }*/
 
     /**
      * 关闭资源（实现Closeable，支持try-with-resources）
