@@ -54,8 +54,7 @@ public class DouyinLiveDecoder {
                         .setPayloadType("ack")
                         .setPayload(response.getInternalExtBytes())
                         .build();
-                boolean send = webSocket.send(okio.ByteString.of(ack.toByteArray()));
-//                System.out.println("===== ack应答：" + send);
+                webSocket.send(okio.ByteString.of(ack.toByteArray()));
             }
             for (DouyinMessageOuter.Message message : response.getMessagesListList()) {
                 String method = message.getMethod();
@@ -105,78 +104,71 @@ public class DouyinLiveDecoder {
         }
     }
 
-    private String control(byte[] body) throws InvalidProtocolBufferException {
+    private void control(byte[] body) throws InvalidProtocolBufferException {
         DouyinMessageOuter.ControlMessage msg = DouyinMessageOuter.ControlMessage.parseFrom(body);
-        String x = TimeUtil.getNowTime() + "直播间状态： " + msg.getStatus();
+        String x = TimeUtil.getNowTime() + " - 直播间状态： " + msg.getStatus();
 //        System.out.println(x);
-        if (listener!=null){
-            listener.control(x,msg);
+        if (listener != null) {
+            listener.control(x, msg);
         }
-        return x;
     }
 
 
-    private String stats(byte[] body) throws InvalidProtocolBufferException {
+    private void stats(byte[] body) throws InvalidProtocolBufferException {
         DouyinMessageOuter.RoomUserSeqMessage msg = DouyinMessageOuter.RoomUserSeqMessage.parseFrom(body);
         String x = TimeUtil.getNowTime() + " - 在线人数: " + msg.getTotal() + " ,总人数: " + msg.getTotalUser() + " (" + msg.getTotalUserStr() + ")";
 //        System.out.println(x);
-        if (listener!=null){
-            listener.stats(x,msg);
+        if (listener != null) {
+            listener.stats(x, msg);
         }
-        return x;
     }
 
-    private String social(byte[] body) throws InvalidProtocolBufferException {
+    private void social(byte[] body) throws InvalidProtocolBufferException {
         DouyinMessageOuter.SocialMessage msg = DouyinMessageOuter.SocialMessage.parseFrom(body);
         String x = TimeUtil.getNowTime() + " - " + getUserStr(msg.getUser()) + " 关注了主播！主播粉丝数: " + msg.getFollowCount();
 //        System.out.println(x);
-        if (listener!=null){
-            listener.social(x,msg);
+        if (listener != null) {
+            listener.social(x, msg);
         }
-        return x;
     }
 
-    private String member(byte[] body) throws InvalidProtocolBufferException {
+    private void member(byte[] body) throws InvalidProtocolBufferException {
         DouyinMessageOuter.MemberMessage msg = DouyinMessageOuter.MemberMessage.parseFrom(body);
         String x = TimeUtil.getNowTime() + " - " + getUserStr(msg.getUser()) + " 来了！当前人数: " + msg.getMemberCount();
 //        System.out.println(x);
-        if (listener!=null){
-            listener.member(x,msg);
+        if (listener != null) {
+            listener.member(x, msg);
         }
-        return x;
     }
 
     public String getUserStr(DouyinMessageOuter.User user) {
         return "(" + user.getPayGrade().getLevel() + ")" + user.getNickName() + "[" + user.getShortId() + "]";
     }
 
-    private String like(byte[] body) throws InvalidProtocolBufferException {
+    private void like(byte[] body) throws InvalidProtocolBufferException {
         DouyinMessageOuter.LikeMessage msg = DouyinMessageOuter.LikeMessage.parseFrom(body);
         String x = TimeUtil.getNowTime() + " - " + getUserStr(msg.getUser()) + " 点赞×" + msg.getCount() + "个 - 总点赞数:" + msg.getTotal();
 //        System.out.println(x);
-        if (listener!=null){
-            listener.like(x,msg);
+        if (listener != null) {
+            listener.like(x, msg);
         }
-        return x;
     }
 
-    public String chat(byte[] body) throws InvalidProtocolBufferException {
+    public void chat(byte[] body) throws InvalidProtocolBufferException {
         DouyinMessageOuter.ChatMessage msg = DouyinMessageOuter.ChatMessage.parseFrom(body);
         String x = TimeUtil.toTime(TimeUtil.UnixToDate(msg.getEventTime() + "")) + " - " + getUserStr(msg.getUser()) + " : " + msg.getContent();
 //        System.out.println(x);
-        if (listener!=null){
-            listener.chat(x,msg);
+        if (listener != null) {
+            listener.chat(x, msg);
         }
-        return x;
     }
 
-    public String gift(byte[] body) throws InvalidProtocolBufferException {
+    public void gift(byte[] body) throws InvalidProtocolBufferException {
         DouyinMessageOuter.GiftMessage msg = DouyinMessageOuter.GiftMessage.parseFrom(body);
         String x = TimeUtil.toTime(TimeUtil.UnixToDate(msg.getSendTime() + "")) + " - " + getUserStr(msg.getUser()) + " 给 " + msg.getToUser().getNickName() + " 送出 " + msg.getInteractGiftInfo() + " × " + msg.getTotalCount() + "个";
 //        System.out.println(x);
-        if (listener!=null){
-            listener.gift(x,msg);
+        if (listener != null) {
+            listener.gift(x, msg);
         }
-        return x;
     }
 }

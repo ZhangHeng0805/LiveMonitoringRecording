@@ -39,6 +39,16 @@ public abstract class RoomService<T extends Room> {
      */
     public abstract void refresh(boolean force);
 
+    /**
+     * 开始直播弹幕功能
+     */
+    public abstract void startSubtitle();
+
+    /**
+     * 停止直播弹幕功能
+     */
+    public abstract void stopSubtitle();
+
     public HttpRequest get(String url) {
         return HttpRequest.get(url)
                 .timeout(30_000)

@@ -8,12 +8,19 @@ import cn.hutool.json.JSONUtil;
 import cn.zhangheng.common.service.RoomService;
 import cn.zhangheng.common.bean.Setting;
 import cn.zhangheng.common.bean.enums.RunMode;
+import cn.zhangheng.common.util.LogUtil;
 import cn.zhangheng.common.util.RequestUtils;
 import cn.zhangheng.douyin.browser.DouYinBrowserFactory;
+import cn.zhangheng.douyin.browser.DouYinWebcast;
 import cn.zhangheng.douyin.browser.DouyinPlaywright;
-import com.zhangheng.util.RandomUtil;
+import cn.zhangheng.douyin.subtitle.AssGenerator;
+import cn.zhangheng.douyin.subtitle.SubtitleGenerator;
+import cn.zhangheng.record.DouyinMessageOuter;
+import cn.zhangheng.record.MessageListener;
 import com.zhangheng.util.ThrowableUtil;
+import com.zhangheng.util.TimeUtil;
 
+import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.util.*;
 
@@ -26,14 +33,17 @@ import java.util.*;
  */
 public class DouYinRoomService extends RoomService<DouYinRoom> {
 
-//    private String cookieStr;
+    //    private String cookieStr;
     private Map<String, String> headers;
     private String url;
+    private DouYinWebcast webcast = null;
+    private LogUtil subtitleLog;
 
     public DouYinRoomService(DouYinRoom room) {
         super(room);
 //        this.browser = new DouYinBrowser(room);
 //        refresh();
+
     }
 
     public static void main(String[] args) {
@@ -81,7 +91,7 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
                 success = DouyinPlaywright.request(room);
             }
         }
-        if (room.isLiving() &&  room.getBrowserApi().getDataUrl() != null) {
+        if (room.isLiving() && room.getBrowserApi().getDataUrl() != null) {
             if (RunMode.FILE.equals(room.getSetting().getRunMode())) {
                 DouYinBrowserFactory.getBrowser().closeContext();
             }
@@ -175,7 +185,52 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
         return map;
     }
 
-    public String getMsToken() {
-        return RandomUtil.createPassWord(183, "012") + "=";
+
+    @Override
+    public void startSubtitle() {
+        if (room.getSetting().isOpenSubtitle()) {
+            webcast = new DouYinWebcast(room);
+        }
+        if (webcast == null || webcast.isRunning()) return;
+        if (subtitleLog == null) {
+            try {
+                String time = TimeUtil.toTime(room.getStartTime(), "yyyy-MM-dd HH-mm-ss");
+                subtitleLog = new LogUtil(room, time + "聊天弹幕.log");
+            } catch (IOException e) {
+                log.error("聊天弹幕日志生成失败！", e);
+            }
+        }
+        webcast.setMessageListener(new MessageListener() {
+            @Override
+            public void chat(String info, DouyinMessageOuter.ChatMessage msg) {
+                if (subtitleLog != null) {
+//                    System.out.println(room.getNickname() + "【聊天】" + info);
+                    subtitleLog.highLog(info);
+                }
+            }
+
+            @Override
+            public void control(String info, DouyinMessageOuter.ControlMessage msg) {
+                if (msg.getStatus() == 3) {
+                    stopSubtitle();
+                }
+            }
+        });
+        webcast.start();
+//        log.info("开启弹幕日志记录!{}", subtitleLog.getLogPath());
+    }
+
+    @Override
+    public void stopSubtitle() {
+        if (webcast != null && subtitleLog != null) {
+            webcast.stop();
+            subtitleLog.close();
+            try {
+                new AssGenerator(10,subtitleLog.getLogPath().toString()).generate();
+            } catch (IOException e) {
+                log.error("弹幕日志转换成字幕文件失败", e);
+            }
+            log.info("关闭弹幕日志记录!{}", subtitleLog.getLogPath());
+        }
     }
 }

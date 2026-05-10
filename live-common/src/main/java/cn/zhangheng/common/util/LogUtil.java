@@ -5,6 +5,7 @@ import cn.zhangheng.common.bean.Constant;
 import cn.zhangheng.common.bean.Room;
 import com.zhangheng.file.FileUtil;
 import com.zhangheng.util.TimeUtil;
+import lombok.Getter;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -25,6 +26,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public class LogUtil {
 
 
+    @Getter
     private final Path logPath;
     private boolean isInit;
 

@@ -68,6 +68,16 @@ public class BilibiliService extends RoomService<BiliRoom> {
     }
 
     @Override
+    public void startSubtitle() {
+
+    }
+
+    @Override
+    public void stopSubtitle() {
+
+    }
+
+    @Override
     public HttpRequest get(String url) {
         return super.get(url).header(Header.REFERER, room.getRoomUrl());
     }

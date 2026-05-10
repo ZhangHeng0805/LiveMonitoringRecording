@@ -5,9 +5,11 @@ import lombok.Setter;
 import okhttp3.*;
 import okio.ByteString;
 
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * @author: ZhangHeng
@@ -26,9 +28,9 @@ public class DouYinWebSocket {
     // 心跳定时器（每30秒发一次ping）
     private final ScheduledExecutorService heartbeatExecutor = Executors.newSingleThreadScheduledExecutor();
     @Getter
-    private boolean isRunning = false;
+    private volatile boolean isRunning = false;
     @Getter
-    private boolean isOpen = false;
+    private final AtomicBoolean isOpen = new AtomicBoolean(false);
 
     public static void main(String[] args) {
         String ttwid = "1%7CFAsPXoeNtEw7bhDbtuGFEGR2z2q6J3C-6goTSFI2MJU%7C1778322530%7Ce02aa9c73e462cbad10db03b7316568af3aa8f83a53626fdb0fff53d8f7107bc";
@@ -59,27 +61,34 @@ public class DouYinWebSocket {
                 .header("user-agent", userAgent)
                 .build();
         this.douyinLiveDecoder = new DouyinLiveDecoder(messageListener);
+
         this.webSocket = client.newWebSocket(request, new WebSocketListener() {
             @Override
             public void onOpen(WebSocket ws, Response response) {
-                System.out.println("【√】连接成功");
+                System.out.println("DouYinWebSocket【√】连接成功");
                 isRunning = true;
-                isOpen = true;
+                isOpen.set(true);
                 startHeartbeat();
             }
 
             @Override
             public void onClosed(WebSocket webSocket, int code, String reason) {
-                System.out.println("【×】连接关闭");
-                isOpen = false;
-                stopHeartbeat();
+                System.out.println("DouYinWebSocket【×】连接关闭: " + reason);
                 reconnect(); // 自动重连
             }
 
             @Override
+            public void onClosing(WebSocket webSocket, int code, String reason) {
+                isOpen.set(false);
+                isRunning = false;
+                stopHeartbeat();
+            }
+
+            @Override
             public void onFailure(WebSocket webSocket, Throwable t, Response response) {
-                isOpen = false;
-                System.out.println("连接失败！");
+                isOpen.set(false);
+                isRunning = false;
+                System.out.println("DouYinWebSocket连接失败！");
                 t.printStackTrace();
                 stopHeartbeat();
                 reconnect();
@@ -87,10 +96,7 @@ public class DouYinWebSocket {
 
             @Override
             public void onMessage(WebSocket webSocket, okio.ByteString bytes) {
-
-//                    System.out.println("接收消息：" );
                 douyinLiveDecoder.parse(webSocket, bytes.toByteArray());
-
             }
         });
     }
@@ -100,7 +106,7 @@ public class DouYinWebSocket {
         if (isRunning) {
             heartbeatExecutor.scheduleAtFixedRate(() -> {
                 if (webSocket != null) {
-                    if (isOpen) {
+                    if (isOpen.get()) {
                         // 构建心跳 PushFrame
                         DouyinMessageOuter.PushFrame hbFrame = DouyinMessageOuter.PushFrame.newBuilder()
                                 .setSeqId(System.currentTimeMillis())

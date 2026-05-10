@@ -74,6 +74,11 @@ public class Setting {
      */
     @PropertyValue("record.isLoop")
     private volatile boolean isLoop;
+    /**
+     * 是否开启弹幕记录
+     */
+    @PropertyValue("record.openSubtitle")
+    private volatile boolean openSubtitle;
 
     /**
      * 是否隐藏监听浏览器，默认隐藏

@@ -73,6 +73,16 @@ public class KuaiShouService extends RoomService<KuaiShouRoom> {
     }
 
     @Override
+    public void startSubtitle() {
+
+    }
+
+    @Override
+    public void stopSubtitle() {
+
+    }
+
+    @Override
     public HttpRequest get(String url) {
         String mainUrl = room.getPlatform().getMainUrl();
         HttpRequest header = HttpRequest.get(url)

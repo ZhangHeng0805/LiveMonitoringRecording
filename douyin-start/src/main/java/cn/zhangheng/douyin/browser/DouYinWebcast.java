@@ -1,6 +1,6 @@
 package cn.zhangheng.douyin.browser;
 
-import cn.hutool.core.map.MapUtil;
+import cn.hutool.core.util.StrUtil;
 import cn.zhangheng.browser.BrowserAPI;
 import cn.zhangheng.browser.PlaywrightBrowser;
 import cn.zhangheng.common.bean.Constant;
@@ -10,16 +10,15 @@ import cn.zhangheng.record.DouYinWebSocket;
 import cn.zhangheng.record.DouyinMessageOuter;
 import cn.zhangheng.record.MessageListener;
 import com.microsoft.playwright.Page;
-import com.microsoft.playwright.Request;
 import com.microsoft.playwright.WebSocket;
 import com.microsoft.playwright.options.WaitUntilState;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
-import java.net.MalformedURLException;
-import java.util.function.Consumer;
+import java.util.concurrent.TimeUnit;
 
 import static cn.zhangheng.douyin.browser.DouYinBrowserFactory.*;
-import static cn.zhangheng.douyin.browser.DouYinBrowserFactory.TARGET_REQUEST_PREFIX;
 
 
 /**
@@ -32,25 +31,85 @@ import static cn.zhangheng.douyin.browser.DouYinBrowserFactory.TARGET_REQUEST_PR
 @Slf4j
 public class DouYinWebcast {
     public static final String TARGET_REQUEST_PREFIX = "wss://webcast100-ws-web-lq.douyin.com/webcast/im/push/v2/";
+    private final DouYinRoom room;
+    @Getter
+    private volatile boolean isRunning = false;
+    private Thread webcastThread;
+    @Setter
+    private MessageListener messageListener;
+    private DouYinWebSocket socket;
+
+
+    public DouYinWebcast(DouYinRoom room) {
+        this.room = room;
+
+    }
 
     public static void main(String[] args) {
-        DouYinRoom room = new DouYinRoom("208823316033");
+        DouYinRoom room = new DouYinRoom("988132154410");
 
-        boolean start = start(room);
+        boolean start = getWss(room);
         if (start) {
             String wss = room.getBrowserApi().getDataUrl();
             DouYinWebSocket socket = new DouYinWebSocket();
             socket.setMessageListener(new MessageListener() {
                 @Override
                 public void chat(String info, DouyinMessageOuter.ChatMessage msg) {
-                    System.out.println(info);
+                    System.out.println("【聊天】" + info);
+                }
+
+                @Override
+                public void control(String info, DouyinMessageOuter.ControlMessage msg) {
+                    System.out.println("【状态】" + info);
+                    if (msg.getStatus() == 3) {
+                        socket.close();
+                    }
                 }
             });
             socket.connect(wss, DouYinUtils.fetchTtwid(), Constant.User_Agent);
         }
     }
 
-    public static boolean start(DouYinRoom room) {
+    public void start() {
+        isRunning = true;
+        this.webcastThread = new Thread(() -> {
+            boolean isWss = getWss(room);
+            if (room.isLiving()) {
+                int tryCount = 0;
+                while (isRunning && !isWss && tryCount++ < 5) {
+                    log.debug("获取直播弹幕wss重试{}次。。。", tryCount);
+                    isWss = getWss(room);
+                }
+                String wss = room.getBrowserApi().getDataUrl();
+                if (StrUtil.isNotBlank(wss)) {
+                    socket = new DouYinWebSocket();
+                    socket.setMessageListener(messageListener);
+                    socket.connect(wss, DouYinUtils.fetchTtwid(), Constant.User_Agent);
+                    while (socket.isRunning()){
+                        try {
+                            TimeUnit.SECONDS.sleep(1);
+                        } catch (InterruptedException ignored) {
+                        }
+                    }
+                }
+            }
+            isRunning = false;
+        });
+//        this.webcastThread.setDaemon(true);
+        webcastThread.setName(room.getNickname() + "[" + room.getId() + "]" + "弹幕监听");
+        webcastThread.start();
+    }
+
+
+    public void stop() {
+        isRunning = false;
+        if (socket != null) {
+            socket.close();
+        }
+        webcastThread.interrupt();
+    }
+
+    public static boolean getWss(DouYinRoom room) {
         // 校验房间URL有效性
         String roomUrl = room.getRoomUrl();
         if (roomUrl == null || roomUrl.trim().isEmpty()) {
@@ -65,7 +124,7 @@ public class DouYinWebcast {
             //提取界面信息
             extractRoomInfo(room, page);
             if (room.isLiving()) {
-                WebSocket webSocket = null;
+                WebSocket webSocket;
                 try {
                     webSocket = browser.waitForTargetWebSocket(page, TARGET_REQUEST_PREFIX, 10_000);
                 } catch (Exception ignored) {
@@ -77,12 +136,10 @@ public class DouYinWebcast {
                 return room.getBrowserApi().getUpdateTimes() > 0;
             }
             System.out.println("直播间未开启直播！");
-            return false;
-        } catch (MalformedURLException e) {
-            throw new RuntimeException(e);
-        } finally {
-
+        } catch (Exception e) {
+            log.error("获取直播弹幕wss失败！{}", e.getMessage());
         }
+        return false;
     }
 
     private static void getWebSocketAPI(DouYinRoom room, WebSocket webSocket) {

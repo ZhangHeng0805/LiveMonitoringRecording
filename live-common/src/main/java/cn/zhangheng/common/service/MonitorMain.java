@@ -174,6 +174,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
 
             @Override
             public void onStop() {
+                roomMonitor.stopSubtitle();//关闭弹幕
                 isRunning.set(false);
                 String msg = "直播监听结束！" + owner;
                 log.info(msg);
@@ -197,6 +198,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                     trayIconUtil.setStartLivingImage(false);
                     log.info(msg);
                 } else {
+                    roomMonitor.startSubtitle();//开启弹幕功能
                     while (getIsRunning() && (room.getStreams() == null || room.getStreams().isEmpty())) {
                         roomMonitor.refresh(true);
                         log.warn("直播已开启，未获取到直播源信息，重试中。。。");
