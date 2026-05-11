@@ -42,9 +42,7 @@ public class FileModeMain {
     @Getter
     private static ThreadPoolExecutor ThreadPool = null;
     @Getter
-    private static final ConcurrentHashMap<String, Main> mainMap = new ConcurrentHashMap<>();
-    @Getter
-    private static final ConcurrentHashMap<String, Path> executeFileMap = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<Path, RoomFileModel> roomFileMap = new ConcurrentHashMap<>();
     @Getter
     private static final ConcurrentHashMap<Room.Platform, Integer> platformMap = new ConcurrentHashMap<>();
     private static LocalServerApi serverApi;
@@ -75,7 +73,7 @@ public class FileModeMain {
                 TrayIconUtil iconUtil = TrayIconUtil.getInstance(Constant.Application);
                 iconUtil.notifyMessage(errorException.getMessage(), TrayIcon.MessageType.ERROR);
                 iconUtil.shutdown();
-                log.error("启动失败！{}",message);
+                log.error("启动失败！{}", message);
                 return;
             } catch (WarnException warnException) {
                 TrayIconUtil iconUtil = TrayIconUtil.getInstance(Constant.Application);
@@ -102,7 +100,7 @@ public class FileModeMain {
             }
 
         } catch (Exception e) {
-                log.error(e.getMessage(), e);
+            log.error(e.getMessage(), e);
         } finally {
             if (ThreadPool != null) {
                 ThreadPool.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
@@ -125,12 +123,12 @@ public class FileModeMain {
     }
 
     public static void startMonitor(Path file) {
-        String key = null;
+        String key;
+        RoomFileModel model = null;
         try {
             //解析文件
             String s = String.join("", Files.readAllLines(file));
             JSONObject json = JSONUtil.parseObj(s);
-//            System.out.println(json.toStringPretty());
             Boolean isRecord = json.getBool("isRecord", false);
             String id = json.getStr("id");
             Room.Platform platform = json.get("platform", Room.Platform.class);
@@ -138,30 +136,33 @@ public class FileModeMain {
             if (setting != null) {
                 setting.setRunMode(RunMode.FILE);
             }
-            //运行监听
+            //直播间标识
             key = platform.name() + "-" + id;
             Thread.currentThread().setName(key);
-            executeFileMap.put(key, file);
+            model = new RoomFileModel();
+            model.setId(key);
+            model.setFilePath(file);
+//            executeFileMap.put(key, file);
+            roomFileMap.put(file, model);
             Main main = new Main();
-            mainMap.put(key, main);
+            model.setMain(main);
             runCount.incrementAndGet();
             platformMap.compute(platform, (k, v) -> v == null ? 1 : v + 1);
             log.debug("{} 监听文件开始运行!", file);
+            model.setStartTime();
             main.start(setting, id, platform, isRecord);
             log.debug("{} 监听文件结束运行!", file);
-
         } catch (Exception e) {
             log.error(file + " 监听发生异常:" + e.getMessage(), e);
         } finally {
-            endMonitor(key);
+            endMonitor(model);
         }
     }
 
-    private static void endMonitor(String key) {
-        if (key == null) return;
+    private static void endMonitor(RoomFileModel model) {
+        if (model == null) return;
         runCount.decrementAndGet();
-        Main remove = mainMap.get(key);
-        Room.Platform platform = remove.getRoom().getPlatform();
+        Room.Platform platform = model.getMain().getRoom().getPlatform();
         platformMap.compute(platform, (k, v) -> v == null ? 0 : v - 1);
         if (platformMap.get(Room.Platform.DouYin) == null || platformMap.get(Room.Platform.DouYin) < 1) {
             DouYinBrowserFactory.closeBrowser();
@@ -169,15 +170,21 @@ public class FileModeMain {
         log.info("{}个监听运行情况：{}", runCount.get(), platformMap);
         if (runCount.get() < 1) {
             log.debug("没有监听任务，程序结束！");
-            ThreadPool.shutdown();
+            ThreadPool.shutdownNow();
             System.exit(0);
         }
+//        executeFileMap.remove(model.getId());
     }
 
     public static void restartMain(String key) throws RuntimeException {
         try {
             ThreadPool.execute(() -> {
-                startMonitor(executeFileMap.get(key));
+                RoomFileModel model = getModelById(key);
+                if (model == null) {
+                    log.warn("{}标识的不存在，无法重新启动监听", key);
+                    return;
+                }
+                startMonitor(model.getFilePath());
             });
         } catch (RejectedExecutionException e) {
             // 处理任务被拒绝的情况（如线程池关闭、队列满等）
@@ -189,5 +196,9 @@ public class FileModeMain {
             log.error("提交任务发生异常: {}", s);
             throw new RuntimeException(s);
         }
+    }
+
+    public static RoomFileModel getModelById(String id) {
+        return roomFileMap.values().stream().filter(m -> m.getId().equals(id)).findFirst().orElse(null);
     }
 }

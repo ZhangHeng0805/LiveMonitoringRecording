@@ -13,7 +13,6 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 
@@ -63,14 +62,16 @@ public class PlaywrightBrowser implements AutoCloseable {
     }
 
     @Setter
-    private double navigateTimeoutMs = 30000;
+    private static double navigateTimeoutMs = 30_000;
 
     private final MyThreadLocal<BrowserContent> contents = new MyThreadLocal<>(new MyThreadLocal.Listener<BrowserContent>() {
         @Override
         public void beforeClear(ConcurrentHashMap<String, BrowserContent> map) {
             for (Map.Entry<String, BrowserContent> entry : map.entrySet()) {
                 try {
-                    BrowserContext browserContext = entry.getValue().getContext();
+                    BrowserContent content = entry.getValue();
+                    content.off();
+                    BrowserContext browserContext = content.getContext();
                     if (browserContext.browser().isConnected()) {
                         browserContext.close();
                         log.debug("{}清除BrowserContext，已关闭", entry.getKey());
@@ -83,6 +84,7 @@ public class PlaywrightBrowser implements AutoCloseable {
 
         @Override
         public void removed(String threadId, BrowserContent value) {
+            value.off();
             BrowserContext valueContext = value.getContext();
             if (valueContext != null && valueContext.browser().isConnected()) {
                 try {
@@ -245,21 +247,21 @@ public class PlaywrightBrowser implements AutoCloseable {
             // 创建新 Context 并覆盖 ThreadLocal
             Browser.NewContextOptions options = new Browser.NewContextOptions()
                     .setUserAgent(userAgent)
-                    .setViewportSize(1920, 1080) // 模拟PC端分辨率
-                    .setJavaScriptEnabled(true)
-                    .setIgnoreHTTPSErrors(true)
+//                    .setViewportSize(1920, 1080) // 模拟PC端分辨率
+//                    .setJavaScriptEnabled(true)
+//                    .setIgnoreHTTPSErrors(true)
                     // 禁用录像/截图缓存
-                    .setRecordVideoDir(null)
-                    .setRecordHarPath(null)
+//                    .setRecordVideoDir(null)
+//                    .setRecordHarPath(null)
                     // 限制缓存大小
 //                    .setExtraHTTPHeaders(MapUtil.of("Cache-Control", "no-cache"))
                     ;
 
-            synchronized (this) {
-                browserContext = browser.newContext(options);
-            }
+
+            browserContext = browser.newContext(options);
             BrowserContent content = new BrowserContent(browserContext);
             contents.set(content);
+            log.debug("{}-创建新的browserContext", Thread.currentThread().getName());
         }
         Page page = browserContext.newPage();
         // 创建新页面并注入反检测脚本
@@ -310,7 +312,7 @@ public class PlaywrightBrowser implements AutoCloseable {
     /**
      * 页面导航（合并加载等待逻辑）
      */
-    public Page navigatePage(String url, Page page, WaitUntilState state) {
+    public static Page navigatePage(String url, Page page, WaitUntilState state) {
         if (url == null || url.trim().isEmpty()) {
             throw new IllegalArgumentException("URL不能为空");
         }
@@ -322,13 +324,16 @@ public class PlaywrightBrowser implements AutoCloseable {
             // 导航并等待指定状态
             page.navigate(url, new Page.NavigateOptions()
                     .setWaitUntil(state)  // 导航时直接等待目标状态
-                    .setTimeout(navigateTimeoutMs));
+                    .setTimeout(navigateTimeoutMs)
+                    .setReferer(url)
+            );
 
-
-        } catch (Exception e) {
-            if (!(e instanceof PlaywrightException && e.getMessage().startsWith("Object doesn't exist:"))) {
-                log.error("页面导航失败:{} ,{} ", url, ThrowableUtil.getAllCauseMessage(e));
-            }
+        } catch (TimeoutError e1) {
+            log.error("页面导航超时:{}", url);
+        } catch (PlaywrightException e2) {
+            log.error("页面导航失败:{} ,{} ", url, ThrowableUtil.toString(e2,128));
+        } catch (Throwable e) {
+            log.error("页面导航失败:{}", e.getMessage());
         }
         return page;
     }
@@ -384,9 +389,9 @@ public class PlaywrightBrowser implements AutoCloseable {
 
     }
 
-    public WebSocket waitForTargetWebSocket(Page page, String target_request_prefix, long navigateTimeoutMs) {
+    public static WebSocket waitForTargetWebSocket(Page page, String target_wss, long navigateTimeoutMs) {
         try {
-            Predicate<WebSocket> predicate = webSocket -> webSocket.url().startsWith(target_request_prefix);
+            Predicate<WebSocket> predicate = webSocket -> webSocket.url().indexOf(target_wss) > 0;
             Runnable callback = () -> {
                 log.debug("已捕获目标WebSocket！");
             };

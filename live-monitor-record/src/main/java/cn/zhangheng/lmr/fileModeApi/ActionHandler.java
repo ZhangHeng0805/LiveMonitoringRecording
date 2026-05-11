@@ -11,11 +11,13 @@ import cn.zhangheng.douyin.browser.DouYinBrowserFactory;
 import cn.zhangheng.douyin.browser.DouYinVideoParse;
 import cn.zhangheng.lmr.FileModeMain;
 import cn.zhangheng.lmr.Main;
+import cn.zhangheng.lmr.RoomFileModel;
 import com.sun.net.httpserver.HttpExchange;
 import com.zhangheng.bean.Message;
 import com.zhangheng.util.ThrowableUtil;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -108,12 +110,13 @@ public class ActionHandler extends JSONHandler {
     private synchronized void actionMonitor(Message msg, Map<String, String> query) {
         String key = query.get("key");
         boolean flag = Boolean.parseBoolean(query.get("flag"));
-        Main main = FileModeMain.getMainMap().get(key);
-        if (main == null) {
+        RoomFileModel model = FileModeMain.getModelById(key);
+        if (model == null) {
             msg.setCode(1);
             msg.setMessage("标识" + key + "不存在！");
             return;
         }
+        Main main = model.getMain();
         MonitorMain<Room, ?> monitorMain = main.getMonitorMain();
         if (flag == monitorMain.getIsRunning()) {
             msg.setCode(1);
@@ -140,12 +143,14 @@ public class ActionHandler extends JSONHandler {
     private synchronized void actionRecord(Message msg, Map<String, String> query) {
         String key = query.get("key");
         boolean flag = Boolean.parseBoolean(query.get("flag"));
-        Main main = FileModeMain.getMainMap().get(key);
-        if (main == null) {
+        RoomFileModel model = FileModeMain.getModelById(key);
+        if (model == null) {
             msg.setCode(1);
             msg.setMessage("标识" + key + "不存在！");
             return;
         }
+        Main main = model.getMain();
+
         MonitorMain<Room, ?> monitorMain = main.getMonitorMain();
         Recorder recorder = monitorMain.getRecorder();
         boolean isRecord = recorder != null && recorder.isRunning();
@@ -165,12 +170,13 @@ public class ActionHandler extends JSONHandler {
 
     private synchronized void actionRefresh(Message msg, Map<String, String> query) {
         String key = query.get("key");
-        Main main = FileModeMain.getMainMap().get(key);
-        if (main == null) {
+        RoomFileModel model = FileModeMain.getModelById(key);
+        if (model == null) {
             msg.setCode(1);
             msg.setMessage("标识" + key + "不存在！");
             return;
         }
+        Main main = model.getMain();
         MonitorMain<Room, ?> monitorMain = main.getMonitorMain();
         if (monitorMain.getStatus() != MonitorStatus.RUNNING) {
             msg.setCode(1);
@@ -187,7 +193,13 @@ public class ActionHandler extends JSONHandler {
 
     private synchronized void actionSetting(Message msg, Map<String, String> query) {
         String key = query.get("key");
-        Main main = FileModeMain.getMainMap().get(key);
+        RoomFileModel model = FileModeMain.getModelById(key);
+        if (model == null) {
+            msg.setCode(1);
+            msg.setMessage("标识" + key + "不存在！");
+            return;
+        }
+        Main main = model.getMain();
         try {
             MonitorMain<Room, ?> monitorMain = main.getMonitorMain();
             if (query.containsKey("delayIntervalSec")) {
@@ -258,8 +270,9 @@ public class ActionHandler extends JSONHandler {
             msg.setMessage("直播间标识不能为空！");
             return false;
         }
-        Main main = FileModeMain.getMainMap().get(key);
-        if (main == null) {
+        RoomFileModel model = FileModeMain.getModelById(key);
+        if (model == null) {
+            msg.setCode(1);
             msg.setMessage("直播间标识[" + key + "]不存在！");
             return false;
         }

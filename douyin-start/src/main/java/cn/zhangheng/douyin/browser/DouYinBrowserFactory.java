@@ -75,7 +75,7 @@ public class DouYinBrowserFactory {
     /**
      * 提取直播间信息（独立方法，便于维护）
      */
-    static boolean extractRoomInfo(DouYinRoom room, Page page) {
+    static Boolean extractRoomInfo(DouYinRoom room, Page page) {
         String title = safeGetTitle(page);
 
         if (title.contains("验证码")) {
@@ -86,7 +86,7 @@ public class DouYinBrowserFactory {
         return extractRoomInfo(room, pageSource);
     }
 
-    public static boolean extractRoomInfo(DouYinRoom room, String pageSource) {
+    public static Boolean extractRoomInfo(DouYinRoom room, String pageSource) {
         if (pageSource == null) {
             log.warn("页面源码为空，无法提取房间信息");
             return false;
@@ -94,6 +94,13 @@ public class DouYinBrowserFactory {
         int index = pageSource.lastIndexOf("\\\"homeStore\\\":");
         if (index > 0) {
             pageSource = pageSource.substring(index);
+        } else {
+            if (pageSource.indexOf("<title>验证码") > 0) {
+                log.warn("触发验证码验证机制！");
+                return null;
+            }
+            log.warn("pageSource未获取到有效内容");
+            return null;
         }
         // 提取直播状态
         room.setLiving(extractLivingStatus(pageSource));

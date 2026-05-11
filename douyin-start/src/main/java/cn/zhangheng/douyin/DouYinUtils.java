@@ -7,10 +7,13 @@ import cn.hutool.http.HttpResponse;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import cn.zhangheng.common.bean.Constant;
+import cn.zhangheng.common.util.UserAgentUtil;
 import cn.zhangheng.douyin.browser.DouYinBrowserFactory;
+import lombok.Getter;
 
 import java.net.HttpCookie;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * @author: ZhangHeng
@@ -20,21 +23,35 @@ import java.util.List;
  * @description:
  */
 public class DouYinUtils {
+    @Getter
+    private String ttwid, userAgent;
+    private final AtomicInteger count = new AtomicInteger(0);
+    private final UserAgentUtil userAgentUtil = new UserAgentUtil();
+
+    public int getCount() {
+        return count.get();
+    }
+
+    public DouYinUtils() {
+        ttwid = fetchTtwid();
+        userAgent = userAgentUtil.get();
+    }
 
     public static void main(String[] args) {
 //        String roomID = "622216334529";
 //        String roomID = "208823316033";
         String roomID = "381351302222";
-        String x = fetchRoomPageBody(roomID);
+        DouYinUtils utils = new DouYinUtils();
+        String x = utils.fetchRoomPageBody(roomID);
 //        System.out.println(x);
 
         System.out.println(extractRoomJson(x));
     }
 
-    public static String fetchTtwid() {
+    public String fetchTtwid() {
         HttpRequest request = HttpRequest
                 .get("https://live.douyin.com/")
-                .header("User-Agent", Constant.User_Agent);
+                .header("User-Agent", userAgent);
 
         try (HttpResponse resp = request.execute()) {
             String setCookies = resp.header("Set-Cookie");
@@ -42,7 +59,8 @@ public class DouYinUtils {
                 List<HttpCookie> cookies = HttpCookie.parse(c);
                 for (HttpCookie cookie : cookies) {
                     if ("ttwid".equals(cookie.getName())) {
-                        return cookie.getValue();
+                        String value = cookie.getValue();
+                        return value;
                     }
                 }
             }
@@ -52,26 +70,37 @@ public class DouYinUtils {
         return null;
     }
 
-    public static String fetchRoomPageBody(String liveId) {
+    public String fetchRoomPageBody(String liveId) {
         String url = "https://live.douyin.com/" + liveId;
-        String cookie = "ttwid=" + fetchTtwid() + ";msToken=" + msToken() + "; __ac_nonce=0123407cc00a9e438deb4";
+        String cookie = "ttwid=" + ttwid + ";msToken=" + msToken() + "; __ac_nonce=0123407cc00a9e438deb4";
 
         HttpRequest request = HttpRequest.get(url)
-                .header("User-Agent", Constant.User_Agent)
+                .header("User-Agent", userAgent)
+                .header("Accept", "application/json, text/plain, */*")
+                .header("Referer", url)
                 .header("Cookie", cookie);
         try (HttpResponse resp = request.execute()) {
             String body = resp.body();
+            count.incrementAndGet();
 //            System.out.println(DouYinBrowserFactory.extractNickname(body));
 //            System.out.println(DouYinBrowserFactory.extractLivingStatus(body));
             return body;
+        } finally {
+            if (getCount() % 100 == 0) {
+                refresh();
+            }
         }
+    }
+    private void refresh() {
+        userAgent = userAgentUtil.get();
+        ttwid = fetchTtwid();
     }
 
     public static JSONObject extractRoomJson(String pageBody) {
-        String sub1 = pageBody.substring(pageBody.lastIndexOf("\\\"roomStore\\\":")+14);
+        String sub1 = pageBody.substring(pageBody.lastIndexOf("\\\"roomStore\\\":") + 14);
         String sub2 = sub1.substring(0, sub1.indexOf(",\\\"emojiList\\\":"));
         String rep = sub2.replace("\\\"", "\"").replace("\\\"", "\"");
-        String json = UnicodeUtil.toString(rep)+"}";
+        String json = UnicodeUtil.toString(rep) + "}";
         return JSONUtil.parseObj(json);
     }
 

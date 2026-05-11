@@ -49,8 +49,7 @@ public class MyThreadLocal<T> {
     }
 
     public void remove() {
-        String name = Thread.currentThread().getName();
-        remove(name);
+        remove(Thread.currentThread().getName());
     }
 
     /**

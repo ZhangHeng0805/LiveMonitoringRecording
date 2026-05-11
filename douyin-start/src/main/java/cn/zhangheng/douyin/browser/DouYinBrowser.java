@@ -43,32 +43,37 @@ public class DouYinBrowser implements Closeable {
     private static final Map<String, BrowserCounter> counters = new ConcurrentHashMap<>();
     private static final AtomicInteger totalCount = new AtomicInteger(0);
 
-    //关闭浏览器的请求次数
-    private final int closeBrowserCount = 10000;
+    private final DouYinUtils douYinUtils;
 
     // 线程安全的浏览器实例（volatile确保多线程可见性）
-    private volatile PlaywrightBrowser browser;
+    private PlaywrightBrowser browser;
 
     DouYinBrowser() {
         browser = createBrowser();
+        douYinUtils = new DouYinUtils();
     }
 
 
     public Map<String, ?> getCount() {
-        Map<String, Integer> browserCount = browser.getAllCount();
         Map<String, Object> data = new HashMap<>();
+        if (browser != null) {
+            Map<String, Integer> browserCount = browser.getAllCount();
+            data.put("browserCount", browserCount);
+        }
         Map<String, Object> totalCounter = new HashMap<>();
-        data.put("browserCount", browserCount);
         for (Map.Entry<String, BrowserCounter> entry : getCounters().entrySet()) {
             BrowserCounter value = entry.getValue();
             totalCounter.put(value.getThreadName(), value);
         }
         totalCounter.put("total", totalCount.get());
+        totalCounter.put("count", douYinUtils.getCount());
         data.put("totalCounter", totalCounter);
 
         return data;
     }
 
+
+    boolean isFetch = true;
 
     /**
      * 发起请求并提取直播间信息
@@ -80,59 +85,77 @@ public class DouYinBrowser implements Closeable {
             log.error("直播间URL为空，无法发起请求");
             return false;
         }
+        try {
+            if (isFetch) {
+                String pageBody = douYinUtils.fetchRoomPageBody(room.getId());
+                Boolean is = extractRoomInfo(room, pageBody);
+                if (Boolean.FALSE.equals(is)) return false;
+                if (is != null && !room.isLiving()) return true;
+                if (is == null) isFetch = false;
+            }
+            if (isFetch) {
+                return browserRequest2(room);
+            } else {
+                return browserRequest1(room);
+            }
+        } finally {
+            //统计请求
+            BrowserCounter counter = counters.getOrDefault(roomUrl, new BrowserCounter(roomUrl));
+            counter.add();
+            totalCount.incrementAndGet();
+            if (!counters.containsKey(roomUrl)) {
+                counters.put(roomUrl, counter);
+            }
+            if (totalCount.get() % 100 == 0) {
+                isFetch = true;
+            }
+            //关闭浏览器的请求次数
+            if (totalCount.get() % 1000 == 0) {
+                closeBrowser();
+                log.debug("请求总次数达到{}次，重启浏览器！", totalCount.get());
+                isFetch = true;
+            }
+        }
+    }
 
-        String pageBody = DouYinUtils.fetchRoomPageBody(room.getId());
-        boolean is = extractRoomInfo(room, pageBody);
-        if (!is) return false;
-        if (!room.isLiving()) return true;
-
+    public boolean browserRequest2(DouYinRoom room) {
+        String roomUrl = room.getRoomUrl();
         Page page = null;
         Consumer<Request> requestHandler = null;
-//        Consumer<Response> responsehandler = null;
         try {
             checkAndInitBrowser();
             synchronized (this) {
                 page = browser.newPage();
             }
             setRoomCookie(room, page, roomUrl);
-//            log.debug("=== 对 {} 生效的 Cookie 共 {} 个 ===", roomUrl, context.cookies(roomUrl).size());
             CountDownLatch latch = new CountDownLatch(1);
             // 注册请求监听器（提取目标请求信息）
             requestHandler = request -> {
-                if (request.url().startsWith(TARGET_REQUEST_PREFIX)) {
+                String url = request.url();
+                if (url.startsWith(TARGET_REQUEST_PREFIX)) {
                     getRequestApi(room, request);
                     latch.countDown();
                     log.info("已捕获目标请求！");
                 }
             };
-//            responsehandler = response -> {
-//                getResponseApi(room, response, api);
-//            };
             page.onRequest(requestHandler);
-//            page.onResponse(responsehandler);
-            // 导航到直播间页面
-            page = browser.navigatePage(roomUrl, page, WaitUntilState.LOAD);
-
-            //提取界面信息
-//            boolean b = extractRoomInfo(room, page);
-
-            // 若直播中，等待目标请求完成（替代固定休眠，更高效）
+            page = browser.navigatePage(roomUrl, page);
+            boolean is = extractRoomInfo(room, page);
             if (room.isLiving()) {
                 try {
                     latch.await(10, TimeUnit.SECONDS);
                 } catch (Exception e) {
                     log.error("等待捕获目标失败！", e);
                 }
+                return room.getBrowserApi().getUpdateTimes() > 0;
             } else {
                 latch.countDown();
             }
-//            page.offRequest(requestHandler);
-//            page.offResponse(responsehandler);
-            return room.getBrowserApi().getUpdateTimes() > 0;
+            return is;
+        } catch (PlaywrightException e1) {
+            log.error("处理直播间[{}]时浏览器发生异常:{}", roomUrl, e1.getMessage().substring(0, 128));
         } catch (Throwable e) {
-            if (!(e instanceof PlaywrightException && e.getMessage().startsWith("Object doesn't exist:"))) {
-                log.error("处理直播间[{}]时发生异常,{}", roomUrl, ThrowableUtil.getAllCauseMessage(e)); // 记录完整堆栈
-            }
+            log.error("处理直播间[{}]时发生异常,{}", roomUrl, ThrowableUtil.getAllCauseMessage(e)); // 记录完整堆栈
         } finally {
             if (requestHandler != null) {
                 page.offRequest(requestHandler);
@@ -141,16 +164,48 @@ public class DouYinBrowser implements Closeable {
             if (browser != null) {
                 browser.closePage(page);
             }
-            //统计请求
-            BrowserCounter counter = counters.getOrDefault(roomUrl, new BrowserCounter(roomUrl));
-            counter.add();
-            totalCount.incrementAndGet();
-            if (!counters.containsKey(roomUrl)) {
-                counters.put(roomUrl, counter);
+        }
+        return false;
+    }
+
+    public boolean browserRequest1(DouYinRoom room) {
+        String roomUrl = room.getRoomUrl();
+        Page page = null;
+        try {
+            checkAndInitBrowser();
+            synchronized (this) {
+                page = browser.newPage();
             }
-            if (totalCount.get() % closeBrowserCount == 0) {
-                closeBrowser();
-                log.debug("请求总次数达到{}次，重启浏览器！", totalCount.get());
+            setRoomCookie(room, page, roomUrl);
+            // 导航到直播间页面
+            PlaywrightBrowser.navigatePage(roomUrl, page, WaitUntilState.DOMCONTENTLOADED);
+            //提取界面信息
+            boolean b = extractRoomInfo(room, page);
+            // 若直播中，等待目标请求完成（替代固定休眠，更高效）
+            if (room.isLiving()) {
+                Request request;
+                try {
+                    request = browser.waitForTargetRequest(page, TARGET_REQUEST_PREFIX, 10_000);
+                } catch (Exception e) {
+                    log.info("页面刷新，重新监听请求！");
+                    page.reload(new Page.ReloadOptions().setTimeout(10_000).setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
+                    request = browser.waitForTargetRequest(page, TARGET_REQUEST_PREFIX, 10_000);
+                }
+                getRequestApi(room, request);
+            }
+            if (!b) {
+                //为了应对手动验证码
+                TimeUnit.SECONDS.sleep(RandomUtil.createRandom(5, 10));
+            }
+            return b;
+        } catch (PlaywrightException e1) {
+            log.error("处理直播间[{}]时浏览器发生异常:{}", roomUrl, ThrowableUtil.toString(e1, 128)); // 记录完整堆栈
+        } catch (Throwable e) {
+            log.error("处理直播间[{}]时发生异常,{}", roomUrl, ThrowableUtil.getAllCauseMessage(e)); // 记录完整堆栈
+        } finally {
+            // 确保页面关闭，释放资源
+            if (browser != null) {
+                browser.closePage(page);
             }
         }
         return false;

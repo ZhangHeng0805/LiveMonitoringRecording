@@ -198,7 +198,6 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                     trayIconUtil.setStartLivingImage(false);
                     log.info(msg);
                 } else {
-                    roomMonitor.startSubtitle();//开启弹幕功能
                     while (getIsRunning() && (room.getStreams() == null || room.getStreams().isEmpty())) {
                         roomMonitor.refresh(true);
                         log.warn("直播已开启，未获取到直播源信息，重试中。。。");
@@ -207,6 +206,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                         } catch (InterruptedException ignored) {
                         }
                     }
+                    roomMonitor.startSubtitle();//开启弹幕功能
                     if (isRecord) {
                         recorderTask = getRecorderTask();
                         recorderTask.run(room);

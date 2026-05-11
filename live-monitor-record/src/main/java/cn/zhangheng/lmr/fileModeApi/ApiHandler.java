@@ -7,6 +7,7 @@ import cn.zhangheng.common.bean.Room;
 import cn.zhangheng.common.record.Recorder;
 import cn.zhangheng.lmr.FileModeMain;
 import cn.zhangheng.lmr.Main;
+import cn.zhangheng.lmr.RoomFileModel;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.zhangheng.bean.Message;
@@ -43,16 +44,16 @@ public class ApiHandler extends JSONHandler {
     public void handle(HttpExchange httpExchange) throws IOException {
         String indexPath = getIndexPath(httpExchange, prefix);
         Message msg = new Message();
-        ConcurrentHashMap<String, Main> mainMap = FileModeMain.getMainMap();
+//        ConcurrentHashMap<String, Main> mainMap = FileModeMain.getRoomFileMap();
         if (StrUtil.isNotBlank(indexPath)) {
-            Main main = mainMap.get(indexPath);
-            if (main == null) {
+            RoomFileModel model = FileModeMain.getModelById(indexPath);
+            if (model == null) {
                 msg.setMessage("没有找到开直播监听信息");
             } else {
-                msg.setObj(getResponseMap(new AbstractMap.SimpleEntry<>(indexPath, main)));
+                msg.setObj(getResponseMap(model));
             }
         } else {
-            List<Map<String, Object>> collect = mainMap.entrySet().stream()
+            List<Map<String, Object>> collect = FileModeMain.getRoomFileMap().values().stream()
                     .map(ApiHandler::getResponseMap)
                     .collect(Collectors.toList());
             msg.setObj(collect);
@@ -61,13 +62,16 @@ public class ApiHandler extends JSONHandler {
     }
 
 
-    private static Map<String, Object> getResponseMap(Map.Entry<String, Main> main) {
+    private static Map<String, Object> getResponseMap(RoomFileModel model) {
         Map<String, Object> map = new HashMap<>();
-        map.put("key", main.getKey());
-        Main value = main.getValue();
-        map.put("status", value.getMonitorMain().getStatus());
-        map.put("room-status", value.getMonitorMain().getRoomMonitor().getState());
-        Room room = value.getMonitorMain().getRoom();
+        map.put("key", model.getId());
+        Main main = model.getMain();
+        map.put("isRunning", model.isRunning());
+        map.put("startTime", model.getStartTime());
+        map.put("endTime", model.getEndTime());
+        map.put("status", main.getMonitorMain().getStatus());
+        map.put("room-status", main.getMonitorMain().getRoomMonitor().getState());
+        Room room = main.getMonitorMain().getRoom();
         JSONObject entries = JSONUtil.parseObj(room);
         entries.remove("cookie");
         JSONObject setting = entries.getJSONObject("setting");
@@ -88,7 +92,7 @@ public class ApiHandler extends JSONHandler {
         }
         setting.remove("xiZhiUrl");
         map.put("room", entries);
-        Recorder recorder = value.getMonitorMain().getRecorder();
+        Recorder recorder = main.getMonitorMain().getRecorder();
         if (recorder != null) {
             Map<String, Object> record = new HashMap<>();
             record.put("msg", recorder.getProgressMsg());

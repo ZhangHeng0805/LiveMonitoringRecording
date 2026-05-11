@@ -50,7 +50,7 @@ public class UserAgentUtil {
         Collections.shuffle(lists);
     }
 
-    public String getRandomUser_Agent() {
+    public static String getRandomUser_Agent() {
         int random = RandomUtil.createRandom(0, User_Agents.length);
         return User_Agents[random];
     }
