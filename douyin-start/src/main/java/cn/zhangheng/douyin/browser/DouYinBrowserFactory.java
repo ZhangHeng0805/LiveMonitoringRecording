@@ -83,6 +83,10 @@ public class DouYinBrowserFactory {
             return false;
         }
         String pageSource = page.content();
+        return extractRoomInfo(room, pageSource);
+    }
+
+    public static boolean extractRoomInfo(DouYinRoom room, String pageSource) {
         if (pageSource == null) {
             log.warn("页面源码为空，无法提取房间信息");
             return false;
@@ -103,10 +107,6 @@ public class DouYinBrowserFactory {
             String avatar = UnicodeUtil.toString(extractStr(pageSource, AVATAR_PATTERN, null));
             room.setAvatar(avatar);
         }
-        if (room.isLiving()) {
-            room.setAvatar(null);
-            room.setNickname(null);
-        }
         return true;
     }
 
@@ -116,9 +116,8 @@ public class DouYinBrowserFactory {
     }
 
     public static String extractNickname(String pageSource) {
-        String nickname = extractStr(pageSource, NICKNAME_PATTERN,
+        return extractStr(pageSource, NICKNAME_PATTERN,
                 new HashSet<>(Collections.singletonList("$undefined")));
-        return nickname;
     }
 
     // 封装安全获取标题的方法（加重试）

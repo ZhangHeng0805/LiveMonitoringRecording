@@ -192,6 +192,7 @@ public class PlaywrightBrowser implements AutoCloseable {
     public Page newPage() {
         return newPage(userAgentUtil.get());
     }
+
     /**
      * 创建新页面（自动处理浏览器断开重连）
      */
@@ -302,10 +303,14 @@ public class PlaywrightBrowser implements AutoCloseable {
         return cookieList;
     }
 
+    public Page navigatePage(String url, Page page) {
+        return navigatePage(url, page, WaitUntilState.LOAD);
+    }
+
     /**
      * 页面导航（合并加载等待逻辑）
      */
-    public Page navigatePage(String url, Page page) {
+    public Page navigatePage(String url, Page page, WaitUntilState state) {
         if (url == null || url.trim().isEmpty()) {
             throw new IllegalArgumentException("URL不能为空");
         }
@@ -316,7 +321,7 @@ public class PlaywrightBrowser implements AutoCloseable {
         try {
             // 导航并等待指定状态
             page.navigate(url, new Page.NavigateOptions()
-                    .setWaitUntil(WaitUntilState.LOAD)  // 导航时直接等待目标状态
+                    .setWaitUntil(state)  // 导航时直接等待目标状态
                     .setTimeout(navigateTimeoutMs));
 
 
@@ -358,16 +363,11 @@ public class PlaywrightBrowser implements AutoCloseable {
         try {
             // 1. 定义请求匹配规则：Predicate<Request>
             Predicate<Request> requestPredicate = request ->
-//                    "GET".equalsIgnoreCase(request.method()) &&
                     request.url().startsWith(target_request_prefix);
 
             // 2. 定义请求匹配后的回调逻辑（Runnable）
             Runnable callback = () -> {
                 log.debug("已捕获目标请求！");
-                // 这里可以执行你原本在“请求匹配后”要做的事，比如：
-                // - 标记请求已捕获
-                // - 记录请求信息
-                // - 触发后续流程
             };
 
             // 3. 配置等待选项（超时配置毫秒）
@@ -386,16 +386,15 @@ public class PlaywrightBrowser implements AutoCloseable {
 
     public WebSocket waitForTargetWebSocket(Page page, String target_request_prefix, long navigateTimeoutMs) {
         try {
-            Predicate<WebSocket> predicate= webSocket -> webSocket.url().startsWith(target_request_prefix);
+            Predicate<WebSocket> predicate = webSocket -> webSocket.url().startsWith(target_request_prefix);
             Runnable callback = () -> {
                 log.debug("已捕获目标WebSocket！");
             };
             Page.WaitForWebSocketOptions options = new Page.WaitForWebSocketOptions()
                     .setPredicate(predicate)
-                    .setTimeout(navigateTimeoutMs)
-                    ;
-            return page.waitForWebSocket(options,callback);
-        }catch (Exception e){
+                    .setTimeout(navigateTimeoutMs);
+            return page.waitForWebSocket(options, callback);
+        } catch (Exception e) {
             log.warn("注册WebSocket监听器时发生异常：{}", ThrowableUtil.getAllCauseMessage(e));
             throw e;
         }

@@ -5,8 +5,7 @@ import com.zhangheng.file.FileUtil;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
-import java.util.List;
-import java.util.TreeMap;
+import java.util.*;
 
 /**
  * @author: ZhangHeng
@@ -20,7 +19,7 @@ public class AssGenerator extends SubtitleGenerator {
 
 
     public static void main(String[] args) throws IOException {
-        String log = "F:\\Git Project\\LiveMonitoringRecording\\【星曦向荣】直播监听工具\\抖音\\[超级喜欢uu子]\\2026-05-11\\2026-05-11 00-08-33聊天弹幕.log";
+        String log = "F:\\Git Project\\LiveMonitoringRecording\\【星曦向荣】直播监听工具\\抖音\\[陈大]\\2026-05-11\\2026-05-11 11-49-47聊天弹幕.log";
 
         AssGenerator generator = new AssGenerator(10, log);
         generator.generate();
@@ -48,17 +47,20 @@ public class AssGenerator extends SubtitleGenerator {
         bw.write(getHeader());
         bw.newLine();
         int i = 0;
-        int[] indexes = {0,2,4,1,3};
+        int[] indexes = {0, 2, 4, 1, 3};
         for (Long offsetSecond : secondGroupMap.keySet()) {
             List<String> contents = secondGroupMap.get(offsetSecond);
             String stackText = String.join("\\N", contents);
             long startMs = offsetSecond * 1000;
             long endMs = startMs + (long) subtitleDurationSec * 1000;
-            ;
-            String format = StrUtil.format("Dialogue: 0,{},{},TopDanmu{},,0,0,0,Banner;6;0;0,{}",
+            List<String> list = Arrays.asList(stackText.split("\\\\N"));
+            int textLength = list.stream().mapToInt(String::length).max().orElse(0);
+            int speed = textLength < 10 ? 6 : textLength < 20 ? 5 : 4;
+            String format = StrUtil.format("Dialogue: 0,{},{},TopDanmu{},,0,0,0,Banner;{};0;0,{}",
                     formatMsToSrt(startMs),
                     formatMsToSrt(endMs),
                     indexes[i++ % 5],
+                    speed,
                     stackText
             );
             bw.write(format);

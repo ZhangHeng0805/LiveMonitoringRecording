@@ -5,6 +5,7 @@ import cn.zhangheng.browser.PlaywrightBrowser;
 import cn.zhangheng.common.bean.Constant;
 import cn.zhangheng.common.bean.Setting;
 import cn.zhangheng.douyin.DouYinRoom;
+import cn.zhangheng.douyin.DouYinUtils;
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.WaitForSelectorState;
 import com.microsoft.playwright.options.WaitUntilState;
@@ -19,8 +20,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 import static cn.zhangheng.douyin.browser.DouYinBrowserFactory.*;
 
@@ -78,8 +81,13 @@ public class DouYinBrowser implements Closeable {
             return false;
         }
 
+        String pageBody = DouYinUtils.fetchRoomPageBody(room.getId());
+        boolean is = extractRoomInfo(room, pageBody);
+        if (!is) return false;
+        if (!room.isLiving()) return true;
+
         Page page = null;
-//        Consumer<Request> requestHandler = null;
+        Consumer<Request> requestHandler = null;
 //        Consumer<Response> responsehandler = null;
         try {
             checkAndInitBrowser();
@@ -88,49 +96,47 @@ public class DouYinBrowser implements Closeable {
             }
             setRoomCookie(room, page, roomUrl);
 //            log.debug("=== 对 {} 生效的 Cookie 共 {} 个 ===", roomUrl, context.cookies(roomUrl).size());
-
+            CountDownLatch latch = new CountDownLatch(1);
             // 注册请求监听器（提取目标请求信息）
-//            requestHandler = request -> {
-//                getRequestApi(room, request);
-//            };
+            requestHandler = request -> {
+                if (request.url().startsWith(TARGET_REQUEST_PREFIX)) {
+                    getRequestApi(room, request);
+                    latch.countDown();
+                    log.info("已捕获目标请求！");
+                }
+            };
 //            responsehandler = response -> {
 //                getResponseApi(room, response, api);
 //            };
-//            page.onRequest(requestHandler);
+            page.onRequest(requestHandler);
 //            page.onResponse(responsehandler);
             // 导航到直播间页面
-            page = browser.navigatePage(roomUrl, page);
+            page = browser.navigatePage(roomUrl, page, WaitUntilState.LOAD);
 
             //提取界面信息
-            boolean b = extractRoomInfo(room, page);
+//            boolean b = extractRoomInfo(room, page);
 
             // 若直播中，等待目标请求完成（替代固定休眠，更高效）
             if (room.isLiving()) {
-                Request request;
                 try {
-                    request = browser.waitForTargetRequest(page, TARGET_REQUEST_PREFIX, 10_000);
+                    latch.await(10, TimeUnit.SECONDS);
                 } catch (Exception e) {
-                    log.info("页面刷新，重新监听请求！");
-                    page.reload(new Page.ReloadOptions().setTimeout(10_000).setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
-                    request = browser.waitForTargetRequest(page, TARGET_REQUEST_PREFIX, 10_000);
+                    log.error("等待捕获目标失败！", e);
                 }
-                getRequestApi(room, request);
-//                browser.waitForTarget(room.getBrowserApi(), 10_000);
+            } else {
+                latch.countDown();
             }
 //            page.offRequest(requestHandler);
 //            page.offResponse(responsehandler);
-            if (!b) {
-                TimeUnit.SECONDS.sleep(RandomUtil.createRandom(5, 10));
-            }
-            return b;
+            return room.getBrowserApi().getUpdateTimes() > 0;
         } catch (Throwable e) {
             if (!(e instanceof PlaywrightException && e.getMessage().startsWith("Object doesn't exist:"))) {
                 log.error("处理直播间[{}]时发生异常,{}", roomUrl, ThrowableUtil.getAllCauseMessage(e)); // 记录完整堆栈
             }
         } finally {
-//            if (requestHandler != null) {
-//                page.offRequest(requestHandler);
-//            }
+            if (requestHandler != null) {
+                page.offRequest(requestHandler);
+            }
             // 确保页面关闭，释放资源
             if (browser != null) {
                 browser.closePage(page);

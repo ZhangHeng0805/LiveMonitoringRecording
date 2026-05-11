@@ -117,10 +117,10 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
                 if (code == 0) {
                     room.setUpdateTime(new Date());
                     room.setLiving(data.getInt("room_status", -1) == 0);
-                    if (StrUtil.isBlank(room.getNickname())) {
+                    if (force || StrUtil.isBlank(room.getNickname())) {
                         room.setNickname(data.getJSONObject("user").getStr("nickname"));
                     }
-                    if (StrUtil.isBlank(room.getAvatar())) {
+                    if (force || StrUtil.isBlank(room.getAvatar())) {
                         room.setAvatar(data.getJSONObject("user")
                                 .getJSONObject("avatar_thumb")
                                 .getJSONArray("url_list")
@@ -131,10 +131,10 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
                             room.setStartTime(new Date());
                         }
                         JSONObject data1 = data.getJSONArray("data").getJSONObject(0);
-                        if (StrUtil.isBlank(room.getTitle())) {
+                        if (force || StrUtil.isBlank(room.getTitle())) {
                             room.setTitle(data1.getStr("title", ""));
                         }
-                        if (room.getCoverList() == null) {
+                        if (force ||  room.getCoverList() == null) {
                             room.setCoverList(data1.getJSONObject("cover").getBeanList("url_list", String.class));
                         }
 
@@ -226,7 +226,7 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
             webcast.stop();
             subtitleLog.close();
             try {
-                new AssGenerator(10,subtitleLog.getLogPath().toString()).generate();
+                new AssGenerator(10, subtitleLog.getLogPath().toString()).generate();
             } catch (IOException e) {
                 log.error("弹幕日志转换成字幕文件失败", e);
             }

@@ -38,7 +38,7 @@ public abstract class SubtitleGenerator {
 
 
     public void generate() throws IOException {
-        LocalDateTime baseTime = LocalDateTime.parse(baseStartTime, START_TIME_FORMAT);
+        LocalDateTime baseTime = LocalDateTime.parse(baseStartTime, START_TIME_FORMAT).minusSeconds(5);//有延迟，减5s
 
         // 按【秒】分组存储弹幕，TreeMap自动排序
         TreeMap<Long, List<String>> secondGroupMap = new TreeMap<>();

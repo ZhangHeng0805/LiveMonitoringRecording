@@ -2,6 +2,7 @@ package cn.zhangheng.record;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import okio.ByteString;
 
@@ -18,6 +19,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * @version: 1.0
  * @description:
  */
+@Slf4j
 public class DouYinWebSocket {
     private String wss, ttwid, userAgent;
     private final OkHttpClient client;
@@ -65,7 +67,7 @@ public class DouYinWebSocket {
         this.webSocket = client.newWebSocket(request, new WebSocketListener() {
             @Override
             public void onOpen(WebSocket ws, Response response) {
-                System.out.println("DouYinWebSocket【√】连接成功");
+                log.info("DouYinWebSocket【√】连接成功");
                 isRunning = true;
                 isOpen.set(true);
                 startHeartbeat();
@@ -73,7 +75,7 @@ public class DouYinWebSocket {
 
             @Override
             public void onClosed(WebSocket webSocket, int code, String reason) {
-                System.out.println("DouYinWebSocket【×】连接关闭: " + reason);
+                log.info("DouYinWebSocket【×】连接关闭: " + reason);
                 reconnect(); // 自动重连
             }
 
@@ -88,8 +90,7 @@ public class DouYinWebSocket {
             public void onFailure(WebSocket webSocket, Throwable t, Response response) {
                 isOpen.set(false);
                 isRunning = false;
-                System.out.println("DouYinWebSocket连接失败！");
-                t.printStackTrace();
+                log.error("DouYinWebSocket连接失败！{}", t.getMessage());
                 stopHeartbeat();
                 reconnect();
             }

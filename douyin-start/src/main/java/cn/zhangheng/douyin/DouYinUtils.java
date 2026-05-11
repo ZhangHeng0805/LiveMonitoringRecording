@@ -61,8 +61,8 @@ public class DouYinUtils {
                 .header("Cookie", cookie);
         try (HttpResponse resp = request.execute()) {
             String body = resp.body();
-            System.out.println(DouYinBrowserFactory.extractNickname(body));
-            System.out.println(DouYinBrowserFactory.extractLivingStatus(body));
+//            System.out.println(DouYinBrowserFactory.extractNickname(body));
+//            System.out.println(DouYinBrowserFactory.extractLivingStatus(body));
             return body;
         }
     }

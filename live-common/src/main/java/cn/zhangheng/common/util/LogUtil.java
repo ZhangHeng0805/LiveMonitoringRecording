@@ -41,6 +41,10 @@ public class LogUtil {
         return Constant.Application + "/" + room.getPlatform().getName() + "/[" + FileUtil.filterFileName(room.getNickname()) + "]/" + nowTime;
     }
 
+    {
+        Runtime.getRuntime().addShutdownHook(new Thread(this::close));
+    }
+
     public LogUtil(Room room, String fileName) throws IOException {
         Path path = getBasePath(room);
         String basePath = path.toFile().getAbsolutePath();
@@ -69,7 +73,7 @@ public class LogUtil {
         }
         this.logPath = Paths.get(basePath, nowTime + "监听.log");
         logger = new AsyncBatchLogger(logPath);
-        Path coverPath = Paths.get(basePath, nowTime+"封面.jpg");
+        Path coverPath = Paths.get(basePath, nowTime + "封面.jpg");
         if (!Files.exists(coverPath) && room.getCover() != null) {
             HttpUtil.downloadFile(room.getCover(), coverPath.toFile());
         }
@@ -117,7 +121,9 @@ public class LogUtil {
      * 使用完毕后必须调用
      */
     public void close() {
-        logger.flushRemaining();
+        if (logger != null) {
+            logger.flushRemaining();
+        }
     }
 
 }

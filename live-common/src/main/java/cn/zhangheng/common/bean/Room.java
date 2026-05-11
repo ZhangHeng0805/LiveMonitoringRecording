@@ -30,9 +30,9 @@ public abstract class Room {
     }
 
     //直播标题
-    protected volatile String title;
+    protected String title;
     //用户名
-    protected volatile String nickname;
+    protected String nickname;
     //是否在直播
     protected volatile boolean living;
     //开始时间
@@ -45,14 +45,14 @@ public abstract class Room {
     protected String avatar;
 
     //直播流不同清晰度地址（由高到低排序）
-    protected volatile Map<String, String> streams;
+    protected Map<String, String> streams;
 
 
     private String cookie;
     //直播间的地址
     protected String roomUrl;
 
-    private volatile Setting setting;
+    private Setting setting;
     //平台
     protected Platform platform;
 
