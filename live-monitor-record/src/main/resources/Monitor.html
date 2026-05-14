@@ -536,14 +536,14 @@
         document.getElementById("footer-update-time").textContent = updateTime;
 
         // 统计数据
-        const totalRooms = data.obj.length;
-        const livingRooms = data.obj.filter(
+        const totalRooms = data.data.length;
+        const livingRooms = data.data.filter(
             (item) => item["room-status"] === "LIVING"
         ).length;
-        const notLivingRooms = data.obj.filter(
+        const notLivingRooms = data.data.filter(
             (item) => item["room-status"] !== "LIVING"
         ).length;
-        const recordingRooms = data.obj.filter(
+        const recordingRooms = data.data.filter(
             (item) => item.recorder !== undefined && item.recorder.isRecord
         ).length;
 
@@ -571,7 +571,7 @@
         notLivingContainer.innerHTML = "";
 
         // 处理每个房间数据
-        data.obj.forEach((item, index) => {
+        data.data.forEach((item, index) => {
             if (item["room-status"] === "LIVING") {
                 // 直播中房间
                 const roomElement = createLivingRoomElement(item, index);
@@ -806,22 +806,14 @@
                                 <i class="fa fa-key text-gray-400 mr-1"></i>
                                 <span>标识: ${item.key || "未知"}</span>
                             </div>
-                            <div class="flex items-center">
+                            <div class="flex items-center" title="${formatDate(new Date(item.isRunning ? item.startTime : item.endTime))}">
                                 <i class="fa fa-refresh text-gray-400 mr-1"></i>
-                                监控状态:<span class="
-                                            ${item.status === "RUNNING"
-            ? "bg-green-100"
-            : "bg-red-100"
-        } text-gray-600 px-2 py-0.5 rounded ml-1">
+                                监控状态:<span class="${item.isRunning ? "bg-green-100" : "bg-red-100"} text-gray-600 px-2 py-0.5 rounded ml-1">
                                 ${item.status === "RUNNING" ? "运行中" : "已停止"}</span>
                             </div>
                             <div class="flex items-center">
                                 <i class="fa fa-bell text-gray-400 mr-1"></i>
-                                开播提醒:<span class="
-                                            ${room.setting && room.setting.isNotice
-            ? "bg-green-100"
-            : "bg-red-100"
-        } text-gray-600 px-2 py-0.5 rounded ml-1">
+                                开播提醒:<span class="${room.setting && room.setting.isNotice ? "bg-green-100" : "bg-red-100"} text-gray-600 px-2 py-0.5 rounded ml-1">
                                         ${room.setting && room.setting.isNotice ? "已开启" : "未开启"}</span>
                             </div>`;
         // 抖音房间显示点赞数
@@ -962,7 +954,7 @@
         });
     }
 
-    function actionSetting(roomKey, delayIntervalSec,convertFlvToMp4) {
+    function actionSetting(roomKey, delayIntervalSec, convertFlvToMp4) {
         showActionBeforeModal((key) => {
             // console.log("操作设置", roomKey, delayIntervalSec);
             setModalContent(
@@ -1152,7 +1144,7 @@
         if (!num && num !== 0) return "0";
         // 处理字符串类型的数字
         if (typeof num === "string") {
-            if (num.endsWith("万")) {
+            if (num.indexOf("万") > 0) {
                 return num;
             }
             num = parseInt(num);

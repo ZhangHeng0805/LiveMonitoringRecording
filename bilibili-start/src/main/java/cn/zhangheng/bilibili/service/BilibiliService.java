@@ -132,11 +132,7 @@ public class BilibiliService extends RoomService<BiliRoom> {
                     }
                     if (isLiving) {
                         if (room.getStartTime() == null) {
-                            try {
-                                room.setStartTime(TimeUtil.toDate(data.getStr("live_time")));
-                            } catch (ParseException e) {
-                                room.setStartTime(new Date());
-                            }
+                            room.setStartTime(TimeUtil.toDate(data.getStr("live_time")));
                         }
                         room.setViewers(data.getInt("online"));
                     }

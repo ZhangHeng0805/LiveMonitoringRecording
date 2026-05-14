@@ -246,7 +246,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
 
             @Override
             public void onProgress(R r) {
-                String statistics = owner + "\n" + statistics(logUtil, r);
+                String statistics = owner + "\n" + statistics(logUtil, room);
                 if (recorder != null && recorder.isRunning() && recorder.getStartTime() != null) {
                     String tooltip = "【" + recorder.getDefinition() + "】" + recorder.getProgressMsg();
                     trayIconUtil.setToolTip(statistics + "\n" + tooltip);
@@ -255,12 +255,17 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                         recorder.stop(false);
                         log.info("录制文件大小超过15G，自动结束录制");
                     }
+                    String definition = room.getStreams().entrySet().iterator().next().getKey();
+                    if (!recorder.getDefinition().equals(definition)) {
+                        recorder.stop(false);
+                        log.info("录制视频流清晰度已切换【{} >> {}】，自动结束录制", recorder.getDefinition(), definition);
+                    }
                 } else {
                     trayIconUtil.setToolTip(statistics);
                 }
                 if (recordFlag.get() && recorder != null && !recorder.isRunning()) {
                     if (recorderTask != null) {
-                        recorderTask.run(r);
+                        recorderTask.run(room);
                     }
                 }
             }
@@ -338,10 +343,6 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             @Override
             public void recorderComplete(String saveFilePath, long totalBytes, long totalDurationMS) {
                 completeRecordFile(saveFilePath);
-                try {
-                    TimeUnit.SECONDS.sleep(1);
-                } catch (InterruptedException ignored) {
-                }
                 tryRecord(room);
             }
 
@@ -537,7 +538,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                     + " / [程序项目](https://github.com/ZhangHeng0805/LiveMonitoringRecording)";
             notificationUtil.xiZhiSendMsg(Constant.Application,
 //                    URLEncoder.encode(
-                            title + content + footer
+                    title + content + footer
 //                            , "UTF-8")
             );
         } catch (Exception e) {

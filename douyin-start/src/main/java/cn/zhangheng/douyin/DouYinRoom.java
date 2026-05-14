@@ -36,13 +36,15 @@ public class DouYinRoom extends Room {
     @PropIgnore
     private BrowserAPI browserApi;
     //总观看人数
-    private String totalUserStr;
+    private volatile String totalUserStr;
     //当前在线人数
-    private String userCountStr;
+    private volatile String userCountStr;
     //喜欢点赞数
-    private int likeCount;
+    private volatile long likeCount;
     //直播间封面
     private List<String> coverList;
+    //弹幕是否运行
+    private volatile boolean isSubtitleRunning;
 
 
     public DouYinRoom(String id) {
@@ -78,6 +80,9 @@ public class DouYinRoom extends Room {
         Map<String, String> header = super.getRequestHead();
         header.put("Referer", getPlatform().getMainUrl() + getId());
         header.put("Origin", getPlatform().getMainUrl());
+        if (getBrowserApi()!=null&&getBrowserApi().getHeaders()!=null) {
+            header.put("User-Agent", getBrowserApi().getHeaders().get("user-agent"));
+        }
         return header;
     }
 

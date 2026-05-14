@@ -64,6 +64,11 @@ public class LogUtil {
     }
 
 
+    /**
+     * 直播监听日志 非通用
+     * @param room
+     * @throws IOException
+     */
     public LogUtil(Room room) throws IOException {
         String nowTime = TimeUtil.toTime(room.getStartTime(), "yyyy-MM-dd HH-mm-ss");
         Path path = getBasePath(room);

@@ -7,14 +7,14 @@ import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import cn.zhangheng.browser.BrowserAPI;
 import cn.zhangheng.browser.PlaywrightBrowser;
+import cn.zhangheng.browser.UserAgentUtil;
 import cn.zhangheng.common.bean.Constant;
 import cn.zhangheng.common.bean.Setting;
 import cn.zhangheng.common.util.RequestUtils;
 import cn.zhangheng.douyin.DouYinVideo;
-import com.microsoft.playwright.BrowserContext;
-import com.microsoft.playwright.Page;
-import com.microsoft.playwright.TimeoutError;
+import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.WaitForSelectorState;
+import com.microsoft.playwright.options.WaitUntilState;
 import com.zhangheng.util.ThrowableUtil;
 import com.zhangheng.util.TimeUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -25,8 +25,11 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Date;
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static cn.zhangheng.browser.PlaywrightBrowser.*;
 
 /**
  * @author: ZhangHeng
@@ -38,27 +41,70 @@ import java.util.regex.Pattern;
 @Slf4j
 public class DouYinVideoParse {
 
+    private static final BrowserAPI browserApi = new BrowserAPI("https://www.douyin.com/aweme/v1/web/aweme/detail/");
+
 
     public static void main(String[] args) {
 //        String s = "1.76 复制打开抖音，看看【小兰花的作品】自我救赎的路上本就光怪陆离# 感觉至上  https://v.douyin.com/jvzZf1jio5w/ 10/01 t@R.xS hBT:/ ";
-        String s = "9.46 复制打开抖音，看看【小兰花的作品】知足常乐# 感觉至上 # 运镜  https://v.douyin.com/reo-okMgTPs/ FHv:/ 01/31 N@J.vF ";
+        String s = "0.28 Z@z.Ty :1pm 03/22 xsR:/ 那个……可以认识一下吗# 感觉至上 # 男生  https://v.douyin.com/HFnMsnbv_yI/ 复制此链接，打开Dou音搜索，直接观看视频！";
 //        String s = "3.33 复制打开抖音，看看【吃不胖鸭丫的图文作品】旅行者，樱花瓣落得轻，风里裹着甜香～——我刚理完璃... https://v.douyin.com/T_5owcnkwak/ 10/27 BTL:/ q@R.KW ";
 //        String s = "7.64 kCU:/ 09/28 i@p.QK 一起来看日出吧@小兰花 # 小兰花 # 看日出 # 直播截图  https://v.douyin.com/sX4ZhOA7M3Q/ 复制此链接，打开Dou音搜索，直接观看视频！";
 //        String s = "8.43 j@P.xf 12/24 trr:/ 这个运镜好好玩，大家也可以试试# 感觉至上  https://v.douyin.com/BgpRfDDUeyw/ 复制此链接，打开Dou音搜索，直接观看视频！";
         Setting setting = new Setting();
         System.out.println(extractDouyinLink(s));
-        System.out.println(JSONUtil.parseObj(parse(s
-//                , setting
+        System.out.println(JSONUtil.parseObj(
+                parse1(s
+                , setting
         )).toStringPretty());
     }
 
     public static DouYinVideo parse(String shareUrl) {
-        return parse(shareUrl, null);
+        return parse1(shareUrl, null);
     }
 
+    public static DouYinVideo parse1(String shareUrl, Setting setting) {
+        boolean success = false;
+        String link = extractDouyinLink(shareUrl);
+        if (link == null) {
+            return null;
+        }
+        Page page = null;
+        boolean headless = setting == null || !Objects.equals(setting.getBrowserHeadless(), Boolean.FALSE);
+        try (Playwright playwright = Playwright.create();
+             Browser browser = playwright.chromium().launch(getLaunchOptions(Constant.User_Agent, headless))
+        ) {
+            Browser.NewContextOptions contextOptions = new Browser.NewContextOptions().setUserAgent(UserAgentUtil.getRandomUser_Agent());
+            BrowserContext context = browser.newContext(contextOptions);
+            page = context.newPage();
+            navigatePage(link, page, WaitUntilState.DOMCONTENTLOADED);
+            Response response;
+            try {
+                response = waitForTargetResponse(page, browserApi.getUrlPrefix(), 10_000);
+            } catch (Exception e) {
+                log.info("页面刷新，重新监听请求！");
+                page.reload(new Page.ReloadOptions().setTimeout(10_000).setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
+                response = waitForTargetResponse(page, browserApi.getUrlPrefix(), 15_000);
+            }
+            browserApi.setResponseBody(response.text());
+            success = true;
+        } catch (Exception e) {
+            log.error("获取抖音视频信息失败！{}", e.getMessage());
+        } finally {
+            if (page != null && !page.isClosed()) {
+                // 关闭页面（可选：触发beforeunload事件）
+                page.close(new Page.CloseOptions().setRunBeforeUnload(false));
+            }
+        }
+        if (success) {
+            String data = browserApi.getResponseBody();
+            return handleData(data);
+        } else {
+            throw new RuntimeException("未解析到视频信息");
+        }
+    }
+
+
     public static DouYinVideo parse(String shareUrl, Setting setting) {
-        BrowserAPI browserApi = new BrowserAPI("https://www.douyin.com/aweme/v1/web/aweme/detail/");
-//        API api = new API("https://www.douyin.com/aweme/v1/web/aweme/post/");
         boolean success = false;
         String link = extractDouyinLink(shareUrl);
         if (link == null) {

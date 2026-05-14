@@ -72,7 +72,7 @@ public class ActionHandler extends JSONHandler {
             } else if (indexPath.startsWith("getThread")) {
                 getThread(msg);
             } else if (indexPath.startsWith("getCount")) {
-                msg.setObj(DouYinBrowserFactory.getBrowser().getCount());
+                msg.setData(DouYinBrowserFactory.getBrowser().getCount());
             } else if (indexPath.startsWith("clear")) {
                 Map<String, String> query = parseQuery(httpExchange);
                 if (checkActionKey(query, msg)) {
@@ -232,7 +232,7 @@ public class ActionHandler extends JSONHandler {
         res.put("corePoolSize", corePoolSize);
         res.put("activeCount", activeCount);
         res.put("remainingThreads", remainingThreads);
-        msg.setObj(res);
+        msg.setData(res);
         msg.setMessage(StrUtil.format("核心线程数: {}， 正在工作的线程数: {}, 剩余可用线程数: {}", corePoolSize, activeCount, remainingThreads));
     }
 
@@ -243,7 +243,7 @@ public class ActionHandler extends JSONHandler {
                 throw new IllegalArgumentException("解析URl缺省！");
             }
             DouYinVideo parse = DouYinVideoParse.parse(url);
-            msg.setObj(parse);
+            msg.setData(parse);
             msg.setMessage("解析成功！");
         } catch (Exception e) {
             msg.setCode(1);

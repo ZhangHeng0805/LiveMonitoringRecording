@@ -67,6 +67,7 @@ public class FlvDownload extends FFmpegService {
 //                    "-fflags", "+igndts+genpts",  // 忽略错误时间戳，生成连续新时间戳
 //                    "-max_delay", "2000000", // 最大延迟3000ms，给足时间等待乱序帧
 //                    "-vsync", "vfr", // 可变帧率,控制同步方式
+//                    "-f", "flv",
                     "-probesize", "32M",
                     "-rw_timeout", "15000000",
                     "-i", "\"" + url + "\"",
@@ -75,7 +76,7 @@ public class FlvDownload extends FFmpegService {
                     file
             );
             if (headers != null && !headers.isEmpty()) {
-                List<String> headerList = headers.entrySet().stream().map(h -> h.getKey() + ": " + h.getValue()).collect(Collectors.toList());
+                List<String> headerList = headers.entrySet().stream().filter(h -> h.getValue().length() < 4096).map(h -> h.getKey() + ": " + h.getValue()).collect(Collectors.toList());
                 commands.add("-headers");
                 String join = String.join("\r\n", headerList);
                 commands.add("\"" + join + "\r\n\"");
@@ -98,6 +99,7 @@ public class FlvDownload extends FFmpegService {
     @Override
     protected void processResult(String logs) {
         if (logs.startsWith("frame=")) {
+//            System.out.println(logs);
             ffmpegProgress.parse(logs);
         } else {
             if (logUtil != null) logUtil.highLog(logs);
@@ -121,7 +123,7 @@ public class FlvDownload extends FFmpegService {
         // 定义正则表达式模式
         private static final Pattern FRAME_PATTERN = Pattern.compile("frame=\\s*(\\d+)");
         private static final Pattern FPS_PATTERN = Pattern.compile("fps=\\s*(\\d+\\.?\\d*)");
-        private static final Pattern SIZE_PATTERN = Pattern.compile("size=\\s*(\\d+)kB");
+        private static final Pattern SIZE_PATTERN = Pattern.compile("size=\\s*(\\d+)");
         private static final Pattern TIME_PATTERN = Pattern.compile("time=(\\d\\d):(\\d\\d):(\\d\\d\\.\\d\\d)");
         private static final Pattern BITRATE_PATTERN = Pattern.compile("bitrate=\\s*(\\d+\\.?\\d*)kbits/s");
         private static final Pattern SPEED_PATTERN = Pattern.compile("speed=\\s*(\\d+\\.?\\d*)x");

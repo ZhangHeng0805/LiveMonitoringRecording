@@ -33,8 +33,7 @@ public class DouYinUtils {
     }
 
     public DouYinUtils() {
-        ttwid = fetchTtwid();
-        userAgent = userAgentUtil.get();
+        refresh();
     }
 
     public static void main(String[] args) {
@@ -91,6 +90,7 @@ public class DouYinUtils {
             }
         }
     }
+
     private void refresh() {
         userAgent = userAgentUtil.get();
         ttwid = fetchTtwid();

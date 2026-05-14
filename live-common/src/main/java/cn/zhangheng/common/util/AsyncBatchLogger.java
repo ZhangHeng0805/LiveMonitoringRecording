@@ -25,6 +25,7 @@ public class AsyncBatchLogger {
     private final Lock lock = new ReentrantLock();
     // 最大等待队列大小，防止内存溢出
     private static final int MAX_QUEUE_SIZE = 10000;
+    private volatile boolean isRunning = true;
 
     // 异步任务执行器（单线程足够，避免过多线程竞争磁盘IO）
     private final ExecutorService executor = Executors.newSingleThreadExecutor(runnable -> {
@@ -94,33 +95,36 @@ public class AsyncBatchLogger {
      * 强制刷新剩余日志（程序退出前必须调用）
      */
     public void flushRemaining() {
-        lock.lock();
-        try {
-            if (!lines.isEmpty()) {
-                List<String> remaining = new ArrayList<>(lines);
-                lines.clear();
-                // 同步写入剩余日志，确保程序退出时不丢失
-                try {
-                    Files.write(logPath, remaining,
-                            StandardOpenOption.CREATE,
-                            StandardOpenOption.APPEND);
-                } catch (IOException e) {
-                    System.err.println("程序退出时日志刷新失败: " + e.getMessage());
+        if (isRunning) {
+            lock.lock();
+            try {
+                if (!lines.isEmpty()) {
+                    List<String> remaining = new ArrayList<>(lines);
+                    lines.clear();
+                    // 同步写入剩余日志，确保程序退出时不丢失
+                    try {
+                        Files.write(logPath, remaining,
+                                StandardOpenOption.CREATE,
+                                StandardOpenOption.APPEND);
+                    } catch (IOException e) {
+                        System.err.println("程序退出时日志刷新失败: " + e.getMessage());
+                    }
                 }
+            } finally {
+                lock.unlock();
+                isRunning = false;
             }
-        } finally {
-            lock.unlock();
-        }
 
-        // 关闭线程池，等待剩余任务完成
-        executor.shutdown();
-        try {
-            // 等待所有异步任务完成，最多等3秒
-            if (!executor.awaitTermination(3, TimeUnit.SECONDS)) {
-                executor.shutdownNow(); // 强制终止未完成的任务
+            // 关闭线程池，等待剩余任务完成
+            executor.shutdown();
+            try {
+                // 等待所有异步任务完成，最多等3秒
+                if (!executor.awaitTermination(3, TimeUnit.SECONDS)) {
+                    executor.shutdownNow(); // 强制终止未完成的任务
+                }
+            } catch (InterruptedException e) {
+                executor.shutdownNow();
             }
-        } catch (InterruptedException e) {
-            executor.shutdownNow();
         }
     }
 }

@@ -162,6 +162,7 @@ public class FileModeMain {
     private static void endMonitor(RoomFileModel model) {
         if (model == null) return;
         runCount.decrementAndGet();
+        model.setEndTime();
         Room.Platform platform = model.getMain().getRoom().getPlatform();
         platformMap.compute(platform, (k, v) -> v == null ? 0 : v - 1);
         if (platformMap.get(Room.Platform.DouYin) == null || platformMap.get(Room.Platform.DouYin) < 1) {

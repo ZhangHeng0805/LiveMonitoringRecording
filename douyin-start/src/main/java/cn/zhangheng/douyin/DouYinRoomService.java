@@ -38,6 +38,7 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
     private String url;
     private DouYinWebcast webcast = null;
     private LogUtil subtitleLog;
+    private LogUtil chatLog;
 
     public DouYinRoomService(DouYinRoom room) {
         super(room);
@@ -134,7 +135,7 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
                         if (force || StrUtil.isBlank(room.getTitle())) {
                             room.setTitle(data1.getStr("title", ""));
                         }
-                        if (force ||  room.getCoverList() == null) {
+                        if (force || room.getCoverList() == null) {
                             room.setCoverList(data1.getJSONObject("cover").getBeanList("url_list", String.class));
                         }
 
@@ -142,10 +143,12 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
                         if (force || room.getStreams() == null) {
                             room.setStreams(handleStream(stream_data));
                         }
-                        JSONObject stats = data1.getJSONObject("stats");
-                        room.setTotalUserStr(stats.getStr("total_user_str"));
-                        room.setUserCountStr(stats.getStr("user_count_str"));
-                        room.setLikeCount(data1.getInt("like_count"));
+                        if (!room.isSubtitleRunning()) {
+                            JSONObject stats = data1.getJSONObject("stats");
+                            room.setTotalUserStr(stats.getStr("total_user_str"));
+                            room.setUserCountStr(stats.getStr("user_count_str"));
+                            room.setLikeCount(data1.getInt("like_count"));
+                        }
                     }
                 } else {
                     String msg = data.getStr("prompts");
@@ -192,25 +195,73 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
             webcast = new DouYinWebcast(room);
         }
         if (webcast == null || webcast.isRunning()) return;
-        if (subtitleLog == null) {
+        if (subtitleLog == null || chatLog == null) {
             try {
                 String time = TimeUtil.toTime(room.getStartTime(), "yyyy-MM-dd HH-mm-ss");
-                subtitleLog = new LogUtil(room, time + "聊天弹幕.log");
+                if (subtitleLog == null) subtitleLog = new LogUtil(room, time + "弹幕日志.log");
+                if (chatLog == null) chatLog = new LogUtil(room, time + "聊天弹幕.log");
             } catch (IOException e) {
-                log.error("聊天弹幕日志生成失败！", e);
+                log.error("弹幕日志生成失败！", e);
             }
         }
         webcast.setMessageListener(new MessageListener() {
             @Override
             public void chat(String info, DouyinMessageOuter.ChatMessage msg) {
-                if (subtitleLog != null) {
-//                    System.out.println(room.getNickname() + "【聊天】" + info);
-                    subtitleLog.highLog(info);
+                chatLog.highLog(info);
+            }
+
+            @Override
+            public void member(String info, DouyinMessageOuter.MemberMessage msg) {
+                String x = "【进场】" + info;
+                subtitleLog.highLog(x);
+            }
+
+            @Override
+            public void gift(String info, DouyinMessageOuter.GiftMessage msg) {
+                String x = "【礼物】" + info;
+                subtitleLog.highLog(x);
+            }
+
+            @Override
+            public void like(String info, DouyinMessageOuter.LikeMessage msg) {
+                String x = "【点赞】" + info;
+                room.setLikeCount(msg.getTotal());
+                subtitleLog.highLog(x);
+            }
+
+            @Override
+            public void social(String info, DouyinMessageOuter.SocialMessage msg) {
+                String x = "【关注】" + info;
+                subtitleLog.highLog(x);
+            }
+
+            @Override
+            public void stats(String info, DouyinMessageOuter.RoomUserSeqMessage msg) {
+                String x = "【统计】" + info;
+                room.setTotalUserStr(msg.getTotalUser() + "");
+                subtitleLog.highLog(x);
+            }
+
+            @Override
+            public void online(String info, DouyinMessageOuter.RoomStatsMessage msg) {
+                String x = "【在线】" + info;
+                long total = msg.getTotal();
+                if (total > 0) {
+                    room.setUserCountStr(total + "");
                 }
+                subtitleLog.highLog(x);
+            }
+
+            @Override
+            public void roomRank(String info, DouyinMessageOuter.RoomRankMessage msg) {
+                String x = "【排名】" + info;
+                subtitleLog.highLog(x);
             }
 
             @Override
             public void control(String info, DouyinMessageOuter.ControlMessage msg) {
+                String x = "【状态】" + info;
+                subtitleLog.highLog(x);
                 if (msg.getStatus() == 3) {
                     stopSubtitle();
                 }
@@ -225,8 +276,9 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
         if (webcast != null && subtitleLog != null) {
             webcast.stop();
             subtitleLog.close();
+            chatLog.close();
             try {
-                new AssGenerator(10, subtitleLog.getLogPath().toString()).generate();
+                new AssGenerator(10, chatLog.getLogPath().toString()).generate();
             } catch (IOException e) {
                 log.error("弹幕日志转换成字幕文件失败", e);
             }

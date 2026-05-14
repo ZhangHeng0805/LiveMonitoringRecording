@@ -11,6 +11,7 @@ import com.microsoft.playwright.options.WaitForSelectorState;
 import com.microsoft.playwright.options.WaitUntilState;
 import com.zhangheng.util.RandomUtil;
 import com.zhangheng.util.ThrowableUtil;
+import com.zhangheng.util.TimeUtil;
 import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,8 +24,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
+import static cn.zhangheng.browser.PlaywrightBrowser.waitForTargetRequest;
 import static cn.zhangheng.douyin.browser.DouYinBrowserFactory.*;
 
 /**
@@ -94,7 +97,7 @@ public class DouYinBrowser implements Closeable {
                 if (is == null) isFetch = false;
             }
             if (isFetch) {
-                return browserRequest2(room);
+                return browserRequest1(room);
             } else {
                 return browserRequest1(room);
             }
@@ -128,6 +131,7 @@ public class DouYinBrowser implements Closeable {
                 page = browser.newPage();
             }
             setRoomCookie(room, page, roomUrl);
+            // 【关键】把 latch 放在 原子引用 里，保证全局唯一
             CountDownLatch latch = new CountDownLatch(1);
             // 注册请求监听器（提取目标请求信息）
             requestHandler = request -> {
@@ -139,8 +143,8 @@ public class DouYinBrowser implements Closeable {
                 }
             };
             page.onRequest(requestHandler);
-            page = browser.navigatePage(roomUrl, page);
-            boolean is = extractRoomInfo(room, page);
+            PlaywrightBrowser.navigatePage(roomUrl, page, WaitUntilState.LOAD);
+            Boolean is = extractRoomInfo(room, page);
             if (room.isLiving()) {
                 try {
                     latch.await(10, TimeUnit.SECONDS);
@@ -151,7 +155,7 @@ public class DouYinBrowser implements Closeable {
             } else {
                 latch.countDown();
             }
-            return is;
+            return Boolean.TRUE.equals(is);
         } catch (PlaywrightException e1) {
             log.error("处理直播间[{}]时浏览器发生异常:{}", roomUrl, e1.getMessage().substring(0, 128));
         } catch (Throwable e) {
@@ -185,11 +189,11 @@ public class DouYinBrowser implements Closeable {
             if (room.isLiving()) {
                 Request request;
                 try {
-                    request = browser.waitForTargetRequest(page, TARGET_REQUEST_PREFIX, 10_000);
+                    request = PlaywrightBrowser.waitForTargetRequest(page, TARGET_REQUEST_PREFIX, 10_000);
                 } catch (Exception e) {
                     log.info("页面刷新，重新监听请求！");
                     page.reload(new Page.ReloadOptions().setTimeout(10_000).setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
-                    request = browser.waitForTargetRequest(page, TARGET_REQUEST_PREFIX, 10_000);
+                    request = PlaywrightBrowser.waitForTargetRequest(page, TARGET_REQUEST_PREFIX, 10_000);
                 }
                 getRequestApi(room, request);
             }

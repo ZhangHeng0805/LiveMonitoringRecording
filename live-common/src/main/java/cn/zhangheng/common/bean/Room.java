@@ -35,6 +35,14 @@ public abstract class Room {
     protected String nickname;
     //是否在直播
     protected volatile boolean living;
+
+    public void setLiving(boolean living) {
+        this.living = living;
+        if (living && startTime == null) {
+            startTime = new Date();
+        }
+    }
+
     //开始时间
     protected Date startTime;
     //更新时间

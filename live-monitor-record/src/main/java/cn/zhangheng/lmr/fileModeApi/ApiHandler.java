@@ -9,21 +9,13 @@ import cn.zhangheng.lmr.FileModeMain;
 import cn.zhangheng.lmr.Main;
 import cn.zhangheng.lmr.RoomFileModel;
 import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpHandler;
 import com.zhangheng.bean.Message;
-import com.zhangheng.util.ThrowableUtil;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
-import java.io.OutputStream;
-import java.net.URI;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.util.AbstractMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -50,13 +42,13 @@ public class ApiHandler extends JSONHandler {
             if (model == null) {
                 msg.setMessage("没有找到开直播监听信息");
             } else {
-                msg.setObj(getResponseMap(model));
+                msg.setData(getResponseMap(model));
             }
         } else {
             List<Map<String, Object>> collect = FileModeMain.getRoomFileMap().values().stream()
                     .map(ApiHandler::getResponseMap)
                     .collect(Collectors.toList());
-            msg.setObj(collect);
+            msg.setData(collect);
         }
         responseJson(httpExchange, msg);
     }

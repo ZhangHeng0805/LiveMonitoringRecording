@@ -8,6 +8,10 @@ package cn.zhangheng.record;
  * @description:
  */
 
+import cn.hutool.core.date.DateUtil;
+import cn.hutool.core.text.StrBuilder;
+import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONUtil;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.zhangheng.util.TimeUtil;
 import okhttp3.WebSocket;
@@ -15,6 +19,10 @@ import org.apache.commons.io.IOUtils;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.Date;
+import java.util.List;
+import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 
 public class DouyinLiveDecoder {
@@ -58,7 +66,6 @@ public class DouyinLiveDecoder {
             }
             for (DouyinMessageOuter.Message message : response.getMessagesListList()) {
                 String method = message.getMethod();
-//                System.out.println(method);
                 byte[] body = message.getPayload().toByteArray();
                 switch (method) {
                     case "WebcastChatMessage":
@@ -89,13 +96,44 @@ public class DouyinLiveDecoder {
 //                        System.out.println("##### 直播间状态消息 #####");
                         control(body);
                         break;
+                    case "WebcastRoomStatsMessage":
+                        if (listener != null) {
+//                            System.out.println("##### 直播间在线统计消息 #####");
+                            DouyinMessageOuter.RoomStatsMessage msg = DouyinMessageOuter.RoomStatsMessage.parseFrom(body);
+                            String x = TimeUtil.toTime(msg.getCommon().getCreateTime()) + " - " + msg.getDisplayLong() + " (" + msg.getTotal() + ")";
+                            listener.online(x, msg);
+                        }
+                        break;
+                    case "WebcastInRoomBannerMessage":
+//                        DouyinMessageOuter.InRoomBannerMessage inRoomBannerMessage = DouyinMessageOuter.InRoomBannerMessage.parseFrom(body);
+//                        System.out.println("WebcastInRoomBannerMessage=== " + JSONUtil.parseObj(inRoomBannerMessage.getJson()).toStringPretty());
+                        break;
+                    case "WebcastGiftSortMessage":
+//                        DouyinMessageOuter.GiftSortMessage giftSortMessage = DouyinMessageOuter.GiftSortMessage.parseFrom(body);
+//                        System.out.println("WebcastGiftSortMessage=== "+giftSortMessage);
+                        break;
+                    case "WebcastRanklistHourEntranceMessage":
+//                        DouyinMessageOuter.RanklistHourEntranceMessage ranklistHourEntranceMessage = DouyinMessageOuter.RanklistHourEntranceMessage.parseFrom(body);
+//                        System.out.println("WebcastRanklistHourEntranceMessage=== "+ranklistHourEntranceMessage);
+                        break;
+                    case "WebcastAudioChatMessage":
+                        break;
+                    case "WebcastRoomRankMessage":
+//                        System.out.println("##### 直播间用户排名消息 #####");
+                        roomRank(body);
+                        break;
+                    case "WebcastRoomStreamAdaptationMessage":
+//                        DouyinMessageOuter.WebcastRoomStreamAdaptationMessage webcastRoomStreamAdaptationMessage = DouyinMessageOuter.WebcastRoomStreamAdaptationMessage.parseFrom(body);
+//                        System.out.println("WebcastRoomStreamAdaptationMessage=== " + webcastRoomStreamAdaptationMessage.toString());
+                        break;
                     default:
+//                        System.out.println("===== " + method);
+//                        System.out.println(new String(body, StandardCharsets.UTF_8));
                         break;
                 }
 
 
             }
-
 
         } catch (InvalidProtocolBufferException e) {
             System.err.println("不是标准弹幕包（心跳/握手包）");
@@ -104,70 +142,91 @@ public class DouyinLiveDecoder {
         }
     }
 
-    private void control(byte[] body) throws InvalidProtocolBufferException {
-        DouyinMessageOuter.ControlMessage msg = DouyinMessageOuter.ControlMessage.parseFrom(body);
-        String x = TimeUtil.getNowTime() + " - 直播间状态： " + msg.getStatus();
-//        System.out.println(x);
+    private void roomRank(byte[] body) throws InvalidProtocolBufferException {
         if (listener != null) {
+            DouyinMessageOuter.RoomRankMessage msg = DouyinMessageOuter.RoomRankMessage.parseFrom(body);
+            List<String> usres = msg.getRanksListList().stream().map(roomRank -> getUserStr(roomRank.getUser())).collect(Collectors.toList());
+            String x = TimeUtil.toTime(msg.getCommon().getCreateTime()) + " - 用户排名： " + String.join(" > ", usres);
+//        System.out.println(x);
+            listener.roomRank(x, msg);
+        }
+    }
+
+    private void control(byte[] body) throws InvalidProtocolBufferException {
+        if (listener != null) {
+            DouyinMessageOuter.ControlMessage msg = DouyinMessageOuter.ControlMessage.parseFrom(body);
+            String x = TimeUtil.getNowTime() + " - 直播间状态码: " + msg.getStatus();
+            if (msg.getStatus() == 3) {
+                x += ", 直播间已关闭!";
+            }
+//        System.out.println(x);
             listener.control(x, msg);
         }
     }
 
 
     private void stats(byte[] body) throws InvalidProtocolBufferException {
-        DouyinMessageOuter.RoomUserSeqMessage msg = DouyinMessageOuter.RoomUserSeqMessage.parseFrom(body);
-        String x = TimeUtil.getNowTime() + " - 在线人数: " + msg.getTotal() + " ,总人数: " + msg.getTotalUser() + " (" + msg.getTotalUserStr() + ")";
-//        System.out.println(x);
         if (listener != null) {
+            DouyinMessageOuter.RoomUserSeqMessage msg = DouyinMessageOuter.RoomUserSeqMessage.parseFrom(body);
+            String x = TimeUtil.getNowTime() + " - 在线人数: " + msg.getTotal() + " ,总人数: " + msg.getTotalUser() + " (" + msg.getTotalUserStr() + ")";
+//        System.out.println(x);
             listener.stats(x, msg);
         }
     }
 
     private void social(byte[] body) throws InvalidProtocolBufferException {
-        DouyinMessageOuter.SocialMessage msg = DouyinMessageOuter.SocialMessage.parseFrom(body);
-        String x = TimeUtil.getNowTime() + " - " + getUserStr(msg.getUser()) + " 关注了主播！主播粉丝数: " + msg.getFollowCount();
-//        System.out.println(x);
         if (listener != null) {
+            DouyinMessageOuter.SocialMessage msg = DouyinMessageOuter.SocialMessage.parseFrom(body);
+            String x = TimeUtil.getNowTime() + " - " + getUserStr(msg.getUser()) + " 关注了主播！";
+            if (msg.getFollowCount() > 0) {
+                x += "主播粉丝数: " + msg.getFollowCount();
+            }
+//        System.out.println(x);
             listener.social(x, msg);
         }
     }
 
     private void member(byte[] body) throws InvalidProtocolBufferException {
-        DouyinMessageOuter.MemberMessage msg = DouyinMessageOuter.MemberMessage.parseFrom(body);
-        String x = TimeUtil.getNowTime() + " - " + getUserStr(msg.getUser()) + " 来了！当前人数: " + msg.getMemberCount();
-//        System.out.println(x);
         if (listener != null) {
+            DouyinMessageOuter.MemberMessage msg = DouyinMessageOuter.MemberMessage.parseFrom(body);
+            String x = TimeUtil.getNowTime() + " - " + getUserStr(msg.getUser()) + " 来了！当前人数: " + msg.getMemberCount();
+//        System.out.println(x);
             listener.member(x, msg);
         }
     }
 
     public String getUserStr(DouyinMessageOuter.User user) {
-        return "(" + user.getPayGrade().getLevel() + ")" + user.getNickName() + "[" + user.getShortId() + "]";
+        if (user.getShortId() > 0) {
+            return "(" + user.getPayGrade().getLevel() + ")" + user.getNickName() + "[" + user.getShortId() + "]";
+        } else {
+            return user.getNickName();
+        }
     }
 
     private void like(byte[] body) throws InvalidProtocolBufferException {
-        DouyinMessageOuter.LikeMessage msg = DouyinMessageOuter.LikeMessage.parseFrom(body);
-        String x = TimeUtil.getNowTime() + " - " + getUserStr(msg.getUser()) + " 点赞×" + msg.getCount() + "个 - 总点赞数:" + msg.getTotal();
-//        System.out.println(x);
         if (listener != null) {
+            DouyinMessageOuter.LikeMessage msg = DouyinMessageOuter.LikeMessage.parseFrom(body);
+            String x = TimeUtil.getNowTime() + " - " + getUserStr(msg.getUser()) + " 点赞×" + msg.getCount() + "个 - 总点赞数:" + msg.getTotal();
+//        System.out.println(x);
             listener.like(x, msg);
         }
     }
 
     public void chat(byte[] body) throws InvalidProtocolBufferException {
-        DouyinMessageOuter.ChatMessage msg = DouyinMessageOuter.ChatMessage.parseFrom(body);
-        String x = TimeUtil.toTime(TimeUtil.UnixToDate(msg.getEventTime() + "")) + " - " + getUserStr(msg.getUser()) + " : " + msg.getContent();
-//        System.out.println(x);
         if (listener != null) {
+            DouyinMessageOuter.ChatMessage msg = DouyinMessageOuter.ChatMessage.parseFrom(body);
+            String x = TimeUtil.toTime(TimeUtil.unixToDate(msg.getEventTime() + "")) + " - " + getUserStr(msg.getUser()) + " : " + msg.getContent();
+//        System.out.println(x);
             listener.chat(x, msg);
         }
     }
 
     public void gift(byte[] body) throws InvalidProtocolBufferException {
-        DouyinMessageOuter.GiftMessage msg = DouyinMessageOuter.GiftMessage.parseFrom(body);
-        String x = TimeUtil.toTime(TimeUtil.UnixToDate(msg.getSendTime() + "")) + " - " + getUserStr(msg.getUser()) + " 给 " + msg.getToUser().getNickName() + " 送出 " + msg.getInteractGiftInfo() + " × " + msg.getTotalCount() + "个";
-//        System.out.println(x);
         if (listener != null) {
+            DouyinMessageOuter.GiftMessage msg = DouyinMessageOuter.GiftMessage.parseFrom(body);
+            String describe = msg.getCommon().getDescribe();
+            String x = TimeUtil.toTime(msg.getSendTime()) + " - " + getUserStr(msg.getUser()) + " : " + describe.substring(describe.indexOf(":") + 1);
+//        System.out.println(x);
             listener.gift(x, msg);
         }
     }

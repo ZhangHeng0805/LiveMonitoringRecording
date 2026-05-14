@@ -417,7 +417,7 @@
                     throw new Error('获取视频数据失败:'+data.message);
                 } 
                 // 渲染数据
-                renderData(data.obj,link);
+                renderData(data.data,link);
                 
             } catch (error) {
                 console.error('解析失败:', error);

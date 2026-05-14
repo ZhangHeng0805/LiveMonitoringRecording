@@ -363,7 +363,7 @@ public class PlaywrightBrowser implements AutoCloseable {
     }
 
 
-    public Request waitForTargetRequest(Page page, String target_request_prefix, long navigateTimeoutMs) {
+    public static Request waitForTargetRequest(Page page, String target_request_prefix, long navigateTimeoutMs) {
 
         try {
             // 1. 定义请求匹配规则：Predicate<Request>
@@ -405,7 +405,7 @@ public class PlaywrightBrowser implements AutoCloseable {
         }
     }
 
-    public Response waitForTargetResponse(Page page, String target_request_prefix, long navigateTimeoutMs) {
+    public static Response waitForTargetResponse(Page page, String target_request_prefix, long navigateTimeoutMs) {
         try {
             // 1. 定义响应匹配规则：Predicate<Request>
             Predicate<Response> requestPredicate = response ->
@@ -425,7 +425,7 @@ public class PlaywrightBrowser implements AutoCloseable {
             return page.waitForResponse(requestPredicate, waitOptions, callback);
 //            log.debug("已注册目标响应监听器，将在响应匹配时执行回调");
         } catch (Exception e) {
-            log.warn("注册响应监听器时发生异常", e);
+            log.warn("注册响应监听器时发生异常:{}", ThrowableUtil.getAllCauseMessage(e));
             throw e;
         }
     }
