@@ -6,6 +6,7 @@ package cn.zhangheng.douyin.browser; /**
  * @description:
  */
 
+import cn.zhangheng.browser.BrowserUtil;
 import cn.zhangheng.browser.PlaywrightBrowser;
 import cn.zhangheng.common.bean.Constant;
 import cn.zhangheng.common.bean.Setting;
@@ -67,7 +68,7 @@ public class DouyinPlaywright {
 
             if (room.isLiving()) {
                 // 等待一段时间，确保异步请求被捕获
-                Request request = browser.waitForTargetRequest(page, TARGET_REQUEST_PREFIX, 10_000);
+                Request request = BrowserUtil.waitForTargetRequest(page, TARGET_REQUEST_PREFIX, 10_000);
                 getRequestApi(room, request);
             } else {
                 try {

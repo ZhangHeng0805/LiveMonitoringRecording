@@ -782,7 +782,7 @@
                                           <span class="text-success"><i class="fa fa-play mr-1"></i>开始录制</span>
                                       </button>`
         }
-                                    <button onclick="actionSetting('${item.key}',${item.room.setting.delayIntervalSec},${item.room.setting.convertFlvToMp4})" class="inline-flex items-center px-3 py-1.5 bg-gray-500 border text-white border-gray-300 rounded-lg text-sm hover:bg-gray-800 transition-colors">
+                                    <button onclick="actionSetting('${item.key}','${btoa(JSON.stringify(item.room.setting))}')" class="inline-flex items-center px-3 py-1.5 bg-gray-500 border text-white border-gray-300 rounded-lg text-sm hover:bg-gray-800 transition-colors">
                                         <span class="text-white"> <i class="fa fa-cog mr-1"></i>设置</span>
                                     </button>
                                    </div>
@@ -912,7 +912,7 @@
                                        </button>`
         }
                                   <button onclick="
-                                    actionSetting('${item.key}',${item.room.setting.delayIntervalSec},${item.room.setting.convertFlvToMp4})"  class="inline-flex items-center px-3 py-1.5 bg-gray-500 border text-white border-gray-300 rounded-lg text-sm hover:bg-gray-800 transition-colors">
+                                    actionSetting('${item.key}','${btoa(JSON.stringify(item.room.setting))}')"  class="inline-flex items-center px-3 py-1.5 bg-gray-500 border text-white border-gray-300 rounded-lg text-sm hover:bg-gray-800 transition-colors">
                                     <span class="text-white"> <i class="fa fa-cog mr-1"></i>设置</span>
                                   </button>
                                 </div>
@@ -954,26 +954,45 @@
         });
     }
 
-    function actionSetting(roomKey, delayIntervalSec, convertFlvToMp4) {
+    function actionSetting(roomKey, settingStr) {
+        let setting = JSON.parse(atob(settingStr));
         showActionBeforeModal((key) => {
-            // console.log("操作设置", roomKey, delayIntervalSec);
+            console.log("操作设置", roomKey, setting);
             setModalContent(
                 `${roomKey} 监听设置`,
                 `<div id="inputContainer" class="mb-4">
                   <label for="delayIntervalSec" class="block text-sm font-medium text-gray-700 mb-1">刷新频率(s)</label>
                   <input type="number"
-                      value="${delayIntervalSec}"
+                      value="${setting.delayIntervalSec}"
                       id="delayIntervalSec"
                       class="input-field"
                       placeholder="请设置直播间刷新频率">
+                </div>
+                <div id="openSubtitleContainer" class="mb-4">
+                  <label class="flex items-center space-x-2 cursor-pointer">
+                    <input type="checkbox"
+                        id="openSubtitle"
+                        class="h-4 w-4 text-primary focus:ring-primary"
+                        ${setting.openSubtitle ? 'checked' : ''}>
+                    <span class="text-sm font-medium text-gray-700">开启弹幕记录</span>
+                  </label>
                 </div>
                 <div id="convertFileContainer" class="mb-4">
                   <label class="flex items-center space-x-2 cursor-pointer">
                     <input type="checkbox"
                         id="convertFlvToMp4"
                         class="h-4 w-4 text-primary focus:ring-primary"
-                        ${convertFlvToMp4 ? 'checked' : ''}>
+                        ${setting.convertFlvToMp4 ? 'checked' : ''}>
                     <span class="text-sm font-medium text-gray-700">转换录制文件(FLV转MP4)</span>
+                  </label>
+                </div>
+                <div id="isLoopContainer" class="mb-4">
+                  <label class="flex items-center space-x-2 cursor-pointer" title="直播结束后是否继续监听">
+                    <input type="checkbox"
+                        id="isLoop"
+                        class="h-4 w-4 text-primary focus:ring-primary"
+                        ${setting.isLoop ? 'checked' : ''}>
+                    <span class="text-sm font-medium text-gray-700">是否循环监听</span>
                   </label>
                 </div>
                 <div id="cookieContainer" class="mb-4">
@@ -998,6 +1017,8 @@
                         onClick: () => {
                             const delayIntervalSecInput = document.getElementById("delayIntervalSec").value;
                             const convertFlvToMp4Checked = document.getElementById("convertFlvToMp4").checked;
+                            const openSubtitleChecked = document.getElementById("openSubtitle").checked;
+                            const isLoopChecked = document.getElementById("isLoop").checked;
                             const cookieValueInput = document.getElementById("cookieValue").value.trim();
                             const errorElement = document.getElementById("inputError");
                             // 简单的输入验证
@@ -1014,6 +1035,8 @@
                                 actionKey: key,
                                 delayIntervalSec: delayIntervalSecInput,
                                 convertFlvToMp4: convertFlvToMp4Checked,
+                                openSubtitle: openSubtitleChecked,
+                                isLoop: isLoopChecked,
                                 cookie: cookieValueInput // 添加Cookie参数
                             }).then(msg => {
                                 showActionAfterModal(msg);
@@ -1029,6 +1052,10 @@
     }
 
 
+    /**
+     * 操作秘钥验证
+     * @param onSubmit
+     */
     function showActionBeforeModal(onSubmit) {
         setModalContent(
             "操作验证",
@@ -1053,7 +1080,7 @@
                         "bg-primary text-white hover:bg-primary/90 focus:ring-primary",
                     onClick: () => {
                         let val = document.getElementById("actionKey").value;
-                        console.log("秘钥", val);
+                        // console.log("秘钥", val);
                         if (val.length < 1) {
                             let inputError = document.getElementById("inputError");
                             inputError.textContent = "输入内容不能为空！";

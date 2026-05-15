@@ -3,7 +3,7 @@ package cn.zhangheng.douyin.browser;
 import cn.hutool.core.text.UnicodeUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.zhangheng.browser.BrowserAPI;
-import cn.zhangheng.browser.PlaywrightBrowser;
+import cn.zhangheng.browser.BrowserUtil;
 import cn.zhangheng.douyin.DouYinRoom;
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.LoadState;
@@ -11,10 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -151,7 +148,7 @@ public class DouYinBrowserFactory {
         BrowserContext context = page.context();
         if (StrUtil.isNotBlank(room.getCookie()) && context.cookies(roomUrl).isEmpty()) {
             String host = new URL(roomUrl).getHost();
-            context.addCookies(PlaywrightBrowser.parseCookieString(host, room.getCookie()));
+            context.addCookies(BrowserUtil.parseCookieString(host, room.getCookie()));
             log.debug("{}设置cookie成功！", host);
         }
     }

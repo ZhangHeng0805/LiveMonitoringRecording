@@ -17,7 +17,6 @@ import com.zhangheng.bean.Message;
 import com.zhangheng.util.ThrowableUtil;
 
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -209,6 +208,14 @@ public class ActionHandler extends JSONHandler {
             if (query.containsKey("convertFlvToMp4")) {
                 boolean convertFlvToMp4 = Boolean.parseBoolean(query.get("convertFlvToMp4"));
                 monitorMain.getRoom().getSetting().setConvertFlvToMp4(convertFlvToMp4);
+            }
+            if (query.containsKey("openSubtitle")) {
+                boolean openSubtitle = Boolean.parseBoolean(query.get("openSubtitle"));
+                monitorMain.getRoom().getSetting().setOpenSubtitle(openSubtitle);
+            }
+            if (query.containsKey("isLoop")) {
+                boolean isLoop = Boolean.parseBoolean(query.get("isLoop"));
+                monitorMain.getRoom().getSetting().setLoop(isLoop);
             }
             if (query.containsKey("cookie")) {
                 String cookie = query.get("cookie");

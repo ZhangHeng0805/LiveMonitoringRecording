@@ -6,6 +6,7 @@ import cn.hutool.json.JSONConfig;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import cn.zhangheng.browser.BrowserAPI;
+import cn.zhangheng.browser.BrowserUtil;
 import cn.zhangheng.browser.PlaywrightBrowser;
 import cn.zhangheng.browser.UserAgentUtil;
 import cn.zhangheng.common.bean.Constant;
@@ -28,8 +29,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import static cn.zhangheng.browser.PlaywrightBrowser.*;
 
 /**
  * @author: ZhangHeng
@@ -71,19 +70,19 @@ public class DouYinVideoParse {
         Page page = null;
         boolean headless = setting == null || !Objects.equals(setting.getBrowserHeadless(), Boolean.FALSE);
         try (Playwright playwright = Playwright.create();
-             Browser browser = playwright.chromium().launch(getLaunchOptions(Constant.User_Agent, headless))
+             Browser browser = playwright.chromium().launch(BrowserUtil.getLaunchOptions(Constant.User_Agent, headless))
         ) {
             Browser.NewContextOptions contextOptions = new Browser.NewContextOptions().setUserAgent(UserAgentUtil.getRandomUser_Agent());
             BrowserContext context = browser.newContext(contextOptions);
             page = context.newPage();
-            navigatePage(link, page, WaitUntilState.DOMCONTENTLOADED);
+            BrowserUtil.navigatePage(link, page, WaitUntilState.DOMCONTENTLOADED);
             Response response;
             try {
-                response = waitForTargetResponse(page, browserApi.getUrlPrefix(), 10_000);
+                response = BrowserUtil.waitForTargetResponse(page, browserApi.getUrlPrefix(), 10_000);
             } catch (Exception e) {
                 log.info("页面刷新，重新监听请求！");
                 page.reload(new Page.ReloadOptions().setTimeout(10_000).setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
-                response = waitForTargetResponse(page, browserApi.getUrlPrefix(), 15_000);
+                response = BrowserUtil.waitForTargetResponse(page, browserApi.getUrlPrefix(), 15_000);
             }
             browserApi.setResponseBody(response.text());
             success = true;
@@ -125,7 +124,7 @@ public class DouYinVideoParse {
                     } catch (MalformedURLException ignored) {
                     }
                     if (host != null) {
-                        context.addCookies(PlaywrightBrowser.parseCookieString(host, cookie));
+                        context.addCookies(BrowserUtil.parseCookieString(host, cookie));
                         log.debug("设置cookie成功！");
                     }
                 }

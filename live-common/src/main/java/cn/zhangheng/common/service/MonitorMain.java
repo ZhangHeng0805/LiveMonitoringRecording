@@ -1,7 +1,5 @@
 package cn.zhangheng.common.service;
 
-import cn.hutool.core.codec.Base64Encoder;
-import cn.hutool.http.HttpUtil;
 import cn.hutool.json.JSONUtil;
 import cn.zhangheng.common.bean.Constant;
 import cn.zhangheng.common.bean.Room;
@@ -15,7 +13,6 @@ import cn.zhangheng.common.util.NotificationUtil;
 import cn.zhangheng.common.util.TrayIconUtil;
 import cn.zhangheng.common.video.FlvToMp4;
 import cn.zhangheng.common.video.player.LocalServerFlvPlayer;
-import com.zhangheng.file.FileOperation;
 import com.zhangheng.file.FileUtil;
 import com.zhangheng.util.EncryptUtil;
 import com.zhangheng.util.NetworkUtil;
@@ -23,12 +20,9 @@ import com.zhangheng.util.ThrowableUtil;
 import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import sun.misc.BASE64Encoder;
 
 import java.awt.event.ActionEvent;
-import java.io.File;
 import java.io.IOException;
-import java.net.URLEncoder;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
