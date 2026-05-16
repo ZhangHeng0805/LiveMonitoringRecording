@@ -135,6 +135,8 @@ public class FileModeMain {
             Setting setting = json.get("setting", Setting.class);
             if (setting != null) {
                 setting.setRunMode(RunMode.FILE);
+            } else {
+                log.warn("{}监听文件没有setting", file);
             }
             //直播间标识
             key = platform.name() + "-" + id;

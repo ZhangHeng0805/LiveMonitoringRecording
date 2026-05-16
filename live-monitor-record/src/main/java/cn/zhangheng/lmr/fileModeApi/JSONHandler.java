@@ -24,20 +24,21 @@ public abstract class JSONHandler extends MyHandler {
         this.prefix = prefix;
     }
 
-    protected  void responseJson(HttpExchange httpExchange, Object json) throws IOException {
+    protected void responseJson(HttpExchange httpExchange, Object json) throws IOException {
         responseJson(httpExchange, JSONUtil.toJsonStr(json), 200);
     }
 
     protected void responseJson(HttpExchange httpExchange, String json, int responseCode) throws IOException {
 //        System.out.println(json);
-        String contentType = "application/json; charset=" + charset.name();
-        httpExchange.getResponseHeaders().set("Content-Type", contentType);
-        httpExchange.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
-        byte[] bytes = json.getBytes(charset);
-        httpExchange.sendResponseHeaders(responseCode, bytes.length);
         try (OutputStream os = httpExchange.getResponseBody()) {
+            String contentType = "application/json; charset=" + charset.name();
+            httpExchange.getResponseHeaders().set("Content-Type", contentType);
+            httpExchange.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
+            byte[] bytes = json.getBytes(charset);
+            httpExchange.sendResponseHeaders(responseCode, bytes.length);
             os.write(bytes);
         } catch (Exception e) {
+            sendErrorResponse(httpExchange, e);
             log.error("响应JSON响应失败: {}, 错误: {}", json, ThrowableUtil.getAllCauseMessage(e));
         } finally {
             httpExchange.close();

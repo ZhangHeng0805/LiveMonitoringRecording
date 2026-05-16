@@ -5,6 +5,7 @@
 ## 功能特性
 
 - **直播监控**：实时监控直播间状态（如观看人数、直播状态等）
+- **抖音直播弹幕**：实时获取直播弹幕信息[聊天，进场，点赞，统计，在线，排名，关注，状态，送礼]`礼物信息需要设置账号Cookie`（弹幕信息本地持久化保存，直播监听完成可以将聊天弹幕信息自动装换为顶部飘动形式的ASS字幕文件）
 - **直播录制**：支持录制直播画面，提供两种录制方式：
     - Java原生录制（无需依赖FFmpeg）
     - FFmpeg录制（需要配置FFmpeg路径）
@@ -12,10 +13,9 @@
 - **FLV播放器**：内置简易FLV视频播放服务，```默认端口8000```
 - **直播监听可视化界面**：实时监控各平台直播状态与录制信息，```默认端口8005，若端口占用，则自动向后累加，操作秘钥为设备标识ID```
 
-
 ## 直播监控可视化平台
-![屏幕截图](image/8-10-2025_134650_localhost.jpeg)
 
+![屏幕截图](image/8-10-2025_134650_localhost.jpeg)
 
 ## 项目结构
 
@@ -24,10 +24,10 @@
 ├─ douyin-start     [抖音监控录制模块]
 ├─ kuaishou-start   [快手监控录制模块]
 ├─ live-common      [公共模块，包含核心功能与工具类]
+├─ browser-utils    [浏览器模块，以浏览器模拟请求]
+├─ douyin-fetcher   [抖音直播弹幕模块，获取抖音直播弹幕]
 ├─ live-monitor-record [主程序模块，集成所有平台功能]
 ```
-
-
 
 ## 运行环境
 
@@ -35,17 +35,18 @@
 - **操作系统**：
     - 使用Java跨平台语言，理论上支持Windows，MacOS，Linux等所有主流操作系统，目前只验证了Windows操作系统
 - **运行环境**：
-  - JDK 1.8 或更高
-  - 配置文件 xxxr.setting
-  - 激活凭证文件 xxxr-activation.lic (联系作者获取)
-  - ffmpeg工具，根据不同的操作系统去下载对应的ffmpeg，下载完成后在配置文件中配置ffmpeg路径
+    - JDK 1.8 或更高
+    - 配置文件 xxxr.setting
+    - 激活凭证文件 xxxr-activation.lic (联系作者获取)
+    - ffmpeg工具，根据不同的操作系统去下载对应的ffmpeg，下载完成后在配置文件中配置ffmpeg路径
+
 ## 启动方式 : [说明文档](instructions.md)
 
 ### 通用启动方式
 
 1. **编译打包**：项目打包后会在 `target/` 目录生成可执行 JAR 文件，**注意：运行程序需要激活凭证文件，获取文件请联系作者**
 
-2. **运行脚本命令**：
+2. **~~运行脚本命令~~**：
 
     - **集成模块**（支持抖音/B站）：
       ```bash
@@ -65,10 +66,10 @@
       java -jar douyin-start--2.0.jar 622216334529 true
       ```
 
-3. **交互式启动**：不带参数运行后，通过命令行输入直播间信息启动
+3. **~~交互式启动~~**：不带参数运行后，通过命令行输入直播间信息启动
 
-3. **监听文件启动**：通过读取监听文件（文件名后缀为```.room.json```）的形式启动，一个直播间一个监听文件，将要监听的直播文件统一放入同一文件夹中，程序启动后会自动读取指定目录中的监听文件，可以一个进程同时监听多个直播间，
-监听文件格式：
+4. **监听文件启动**：通过读取监听文件（文件名后缀为```.room.json```）的形式启动，一个直播间一个监听文件，将要监听的直播文件统一放入同一文件夹中，程序启动后会自动读取指定目录中的监听文件，可以一个进程同时监听多个直播间，监听文件格式：[示例](小兰花.room.json)
+
 ```json
 //复制粘贴时，请去掉注释内容
 {
@@ -85,6 +86,8 @@
     "delayIntervalSec": 30,
     //选填，监听通知接口地址
     "xiZhiUrl": "",
+    //选填，是否开启抖音弹幕记录
+    "openSubtitle": true,
     //选填，根据直播平台配置Cookie
     "cookieBili": "",
     "cookieDouYin": "",
@@ -92,6 +95,7 @@
   }
 }
 ```
+
 - **集成模块**：
   ```bash
   java -cp live-monitor-record-x.x.jar cn.zhangheng.lmr.FileModeMain [监听文件目录]
@@ -102,6 +106,7 @@
   ```
 
 ### 获取设备标识ID方式
+
 ***运行命令***：
 
 - **集成模块**：
@@ -124,49 +129,66 @@
   pause
   ```
 
+### 获取登录Cookie信息
+
+抖音示例：（完成登录后自动获取信息，完成后保存至文件中）
+
+```bash
+java -cp live-monitor-record-3.5.jar cn.zhangheng.douyin.browser.DouYinLogin
+pause
+```
+
+B站示例：（登录完成后，需要**手动将鼠标移动至账号头像处**帮助程序识别获取，完成后保存至文件中）
+
+```bash
+java -cp live-monitor-record-3.5.jar cn.zhangheng.browser.login.BiliLogin
+pause
+```
+
+### 抖音直播弹幕获取
+
+示例：启动后按照命令行提示输入即可，注意命令行窗口文字编码问题，输入Cookie时可以直接输入，也可以通过输入文件引用的形式`file:douyin-cookie.txt`，没有账号Cookie获取不到礼物信息
+
+```bash
+java -cp live-monitor-record-3.5.jar cn.zhangheng.douyin.browser.DouYinWebcast
+pause
+```
+
 ## 停止运行
+
 1. **系统托盘操作**：
-建议通过 **任务栏图标右键菜单** 退出程序，确保录制任务正常终止。  
-若使用FFmpeg录制，**必须通过右键退出**，否则可能导致录制进程未终止。
+   建议通过 **任务栏图标右键菜单** 退出程序，确保录制任务正常终止。  
+   若使用FFmpeg录制，**必须通过右键退出**，否则可能导致录制进程未终止。
 2. **监控可视化界面操作**：
-打开直播监控界面后，可通过点击**停止监控**的操作按钮实现停止运行，若所有直播监控都停止了，那么程序将自动终止。
+   打开直播监控界面后，可通过点击**停止监控**的操作按钮实现停止运行，若所有直播监控都停止了，那么程序将自动终止。
 
 ## 配置说明
 
-配置文件：`xxxr.setting`
+配置文件：[xxxr.setting](xxxr.setting)
 
 ```properties
 # FLV播放器服务端口
 server.flvPlayer.port=8000
-
 # 息知通知地址（可选）
 # notice.xiZhi.url=https://xizhi.qqoq.net/xxx.send
 # notice.xiZhi.url=https://xizhi.qqoq.net/xxx.channel
-
 # 是否转换录制的视频为MP4格式（需要配置FFmpeg）
 record.FlvToMp4=true
-
 # 录制类型：0-Java录制，1-FFmpeg录制
 record.type=1
-
 # FFmpeg可执行文件路径
 record.ffmpegPath=bin/ffmpeg.exe
-
 # 激活凭证文件路径（默认路径: xxxr-activation.lic）
 # activation.filePath=xxxr-activation.lic
-
 # 是否循环监听直播（直播结束后重新监听）
 record.isLoop=true
-
 # 监听间隔时间（秒）
-monitor.delayIntervalSec=10
+monitor.delayIntervalSec=30
 #是否隐藏浏览器（默认隐藏）
-#monitor.browserHeadless=true
-
+#monitor.browserHeadless=false
 # 直播开始/结束触发的快捷键（英文小写，逗号分隔）
 living.start.shortcut=
 living.end.shortcut=
-
 # 各平台Cookie配置（可直接配置或通过文件引用，文件引用示例 file:Bili_Cookie.txt）
 Cookie.Bilibili=
 Cookie.DouYin=
@@ -174,7 +196,9 @@ Cookie.KuaiShou=
 ```
 
 ## 开发者信息
+
 - **作者**：ZhangHeng0805（星曦向荣）
-- **项目地址**：[Gitee 仓库](https://gitee.com/ZhangHeng0805/LiveMonitoringRecording) | [GitHub 仓库](https://github.com/ZhangHeng0805/LiveMonitoringRecording)
+- **项目地址
+  **：[Gitee 仓库](https://gitee.com/ZhangHeng0805/LiveMonitoringRecording) | [GitHub 仓库](https://github.com/ZhangHeng0805/LiveMonitoringRecording)
 - **演示视频**: [bilibili](https://www.bilibili.com/video/BV1JMhzzuE1G/) |  [抖音](https://v.douyin.com/uPsZUQICC7w/)
 - **交流QQ群**：573648936 ![573648936](image/4a074f80d4f2ed6935e084f768857458.jpg)

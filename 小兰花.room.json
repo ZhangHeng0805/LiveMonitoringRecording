@@ -4,7 +4,7 @@
   "platform": "DouYin",
   "setting": {
     "runMode": "FILE",
-    "xiZhiUrl":"https://xizhi.qqoq.net/XZe48d6af60ade51d61cb2c78d96dcf633.send",
+    "xiZhiUrl": "",
     "delayIntervalSec": 30,
     "openSubtitle": true
   }

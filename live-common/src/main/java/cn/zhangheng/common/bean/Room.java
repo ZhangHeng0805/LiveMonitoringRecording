@@ -3,6 +3,7 @@ package cn.zhangheng.common.bean;
 import cn.hutool.core.util.StrUtil;
 import lombok.Data;
 import lombok.Getter;
+import lombok.ToString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,6 +19,7 @@ import java.util.Map;
  * @description: 直播间抽象类
  */
 @Data
+@ToString(exclude = {"cookie"})
 public abstract class Room {
     private static final Logger log = LoggerFactory.getLogger(Room.class);
     protected String id;
@@ -60,7 +62,7 @@ public abstract class Room {
     //直播间的地址
     protected String roomUrl;
 
-    private Setting setting;
+    private volatile Setting setting;
     //平台
     protected Platform platform;
 

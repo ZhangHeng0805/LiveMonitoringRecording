@@ -166,9 +166,9 @@ public abstract class ApplicationMain<R extends Room> {
     private void listen(R room, Setting setting, boolean isRecord) {
         boolean isLoop;
         this.room = room;
-        Setting srcSetting = new Setting();
         //是否循环监听
         do {
+            Setting srcSetting = new Setting();
             if (setting != null) {
                 try {
                     ObjectPropertyUpdater.updateDifferentProperties(setting, srcSetting);

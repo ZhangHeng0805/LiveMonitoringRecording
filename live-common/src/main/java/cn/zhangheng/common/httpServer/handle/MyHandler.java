@@ -4,6 +4,7 @@ import cn.hutool.core.util.StrUtil;
 import cn.zhangheng.common.bean.Constant;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
+import com.zhangheng.util.ThrowableUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,7 +29,7 @@ public abstract class MyHandler implements HttpHandler {
     private static final Logger log = LoggerFactory.getLogger(ProxyHandler.class);
     protected final Charset charset = StandardCharsets.UTF_8;
 
-    protected String getIndexPath(HttpExchange httpExchange,String prefix) {
+    protected String getIndexPath(HttpExchange httpExchange, String prefix) {
         URI requestURI = httpExchange.getRequestURI();
         String path = requestURI.getPath();
         return StrUtil.subAfter(path, prefix, true);
@@ -65,12 +66,22 @@ public abstract class MyHandler implements HttpHandler {
             log.warn("响应已发送，无法再发送错误信息: {}", message);
             return;
         }
-        String response = "<html><head><title>" + Constant.Application + "</title></head><body><h1>" + statusCode + " - " + message + "</h1></body></html>";
-        exchange.getResponseHeaders().set("Content-Type", "text/html; charset=" + charset.name());
-        byte[] bytes = response.getBytes(charset);
-        exchange.sendResponseHeaders(statusCode, bytes.length);
         try (OutputStream os = exchange.getResponseBody()) {
+            String response = "<html><head><title>" + Constant.Application + "</title></head><body><h1>" + statusCode + " - " + message + "</h1></body></html>";
+            exchange.getResponseHeaders().set("Content-Type", "text/html; charset=" + charset.name());
+            byte[] bytes = response.getBytes(charset);
+            exchange.sendResponseHeaders(statusCode, bytes.length);
             os.write(bytes);
+        } catch (Exception e) {
+            log.error("响应JSON响应失败: {}, 错误: {}", message, ThrowableUtil.getAllCauseMessage(e));
+        } finally {
+            exchange.close();
         }
     }
+
+    // 发送错误响应
+    protected void sendErrorResponse(HttpExchange exchange, Throwable e) throws IOException {
+        sendErrorResponse(exchange, 500, ThrowableUtil.toString(e));
+    }
+
 }

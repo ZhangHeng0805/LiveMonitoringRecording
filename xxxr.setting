@@ -15,10 +15,12 @@ record.ffmpegPath=bin/ffmpeg.exe
 #activation.filePath=
 #是否循环监听直播（直播结束后，重新监听）
 record.isLoop=true
+#是否开启弹幕记录（目前只对抖音有效）
+record.openSubtitle=true
 #监听间隔时长（秒）
 monitor.delayIntervalSec=30
 #是否隐藏监听浏览器
-#monitor.browser.headless=true
+#monitor.browser.headless=false
 #监听浏览器是否每次打开页面时重置状态
 monitor.browser.isPageClear=false
 #更新BrowserContext的请求次数，默认不更新

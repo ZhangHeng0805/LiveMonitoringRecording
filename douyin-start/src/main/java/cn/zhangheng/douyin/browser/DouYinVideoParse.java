@@ -116,7 +116,7 @@ public class DouYinVideoParse {
             //设置cookie
             if (setting != null) {
                 BrowserContext context = page.context();
-                String cookie = setting.getCookieDouYin();
+                String cookie = setting.parseCookie(setting.getCookieDouYin());
                 if (StrUtil.isNotBlank(cookie) && context.cookies(link).isEmpty()) {
                     String host = null;
                     try {

@@ -7,6 +7,8 @@ import cn.zhangheng.common.setting.PropertiesConfig;
 import cn.zhangheng.common.setting.PropertyValue;
 import com.zhangheng.file.FileUtil;
 import lombok.Data;
+import lombok.Getter;
+import lombok.ToString;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
@@ -148,13 +150,11 @@ public class Setting {
      * B站的Cookie
      */
     @PropertyValue("Cookie.Bilibili")
+    @ToString.Exclude
     private String cookieBili;
 
-    public String getCookieBili() {
-        return setCookie(cookieBili);
-    }
 
-    private String setCookie(String cookie) {
+    public String parseCookie(String cookie) {
         if (StrUtil.isNotBlank(cookie)) {
             if (cookie.startsWith("file:")) {
                 cookie = FileUtil.readString(new File(cookie.substring(5).trim()), StandardCharsets.UTF_8).trim();
@@ -169,20 +169,15 @@ public class Setting {
      * 抖音的Cookie
      */
     @PropertyValue("Cookie.DouYin")
+    @ToString.Exclude
     private String cookieDouYin;
 
-    public String getCookieDouYin() {
-        return setCookie(cookieDouYin);
-    }
 
     /**
      * 快手的Cookie
      */
     @PropertyValue("Cookie.KuaiShou")
+    @ToString.Exclude
     private String cookieKuaiShou;
-
-    public String getCookieKuaiShou() {
-        return setCookie(cookieKuaiShou);
-    }
 
 }

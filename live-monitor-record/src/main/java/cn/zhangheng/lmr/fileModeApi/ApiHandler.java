@@ -34,23 +34,28 @@ public class ApiHandler extends JSONHandler {
 
     @Override
     public void handle(HttpExchange httpExchange) throws IOException {
-        String indexPath = getIndexPath(httpExchange, prefix);
-        Message msg = new Message();
-//        ConcurrentHashMap<String, Main> mainMap = FileModeMain.getRoomFileMap();
-        if (StrUtil.isNotBlank(indexPath)) {
-            RoomFileModel model = FileModeMain.getModelById(indexPath);
-            if (model == null) {
-                msg.setMessage("没有找到开直播监听信息");
+        try {
+            String indexPath = getIndexPath(httpExchange, prefix);
+            Message<Object> msg = new Message<>();
+            if (StrUtil.isNotBlank(indexPath)) {
+                RoomFileModel model = FileModeMain.getModelById(indexPath);
+                if (model == null) {
+                    msg.setMessage("没有找到开直播监听信息");
+                } else {
+                    msg.setData(getResponseMap(model));
+                }
             } else {
-                msg.setData(getResponseMap(model));
+                List<Map<String, Object>> collect = FileModeMain.getRoomFileMap().values().stream()
+                        .map(ApiHandler::getResponseMap)
+                        .collect(Collectors.toList());
+                msg.setData(collect);
             }
-        } else {
-            List<Map<String, Object>> collect = FileModeMain.getRoomFileMap().values().stream()
-                    .map(ApiHandler::getResponseMap)
-                    .collect(Collectors.toList());
-            msg.setData(collect);
+            responseJson(httpExchange, msg);
+        } catch (Exception e) {
+            log.error(e.getMessage(),e);
+            sendErrorResponse(httpExchange, e);
+            throw e;
         }
-        responseJson(httpExchange, msg);
     }
 
 
