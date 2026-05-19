@@ -5,11 +5,9 @@ import cn.zhangheng.browser.BrowserUtil;
 import cn.zhangheng.browser.UserAgentUtil;
 import cn.zhangheng.common.bean.Setting;
 import cn.zhangheng.common.util.LogUtil;
-import cn.zhangheng.douyin.DouYinRoom;
-import cn.zhangheng.record.DouYinWebSocket;
-import cn.zhangheng.record.DouyinMessageOuter;
-import cn.zhangheng.record.MessageListener;
-import cn.zhangheng.record.WebSocketModel;
+import cn.zhangheng.douyin.bean.DouYinCounter;
+import cn.zhangheng.douyin.bean.DouYinRoom;
+import cn.zhangheng.record.*;
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.WaitUntilState;
 import com.zhangheng.util.TimeUtil;
@@ -42,14 +40,13 @@ public class DouYinWebcast {
     @Getter
     private volatile boolean isRunning = false;
     private Thread webcastThread;
-    @Setter
     private MessageListener messageListener;
+    private SocketListener socketListener;
     private DouYinWebSocket socket;
 
 
     public DouYinWebcast(DouYinRoom room) {
         this.room = room;
-
     }
 
     public static void main(String[] args) throws IOException {
@@ -70,99 +67,96 @@ public class DouYinWebcast {
         }
         DouYinRoom room = new DouYinRoom(id);
         room.setSetting(setting);
-        WebSocketModel wss = getWss(room);
-        if (wss.isUse()) {
-            System.out.println(room.getNickname() + " 直播间已开启！弹幕连接中。。。");
-            DouYinWebSocket socket = getDouYinWebSocket(room);
-            socket.connect(wss);
-        }
-
+        room.setCounter(new DouYinCounter());
+        DouYinWebcast webcast = new DouYinWebcast(room);
+        webcast.setSocketListener(new SocketListener() {
+            @Override
+            public void onOpen(okhttp3.WebSocket ws, okhttp3.Response response) {
+                try {
+                    String fileName = TimeUtil.toTime(room.getStartTime(), "yyyy-MM-dd HH-mm-ss") + "直播弹幕.log";
+                    LogUtil logUtil = new LogUtil(room, fileName);
+                    webcast.setMessageListener(getDouYinWebSocketMessageListener(room, webcast, logUtil));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+        webcast.start();
     }
 
-    private static DouYinWebSocket getDouYinWebSocket(DouYinRoom room) throws IOException {
-        String fileName = TimeUtil.toTime(room.getStartTime(), "yyyy-MM-dd HH-mm-ss") + "直播弹幕.log";
-        LogUtil logUtil = new LogUtil(room, fileName);
-        DouYinWebSocket socket = new DouYinWebSocket();
-        socket.setMessageListener(new MessageListener() {
+    private static MessageListener getDouYinWebSocketMessageListener(DouYinRoom room, DouYinWebcast webcast, LogUtil logUtil) throws IOException {
+
+        return new MessageListener() {
             @Override
             public void chat(String info, DouyinMessageOuter.ChatMessage msg) {
                 String x = "【聊天】" + info;
                 System.out.println(x);
-                if (logUtil != null)
-                    logUtil.highLog(x);
+                logUtil.highLog(x);
             }
 
             @Override
             public void gift(String info, DouyinMessageOuter.GiftMessage msg) {
                 String x = "【礼物】" + info;
                 System.out.println(x);
-                if (logUtil != null)
-                    logUtil.highLog(x);
+                logUtil.highLog(x);
+                room.getCounter().setTotalGift(info);
             }
 
             @Override
             public void stats(String info, DouyinMessageOuter.RoomUserSeqMessage msg) {
                 String x = "【统计】" + info;
                 System.out.println(x);
-                if (logUtil != null)
-                    logUtil.highLog(x);
+                logUtil.highLog(x);
             }
 
             @Override
             public void online(String info, DouyinMessageOuter.RoomStatsMessage msg) {
                 String x = "【在线】" + info;
                 System.out.println(x);
-                if (logUtil != null)
-                    logUtil.highLog(x);
+                logUtil.highLog(x);
+                room.getCounter().setMaxOnlineUsers(msg.getTotal());
             }
 
             @Override
             public void roomRank(String info, DouyinMessageOuter.RoomRankMessage msg) {
                 String x = "【排名】" + info;
                 System.out.println(x);
-                if (logUtil != null)
-                    logUtil.highLog(x);
+                logUtil.highLog(x);
             }
 
             @Override
             public void member(String info, DouyinMessageOuter.MemberMessage msg) {
                 String x = "【进场】" + info;
                 System.out.println(x);
-                if (logUtil != null)
-                    logUtil.highLog(x);
+                logUtil.highLog(x);
             }
 
             @Override
             public void like(String info, DouyinMessageOuter.LikeMessage msg) {
                 String x = "【点赞】" + info;
                 System.out.println(x);
-                if (logUtil != null)
-                    logUtil.highLog(x);
+                logUtil.highLog(x);
             }
 
             @Override
             public void social(String info, DouyinMessageOuter.SocialMessage msg) {
                 String x = "【关注】" + info;
                 System.out.println(x);
-                if (logUtil != null)
-                    logUtil.highLog(x);
+                logUtil.highLog(x);
             }
 
             @Override
             public void control(String info, DouyinMessageOuter.ControlMessage msg) {
                 String x = "【状态】" + info;
-                if (logUtil != null)
-                    logUtil.highLog(x);
-                System.out.println(x);
+                x += room.getCounter().toString();
+                logUtil.highLog(x);
                 if (msg.getStatus() == 3) {
-                    System.out.println("直播间已关闭！");
-                    socket.close();
-                    if (logUtil != null)
-                        logUtil.close();
+                    webcast.stop();
+                    logUtil.close();
                 }
+                System.out.println(x);
             }
-        });
-        return socket;
+        };
     }
 
     public void start() {
@@ -181,6 +175,8 @@ public class DouYinWebcast {
                         room.setSubtitleRunning(true);
                         socket = new DouYinWebSocket();
                         socket.setMessageListener(messageListener);
+                        socket.setSocketListener(socketListener);
+                        log.info((room.getNickname() + " 直播间已开启！弹幕连接中。。。"));
                         socket.connect(wss);
                     } else {
                         log.warn("获取直播弹幕wss重试{}次,仍然获取失败！", tryCount);
@@ -196,6 +192,15 @@ public class DouYinWebcast {
         webcastThread.start();
     }
 
+    public void setMessageListener(MessageListener messageListener) {
+        this.messageListener = messageListener;
+        if (socket != null) socket.setMessageListener(messageListener);
+    }
+
+    public void setSocketListener(SocketListener socketListener) {
+        this.socketListener = socketListener;
+        if (socket != null) socket.setSocketListener(socketListener);
+    }
 
     public void stop() {
         isRunning = false;

@@ -7,10 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import okio.ByteString;
 
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -26,10 +23,15 @@ public class DouYinWebSocket {
     private final OkHttpClient client;
     private WebSocket webSocket;
     private DouyinLiveDecoder douyinLiveDecoder;
-    @Setter
     private MessageListener messageListener;
+    @Setter
+    private SocketListener socketListener;
     // 心跳定时器（每30秒发一次ping）
     private final ScheduledExecutorService heartbeatExecutor = Executors.newSingleThreadScheduledExecutor();
+    // 2. 心跳开关：控制暂停/发送
+    private final AtomicBoolean heartbeatEnabled = new AtomicBoolean(false);
+    // 3. 记录当前心跳任务，方便取消（避免重复任务）
+    private ScheduledFuture<?> heartbeatFuture;
     @Getter
     private volatile boolean isRunning = false;
     @Getter
@@ -63,12 +65,13 @@ public class DouYinWebSocket {
                 isOpen.set(true);
                 isRunning = true;
                 startHeartbeat();
+                if (socketListener != null) socketListener.onOpen(ws, response);
             }
 
             @Override
             public void onClosed(WebSocket webSocket, int code, String reason) {
                 log.info("DouYinWebSocket【×】连接关闭: " + reason);
-                reconnect(); // 自动重连
+                if (socketListener != null) socketListener.onClosed(webSocket, code, reason);
             }
 
             @Override
@@ -76,6 +79,7 @@ public class DouYinWebSocket {
                 isOpen.set(false);
                 isRunning = false;
                 stopHeartbeat();
+                if (socketListener != null) socketListener.onClosing(webSocket, code, reason);
             }
 
             @Override
@@ -83,42 +87,63 @@ public class DouYinWebSocket {
                 isOpen.set(false);
                 if (t instanceof java.io.EOFException) {
                     isRunning = false;
-                    log.warn("正常关闭!{}", t.getMessage());
+                    log.warn("DouYinWebSocket正常关闭!{}", t.getMessage() != null ? t.getMessage() : "");
                     latch.countDown();
                 } else {
                     log.error("DouYinWebSocket连接失败！{}", ThrowableUtil.getAllCauseMessage(t));
                 }
                 stopHeartbeat();
                 reconnect();
+                if (socketListener != null) socketListener.onFailure(webSocket, t, response);
             }
 
             @Override
             public void onMessage(WebSocket webSocket, okio.ByteString bytes) {
                 douyinLiveDecoder.parse(webSocket, bytes.toByteArray());
+                if (socketListener != null) socketListener.onMessage(webSocket, bytes);
             }
         });
         try {
             latch.await(Integer.MAX_VALUE, TimeUnit.SECONDS);
         } catch (InterruptedException ignored) {
         } finally {
-            log.info("wss连接结束！");
+            log.info("DouYinWebSocket连接结束！");
         }
+    }
+
+    public void setMessageListener(MessageListener messageListener) {
+        this.messageListener = messageListener;
+        if (douyinLiveDecoder != null) douyinLiveDecoder.setListener(messageListener);
     }
 
     // 启动心跳：每20秒发送一次Ping
     private void startHeartbeat() {
         if (isRunning) {
-            heartbeatExecutor.scheduleAtFixedRate(() -> {
-                if (webSocket != null) {
-                    if (isOpen.get()) {
-                        // 构建心跳 PushFrame
-                        DouyinMessageOuter.PushFrame hbFrame = DouyinMessageOuter.PushFrame.newBuilder()
-                                .setSeqId(System.currentTimeMillis())
-                                .setPayloadType("hb") // 心跳类型
-                                .build();
-                        webSocket.send(ByteString.of(hbFrame.toByteArray()));
-//                System.out.println("===== 发送心跳");
-                    }
+            // 允许心跳
+            heartbeatEnabled.set(true);
+
+            // 如果已有心跳任务，不重复创建
+            if (heartbeatFuture != null && !heartbeatFuture.isDone()) {
+                return;
+            }
+            heartbeatFuture = heartbeatExecutor.scheduleAtFixedRate(() -> {
+                // 开关关闭 → 不发送心跳
+                if (!heartbeatEnabled.get()) {
+                    return;
+                }
+                // 连接未打开 → 不发送
+                if (webSocket == null || !isOpen.get()) {
+                    return;
+                }
+                try {
+                    // 发送心跳
+                    DouyinMessageOuter.PushFrame hbFrame = DouyinMessageOuter.PushFrame.newBuilder()
+                            .setSeqId(System.currentTimeMillis())
+                            .setPayloadType("hb")
+                            .build();
+                    webSocket.send(ByteString.of(hbFrame.toByteArray()));
+                } catch (Exception e) {
+                    log.error("心跳发送异常", e);
                 }
             }, 0, 20, TimeUnit.SECONDS);
         }
@@ -126,31 +151,36 @@ public class DouYinWebSocket {
 
     // 停止心跳
     private void stopHeartbeat() {
-        if (!heartbeatExecutor.isShutdown()) {
-            heartbeatExecutor.shutdownNow();
+        // 关闭开关
+        heartbeatEnabled.set(false);
+        // 取消当前任务
+        if (heartbeatFuture != null) {
+            heartbeatFuture.cancel(false);
+            heartbeatFuture = null;
         }
     }
 
     // 自动重连（延迟3秒重连，避免频繁重试）
     private void reconnect() {
         if (isRunning) {
-            new Thread(() -> {
+            CompletableFuture.runAsync(() -> {
                 try {
-                    Thread.sleep(3000);
-                    log.info("wss自动重连中。。。");
+                    TimeUnit.SECONDS.sleep(3);
+                    log.info("wss自动重连中...");
                     connect(wss);
                 } catch (InterruptedException ignored) {
                 }
-            }).start();
+            });
         }
     }
 
     public void close() {
         isRunning = false;
         latch.countDown();
+        stopHeartbeat();
         if (webSocket != null) {
             webSocket.close(1000, "正常关闭");
         }
-        stopHeartbeat();
+        heartbeatExecutor.shutdown();
     }
 }

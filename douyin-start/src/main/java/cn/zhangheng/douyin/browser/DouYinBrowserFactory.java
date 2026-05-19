@@ -4,7 +4,7 @@ import cn.hutool.core.text.UnicodeUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.zhangheng.browser.BrowserAPI;
 import cn.zhangheng.browser.BrowserUtil;
-import cn.zhangheng.douyin.DouYinRoom;
+import cn.zhangheng.douyin.bean.DouYinRoom;
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.LoadState;
 import lombok.extern.slf4j.Slf4j;

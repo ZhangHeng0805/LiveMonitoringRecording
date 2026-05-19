@@ -168,6 +168,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
 
             @Override
             public void onStop() {
+                statistics(logUtil, room);
                 roomMonitor.stopSubtitle();//关闭弹幕
                 isRunning.set(false);
                 String msg = "直播监听结束！" + owner;
@@ -522,7 +523,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                 }
             }
         } else {
-            content += "\t\n- " + statistics(null, room);
+//            content += "\t\n- " + statistics(null, room);
         }
         try {
 //            content += "\t\n ![直播封面](data:image/jpeg;base64," + Base64Encoder.encode(HttpUtil.downloadBytes(room.getCover())) + ")";

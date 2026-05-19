@@ -12,7 +12,7 @@ import cn.zhangheng.browser.UserAgentUtil;
 import cn.zhangheng.common.bean.Constant;
 import cn.zhangheng.common.bean.Setting;
 import cn.zhangheng.common.util.RequestUtils;
-import cn.zhangheng.douyin.DouYinVideo;
+import cn.zhangheng.douyin.bean.DouYinVideo;
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.WaitForSelectorState;
 import com.microsoft.playwright.options.WaitUntilState;

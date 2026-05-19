@@ -1,4 +1,4 @@
-package cn.zhangheng.douyin;
+package cn.zhangheng.douyin.bean;
 
 
 import cn.hutool.core.annotation.PropIgnore;
@@ -17,8 +17,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static cn.zhangheng.douyin.browser.DouYinBrowserFactory.TARGET_REQUEST_PREFIX;
 
 /**
  * @author: ZhangHeng
@@ -45,6 +43,7 @@ public class DouYinRoom extends Room {
     private List<String> coverList;
     //弹幕是否运行
     private volatile boolean isSubtitleRunning;
+    private DouYinCounter counter;
 
 
     public DouYinRoom(String id) {
@@ -80,7 +79,7 @@ public class DouYinRoom extends Room {
         Map<String, String> header = super.getRequestHead();
         header.put("Referer", getPlatform().getMainUrl() + getId());
         header.put("Origin", getPlatform().getMainUrl());
-        if (getBrowserApi()!=null&&getBrowserApi().getHeaders()!=null) {
+        if (getBrowserApi() != null && getBrowserApi().getHeaders() != null) {
             header.put("User-Agent", getBrowserApi().getHeaders().get("user-agent"));
         }
         return header;

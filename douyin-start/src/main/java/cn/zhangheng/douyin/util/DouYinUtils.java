@@ -1,4 +1,4 @@
-package cn.zhangheng.douyin;
+package cn.zhangheng.douyin.util;
 
 import cn.hutool.core.text.UnicodeUtil;
 import cn.hutool.core.util.RandomUtil;
@@ -6,9 +6,7 @@ import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
-import cn.zhangheng.common.bean.Constant;
 import cn.zhangheng.common.util.UserAgentUtil;
-import cn.zhangheng.douyin.browser.DouYinBrowserFactory;
 import lombok.Getter;
 
 import java.net.HttpCookie;

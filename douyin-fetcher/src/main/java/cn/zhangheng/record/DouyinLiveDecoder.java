@@ -21,7 +21,11 @@ import java.util.zip.GZIPInputStream;
 
 public class DouyinLiveDecoder {
 
-    private final MessageListener listener;
+    private MessageListener listener;
+
+    public void setListener(MessageListener listener) {
+        this.listener = listener;
+    }
 
     public DouyinLiveDecoder(MessageListener listener) {
         this.listener = listener;
@@ -219,7 +223,15 @@ public class DouyinLiveDecoder {
         if (listener != null) {
             DouyinMessageOuter.GiftMessage msg = DouyinMessageOuter.GiftMessage.parseFrom(body);
             String describe = msg.getCommon().getDescribe();
-            String x = TimeUtil.toTime(msg.getSendTime()) + " - " + getUserStr(msg.getUser()) + " : " + describe.substring(describe.indexOf(":") + 1);
+            String des = describe.substring(describe.indexOf(":") + 1);
+            String x = TimeUtil.toTime(msg.getSendTime()) + " - " + getUserStr(msg.getUser()) + " : " + des;
+            if (msg.getGift().getDiamondCount() > 0) {
+                long totalCount = msg.getTotalCount();
+                if (totalCount <= 0) {
+                    totalCount = Long.parseLong(des.substring(des.indexOf(" ") + 1, des.indexOf("个")));
+                }
+                x += "(" + totalCount * msg.getGift().getDiamondCount() + "钻)";
+            }
 //        System.out.println(x);
             listener.gift(x, msg);
         }

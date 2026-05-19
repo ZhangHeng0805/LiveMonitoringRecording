@@ -1,8 +1,6 @@
-import cn.zhangheng.common.bean.Constant;
 import cn.zhangheng.common.bean.Setting;
-import cn.zhangheng.douyin.DouYinMain;
-import cn.zhangheng.douyin.DouYinRoom;
-import com.zhangheng.util.SettingUtil;
+import cn.zhangheng.douyin.service.DouYinMain;
+import cn.zhangheng.douyin.bean.DouYinRoom;
 
 /**
  * @author: ZhangHeng

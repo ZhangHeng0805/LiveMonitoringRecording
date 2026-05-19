@@ -5,8 +5,8 @@ import cn.zhangheng.bilibili.bean.BiliRoom;
 import cn.zhangheng.common.bean.*;
 import cn.zhangheng.common.service.ApplicationMain;
 import cn.zhangheng.common.service.MonitorMain;
-import cn.zhangheng.douyin.DouYinMain;
-import cn.zhangheng.douyin.DouYinRoom;
+import cn.zhangheng.douyin.service.DouYinMain;
+import cn.zhangheng.douyin.bean.DouYinRoom;
 import cn.zhangheng.kuaishou.bean.KuaiShouRoom;
 import cn.zhangheng.kuaishou.service.KuaiShouMain;
 

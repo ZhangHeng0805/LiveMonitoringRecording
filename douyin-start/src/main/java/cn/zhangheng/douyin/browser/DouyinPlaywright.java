@@ -10,7 +10,7 @@ import cn.zhangheng.browser.BrowserUtil;
 import cn.zhangheng.browser.PlaywrightBrowser;
 import cn.zhangheng.common.bean.Constant;
 import cn.zhangheng.common.bean.Setting;
-import cn.zhangheng.douyin.DouYinRoom;
+import cn.zhangheng.douyin.bean.DouYinRoom;
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.LoadState;
 import com.zhangheng.util.ThrowableUtil;

@@ -1,4 +1,4 @@
-package cn.zhangheng.douyin;
+package cn.zhangheng.douyin.bean;
 
 import cn.hutool.core.util.StrUtil;
 import cn.zhangheng.common.bean.Video;

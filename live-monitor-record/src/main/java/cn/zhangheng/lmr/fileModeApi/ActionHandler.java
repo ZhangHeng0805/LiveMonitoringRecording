@@ -6,7 +6,7 @@ import cn.zhangheng.common.service.MonitorMain;
 import cn.zhangheng.common.bean.Room;
 import cn.zhangheng.common.bean.enums.MonitorStatus;
 import cn.zhangheng.common.record.Recorder;
-import cn.zhangheng.douyin.DouYinVideo;
+import cn.zhangheng.douyin.bean.DouYinVideo;
 import cn.zhangheng.douyin.browser.DouYinBrowserFactory;
 import cn.zhangheng.douyin.browser.DouYinVideoParse;
 import cn.zhangheng.lmr.FileModeMain;

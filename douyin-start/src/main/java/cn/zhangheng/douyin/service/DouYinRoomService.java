@@ -1,4 +1,4 @@
-package cn.zhangheng.douyin;
+package cn.zhangheng.douyin.service;
 
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.http.HttpRequest;
@@ -10,11 +10,12 @@ import cn.zhangheng.common.bean.Setting;
 import cn.zhangheng.common.bean.enums.RunMode;
 import cn.zhangheng.common.util.LogUtil;
 import cn.zhangheng.common.util.RequestUtils;
+import cn.zhangheng.douyin.bean.DouYinCounter;
+import cn.zhangheng.douyin.bean.DouYinRoom;
 import cn.zhangheng.douyin.browser.DouYinBrowserFactory;
 import cn.zhangheng.douyin.browser.DouYinWebcast;
 import cn.zhangheng.douyin.browser.DouyinPlaywright;
 import cn.zhangheng.douyin.subtitle.AssGenerator;
-import cn.zhangheng.douyin.subtitle.SubtitleGenerator;
 import cn.zhangheng.record.DouyinMessageOuter;
 import cn.zhangheng.record.MessageListener;
 import com.zhangheng.util.ThrowableUtil;
@@ -191,7 +192,9 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
 
     @Override
     public void startSubtitle() {
+        if (webcast != null && webcast.isRunning()) return;
         if (room.getSetting().isOpenSubtitle()) {
+            room.setCounter(new DouYinCounter());
             webcast = new DouYinWebcast(room);
         }
         if (webcast == null || webcast.isRunning()) return;
@@ -204,6 +207,7 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
                 log.error("弹幕日志生成失败！", e);
             }
         }
+
         webcast.setMessageListener(new MessageListener() {
             @Override
             public void chat(String info, DouyinMessageOuter.ChatMessage msg) {
@@ -220,6 +224,7 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
             public void gift(String info, DouyinMessageOuter.GiftMessage msg) {
                 String x = "【礼物】" + info;
                 subtitleLog.highLog(x);
+                room.getCounter().setTotalGift(info);
             }
 
             @Override
@@ -248,6 +253,7 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
                 long total = msg.getTotal();
                 if (total > 0) {
                     room.setUserCountStr(total + "");
+                    room.getCounter().setMaxOnlineUsers(total);
                 }
                 subtitleLog.highLog(x);
             }
@@ -261,6 +267,7 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
             @Override
             public void control(String info, DouyinMessageOuter.ControlMessage msg) {
                 String x = "【状态】" + info;
+                x += room.getCounter().toString();
                 subtitleLog.highLog(x);
                 if (msg.getStatus() == 3) {
                     stopSubtitle();

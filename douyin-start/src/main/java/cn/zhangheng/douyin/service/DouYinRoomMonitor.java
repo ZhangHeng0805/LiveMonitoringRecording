@@ -1,7 +1,8 @@
-package cn.zhangheng.douyin;
+package cn.zhangheng.douyin.service;
 
 import cn.zhangheng.browser.BrowserAPI;
 import cn.zhangheng.common.service.RoomMonitor;
+import cn.zhangheng.douyin.bean.DouYinRoom;
 
 import static cn.zhangheng.douyin.browser.DouYinBrowserFactory.TARGET_REQUEST_PREFIX;
 

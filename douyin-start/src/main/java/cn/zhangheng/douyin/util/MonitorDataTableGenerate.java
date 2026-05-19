@@ -1,4 +1,4 @@
-package cn.zhangheng.douyin;
+package cn.zhangheng.douyin.util;
 
 import com.alibaba.excel.EasyExcel;
 import com.alibaba.excel.ExcelWriter;
