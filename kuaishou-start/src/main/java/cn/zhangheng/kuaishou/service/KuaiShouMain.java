@@ -24,7 +24,7 @@ public class KuaiShouMain extends MonitorMain<KuaiShouRoom, KuaiShouMonitor> {
     }
 
     @Override
-    protected String statistics(LogUtil logUtil, KuaiShouRoom room) {
+    public String statistics(LogUtil logUtil, KuaiShouRoom room) {
         if (room.isLiving() || room.getLikeCount() != null) {
             String info = "粉丝数：" + room.getFollowers() + "，点赞数：" + room.getLikeCount();
             if (logUtil != null) {

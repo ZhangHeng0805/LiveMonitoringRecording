@@ -294,6 +294,7 @@ public class PlaywrightBrowser implements AutoCloseable {
                     List<Page> pages = context.pages();
                     if (pages != null && !pages.isEmpty()) {
                         pages.stream()
+                                .filter(Objects::nonNull)
                                 .filter(p -> "about:blank".equals(p.url()))
                                 .forEach(p -> {
                                     try {

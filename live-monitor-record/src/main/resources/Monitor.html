@@ -110,6 +110,8 @@
             }
         }
     </style>
+    <script src="js/DouYinModel.js"></script>
+    <script src="js/BiliBiliModel.js"></script>
 </head>
 <body class="bg-gray-50 font-inter text-dark">
 <div class="container mx-auto px-4 py-8 max-w-7xl">
@@ -389,14 +391,10 @@
         // 绑定手动刷新按钮事件
         const refreshBtn = document.getElementById("manual-refresh-btn");
         refreshBtn.addEventListener("click", handleManualRefresh);
-
         // 首次加载数据
         fetchData();
-
         // 设置定时刷新
         startRefreshTimer();
-
-
     });
 
     // 处理手动刷新
@@ -522,14 +520,6 @@
 
     // 更新界面
     function updateUI(data) {
-        // 清除之前的实时更新定时器
-        // viewerUpdateTimers.forEach((timer) => clearInterval(timer));
-        // recordTimeUpdateTimers.forEach((timer) => clearInterval(timer));
-        // likeCountUpdateTimers.forEach((timer) => clearInterval(timer));
-        // viewerUpdateTimers = [];
-        // recordTimeUpdateTimers = [];
-        // likeCountUpdateTimers = [];
-
         // 更新时间显示
         const updateTime = data.time;
         document.getElementById("update-time").textContent = updateTime;
@@ -595,15 +585,40 @@
         }
     }
 
+    //创建直播间卡片头部
+    function createRoomHeadElement(item) {
+        const room = item.room;
+        const living = room.living;
+        return `<!-- 卡片头部 -->
+                <div class="bg-primary/5 p-4 border-b border-gray-100">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            ${room.avatar ? `<img src="${room.avatar}" alt="${room.nickname || "未知主播"}" class="w-10 h-10 rounded-full object-cover mr-3">` : `<div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 mr-3"><i class="fa fa-user"></i></div>`}
+                               <div>
+                                    <h3 class="font-bold">${room.nickname || "未知主播"}</h3>
+                                    <div class="flex items-center text-xs text-gray-500 mt-0.5">
+                                        <span class="bg-primary/10 text-primary px-2 py-0.5 rounded mr-2">
+                                            ${platformName[room.platform] || "未知平台"}
+                                        </span>
+                                        <span>房间ID: ${room.id || "未知"}</span>
+                                        <span class="${living ? "bg-primary/10 text-gray-600" : "bg-gray-100 text-gray-600"} px-2 py-0.5 rounded ml-1">
+                                            更新于${formatDate(new Date(room.updateTime))} | 频率: ${room.setting.delayIntervalSec + "s" || "未知"}
+                                        </span>
+                                    </div>
+                                </div>
+                        </div>
+                        <span class="status-badge ${living ? "bg-success/20 text-success" : "bg-gray-200 text-gray-600"}">
+                            <i class="fa fa-circle text-xs mr-1 animate-pulse"></i>${living ? "直播中" : "未直播"}
+                            <button onClick="actionRefresh('${item.key}')"  class="ml-2"><i class="fa fa-refresh"></i></button>
+                        </span>
+                    </div>
+                </div>`;
+    }
+
     // 创建直播中房间元素
     function createLivingRoomElement(item, index) {
         const room = item.room;
         const recorder = item.recorder || {};
-
-        // 格式化开始时间
-        const startTime = room.startTime
-            ? formatDate(new Date(room.startTime))
-            : "未知";
 
         // 创建元素
         const div = document.createElement("div");
@@ -618,37 +633,11 @@
 
         // 哔哩哔哩直播间数据
         if (room.platform === "Bili") {
-            infoGridItems = `<div class="flex items-center">
-                                <i class="fa fa-users text-primary mr-1"></i>
-                                <span>粉丝: ${room.followers || 0}</span>
-                            </div>
-                            <div class="flex items-center">
-                                <i class="fa fa-eye text-primary mr-1"></i>
-                                <span>观看人数: ${room.viewers || 0}</span>
-                            </div>
-                            <div class="flex items-center">
-                                <i class="fa fa-calendar text-primary mr-1"></i>
-                                <span>开始时间: ${startTime}</span>
-                            </div>`;
+            infoGridItems = createLivingBiliInfoGridItems(room);
         }
         // 抖音直播间数据
         else if (room.platform === "DouYin") {
-            infoGridItems = `<div class="flex items-center">
-                                <i class="fa fa-eye text-primary mr-1"></i>
-                                <span>当前观众: ${room.userCountStr || 0}</span>
-                            </div>
-                            <div class="flex items-center">
-                                <i class="fa fa-eye text-primary mr-1"></i>
-                                <span>总观看数: ${room.totalUserStr || 0}</span>
-                            </div>
-                            <div class="flex items-center">
-                                <i class="fa fa-heart text-danger mr-1"></i>
-                                <span class="like-count">点赞数: ${room.likeCount || 0}</span>
-                            </div>
-                            <div class="flex items-center">
-                                <i class="fa fa-calendar text-primary mr-1"></i>
-                                <span>开始时间: ${startTime}</span>
-                            </div>`;
+            infoGridItems = createLivingDouYinInfoGridItems(room);
         }
 
         // 确定当前显示的观众数（用于封面显示）
@@ -659,64 +648,14 @@
             displayViewers = room.userCountStr || 0;
         }
         let isRecord = recorder.isRecord;
-        div.innerHTML = `<!-- 卡片头部 -->
-                        <div class="bg-primary/5 p-4 border-b border-gray-100">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center">
-                                    ${room.avatar ?
-            `<img src="${
-                fullUrl.startsWith("http") && room.platform === "Bili"
-                    ? `${MainUrl}proxy?url=${room.avatar}`
-                    : `${room.avatar}`
-            }" alt="${room.nickname || "未知主播"}" class="w-10 h-10 rounded-full object-cover mr-3"><div>`
-            : `<div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 mr-3">
-                                            <i class="fa fa-user"></i>
-                                       </div><div>`
-        }
-                                       <h3 class="font-bold">${room.nickname || "未知主播"}</h3>
-                                            <div class="flex items-center text-xs text-gray-500 mt-0.5">
-                                                <span class="bg-primary/10 text-primary px-2 py-0.5 rounded mr-2">
-                                                    ${platformName[room.platform] || "未知平台"}
-                                                </span>
-                                                <span>房间ID: ${room.room_id || room.id || "未知"}</span>
-                                                <span class="bg-primary/10 text-gray-600 px-2 py-0.5 rounded ml-1">
-                                                更新于${formatDate(new Date(room.updateTime))} | 频率: ${room.setting.delayIntervalSec + "s" || "未知"}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <span class="status-badge bg-success/20 text-success">
-                                        <i class="fa fa-circle text-xs mr-1 animate-pulse"></i>直播中
-                                        ${item.status === "RUNNING"
-            ?
-            `<button onClick="actionRefresh('${item.key}')"  class="ml-2">
-                                          <i class="fa fa-refresh"></i>
-                                        </button>`
-            : ""}
-                                    </span>
-                                </div>
-                            </div>
+        div.innerHTML = `${createRoomHeadElement(item)}
 
                             <!-- 卡片内容 -->
                             <div class="p-4">
                                 <!-- 直播封面与信息 -->
-                                <div class="flex flex-col md:flex-row gap-4 mb-4">
+                                <div class="flex flex-col md:flex-row gap-4 mb-4" title="${room.statistics || ""}">
                                     <div class="relative flex-shrink-0">
-                                        ${room.cover || room.coverList?.[0]
-            ? `<img src="${
-                fullUrl.startsWith("http") && room.platform === "Bili"
-                    ? `${MainUrl}proxy?url=${
-                        room.cover ||
-                        room.coverList?.[0]
-                    }`
-                    : `${
-                        room.cover ||
-                        room.coverList?.[0]
-                    }`
-            }" alt="直播封面" class="w-full md:w-48 h-32 object-cover rounded-lg">`
-            : `<div class="w-full md:w-48 h-32 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">
-                                            <i class="fa fa-television text-3xl"></i>
-                                           </div>`
-        }
+                                        ${room.cover ? `<img src="${room.cover}" alt="直播封面" class="w-full md:w-48 h-32 object-cover rounded-lg">` : `<div class="w-full md:w-48 h-32 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400"><i class="fa fa-television text-3xl"></i></div>`}
                                         <div class="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-1.5 py-0.5 rounded viewer-count">
                                             ${formatNumber(displayViewers)} 观众
                                         </div>
@@ -732,7 +671,7 @@
 
                                 <!-- 录制信息 -->
                                 <div class="bg-light rounded-lg p-3 mb-4 border border-gray-100">
-                                    <div class="flex items-center justify-between mb-2">
+                                    <div class="flex items-center justify-between">
                                         <h5 class="font-medium flex items-center ${isRecord ? "text-primary" : "text-gray"}">
                                             <i class="fa fa-film mr-1"></i> 录制状态: ${isRecord ? recorder.definition : "未开启录制"}
                                         </h5>
@@ -740,30 +679,29 @@
                                             <i class="fa fa-circle text-xs mr-1 animate-pulse"></i>${isRecord ? "正在录制" : "未录制"}
                                         </span>
                                     </div>
-
-                                    <div class="grid grid-cols-2 md:grid-cols-[5fr,2fr,2fr,3fr] gap-2 text-sm text-gray-600">
+                                    ${isRecord ? `<div class="grid grid-cols-2 md:grid-cols-[4fr,3fr,2fr,3fr] gap-2 text-sm text-gray-600 mt-2" >
                                         <div class="flex items-center">
                                             <i class="fa fa-clock-o text-gray-400 mr-1"></i>
-                                            <span class="record-time">${recorder.msg ? recorder.msg.split(" / ")[0] : "0秒"}</span>
+                                            <span class="record-time">${recorder.msg ? recorder.msg.split(" / ")[0] : "-"}</span>
                                         </div>
                                         <div class="flex items-center">
                                             <i class="fa fa-file-video-o text-gray-400 mr-1"></i>
-                                            <span>${recorder.msg ? recorder.msg.split(" / ")[1] : "0 MB"}</span>
+                                            <span>${recorder.msg ? recorder.msg.split(" / ")[1] : "-"}</span>
                                         </div>
                                         <div class="flex items-center">
                                             <i class="fa fa-film text-gray-400 mr-1"></i>
-                                            <span>${recorder.msg ? recorder.msg.split(" / ")[2] : "0 fps"}</span>
+                                            <span>${recorder.msg ? recorder.msg.split(" / ")[2] : "-"}</span>
                                         </div>
                                         <div class="flex items-center">
                                             <i class="fa fa-signal text-gray-400 mr-1"></i>
-                                            <span>${recorder.msg ? recorder.msg.split(" / ")[3] : "0 kbits/s"}</span>
+                                            <span>${recorder.msg ? recorder.msg.split(" / ")[3] : "-"}</span>
                                         </div>
                                     </div>
 
                                     <div class="mt-2 text-xs text-gray-500 truncate" title="${recorder.path || "无路径信息"}">
                                         <i class="fa fa-folder-open mr-1"></i>
                                         保存路径: ${recorder.path || "无路径信息"}
-                                    </div>
+                                    </div>` : ""}
                                 </div>
                                 <!-- 操作按钮 -->
                                 <div class="flex flex-wrap gap-2">
@@ -774,15 +712,12 @@
                                     <button onclick="actionMonitor('${item.key}',false)" class="inline-flex items-center px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-sm hover:bg-gray-500 transition-colors">
                                       <span class="text-danger"><i class="fa fa-stop mr-1"></i>停止监控</span>
                                     </button>
-                                    ${isRecord ?
-            `<button onclick="actionRecord('${item.key}',false)" class="inline-flex items-center px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-sm hover:bg-gray-500 transition-colors">
-                                            <span class="text-warning"><i class="fa fa-pause mr-1"></i>暂停录制</span>
-                                         </button>`
-            : `<button onclick="actionRecord('${item.key}',true)" class="inline-flex items-center px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-sm hover:bg-gray-500 transition-colors">
-                                          <span class="text-success"><i class="fa fa-play mr-1"></i>开始录制</span>
-                                      </button>`
-        }
-                                    <button onclick="actionSetting('${item.key}','${btoa(JSON.stringify(item.room.setting))}')" class="inline-flex items-center px-3 py-1.5 bg-gray-500 border text-white border-gray-300 rounded-lg text-sm hover:bg-gray-800 transition-colors">
+
+                                    <button onclick="actionRecord('${item.key}',${!isRecord})" class="inline-flex items-center px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-sm hover:bg-gray-500 transition-colors">
+                                        <span class="${isRecord ? "text-warning" : "text-success"}"><i class="fa ${isRecord ? "fa-pause" : "fa-play"} mr-1"></i>${isRecord ? "停止录制" : "开始录制"}</span>
+                                    </button>
+
+                                    <button onclick="actionSetting('${item.key}','${btoa(JSON.stringify(room.setting))}')" class="inline-flex items-center px-3 py-1.5 bg-gray-500 border text-white border-gray-300 rounded-lg text-sm hover:bg-gray-800 transition-colors">
                                         <span class="text-white"> <i class="fa fa-cog mr-1"></i>设置</span>
                                     </button>
                                    </div>
@@ -793,6 +728,7 @@
     // 创建未直播房间元素
     function createNotLivingRoomElement(item, index) {
         const room = item.room;
+        const running = item.isRunning;
         // 创建元素
         const div = document.createElement("div");
         div.className =
@@ -808,86 +744,30 @@
                             </div>
                             <div class="flex items-center" title="${formatDate(new Date(item.isRunning ? item.startTime : item.endTime))}">
                                 <i class="fa fa-refresh text-gray-400 mr-1"></i>
-                                监控状态:<span class="${item.isRunning ? "bg-green-100" : "bg-red-100"} text-gray-600 px-2 py-0.5 rounded ml-1">
-                                ${item.status === "RUNNING" ? "运行中" : "已停止"}</span>
+                                监控状态:<span class="${running ? "bg-green-100" : "bg-red-100"} text-gray-600 px-2 py-0.5 rounded ml-1">
+                                ${running ? "运行中" : "已停止"}</span>
                             </div>
                             <div class="flex items-center">
                                 <i class="fa fa-bell text-gray-400 mr-1"></i>
                                 开播提醒:<span class="${room.setting && room.setting.isNotice ? "bg-green-100" : "bg-red-100"} text-gray-600 px-2 py-0.5 rounded ml-1">
                                         ${room.setting && room.setting.isNotice ? "已开启" : "未开启"}</span>
                             </div>`;
-        // 抖音房间显示点赞数
-        if (room.platform === "DouYin" && room.likeCount !== undefined) {
-            // infoGridItems = infoGridItems;
-        } else if (room.platform === "Bili") {
+        if (room.platform === "Bili") {
             // 哔哩哔哩房间显示粉丝数
-            infoGridItems = `<div class="flex items-center">
+            infoGridItems = `${infoGridItems}
+                             <div class="flex items-center">
                                 <i class="fa fa-users text-gray-400 mr-1"></i>
                                 <span>粉丝: ${room.followers || 0}</span>
-                            </div>
-                            ${infoGridItems}
-                            `;
+                            </div>`;
         }
 
-        div.innerHTML = `<!-- 卡片头部 -->
-                            <div class="bg-gray-50 p-4 border-b border-gray-100">
-                                <div class="flex items-center justify-between">
-                                    <div class="flex items-center">
-                                        ${room.avatar
-            ? `<img src="
-                                                ${fullUrl.startsWith("http") && room.platform === "Bili"
-                ? `${MainUrl}proxy?url=${room.avatar}`
-                : `${room.avatar}`
-            }" alt="${room.nickname || "未知主播"}"
-                                             class="w-10 h-10 rounded-full object-cover mr-3"><div>`
-            : `<div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 mr-3">
-                                                <i class="fa fa-user"></i>
-                                           </div><div>`
-        }
-                                            <h3 class="font-bold">${room.nickname || "未知主播"}</h3>
-                                            <div class="flex items-center text-xs text-gray-500 mt-0.5">
-                                                <span class="bg-gray-100 text-gray-600 px-2 py-0.5 rounded mr-2">
-                                                   ${platformName[room.platform] || "未知平台"}</span>
-                                                <span>房间ID: ${room.room_id || room.id || "未知"}</span>
-                                                <span class="bg-gray-100 text-gray-600 px-2 py-0.5 rounded ml-1">
-                                                    更新于${formatDate(new Date(room.updateTime))}
-                                                    | 频率: ${room.setting.delayIntervalSec + "s" || "未知"}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <span class="status-badge bg-gray-200 text-gray-600">
-                                        <i class="fa fa-circle text-xs mr-1"></i>未直播
-                                        ${item.status === "RUNNING"
-            ? `<button onClick="actionRefresh('${item.key}')"  class="ml-2">
-                                              <i class="fa fa-refresh"></i>
-                                           </button>`
-            : ""}
-                                    </span>
-                                </div>
-                            </div>
-
+        div.innerHTML = `${createRoomHeadElement(item)}
                             <!-- 卡片内容 -->
                             <div class="p-4">
                                 <!-- 房间信息 -->
                                 <div class="flex flex-col md:flex-row gap-4 mb-4">
                                     <div class="relative flex-shrink-0">
-                                        ${room.cover || room.coverList?.[0]
-            ? `<img src="${
-                fullUrl.startsWith("http") && room.platform === "Bili"
-                    ? `${MainUrl}proxy?url=${
-                        room.cover ||
-                        room.coverList?.[0]
-                    }`
-                    : `${
-                        room.cover ||
-                        room.coverList?.[0]
-                    }`
-            }" alt="直播封面" class="w-full md:w-48 h-32 object-cover rounded-lg">`
-            : `<div class="w-full md:w-48 h-32 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">
-                                               <i class="fa fa-television text-3xl"></i>
-                                           </div>`
-        }
+                                        ${room.cover ? `<img src="${room.cover}" alt="直播封面" class="w-full md:w-48 h-32 object-cover rounded-lg">` : `<div class="w-full md:w-48 h-32 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400"><i class="fa fa-television text-3xl"></i></div>`}
                                     </div>
                                     <div class="flex-1">
                                         <h4 class="font-medium text-gray-500 line-clamp-2 mb-2">当前未开启直播</h4>
@@ -903,14 +783,11 @@
                                        class="inline-flex items-center px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-sm hover:bg-primary transition-colors">
                                         <span><i class="fa fa-external-link mr-1"></i>访问直播间</span>
                                     </a>
-                                  ${item.status === "RUNNING"
-            ? `<button onclick="actionMonitor('${item.key}',false)" class="inline-flex items-center px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-sm hover:bg-gray-500 transition-colors">
-                                          <span class="text-warning"><i class="fa fa-stop mr-1"></i>停止监控</span>
-                                      </button>`
-            : `<button onclick="actionMonitor('${item.key}',true)" class="inline-flex items-center px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-sm hover:bg-gray-500 transition-colors">
-                                           <span class="text-success"><i class="fa fa-play mr-1"></i>开启监控</span>
-                                       </button>`
-        }
+
+                                    <button onclick="actionMonitor('${item.key}',${!running})" class="inline-flex items-center px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-sm hover:bg-gray-500 transition-colors">
+                                         <span class="${running ? "text-warning" : "text-success"}"><i class="fa ${running ? "fa-stop" : "fa-play"} mr-1"></i>${running ? "停止" : "开启"}监控</span>
+                                    </button>
+
                                   <button onclick="
                                     actionSetting('${item.key}','${btoa(JSON.stringify(item.room.setting))}')"  class="inline-flex items-center px-3 py-1.5 bg-gray-500 border text-white border-gray-300 rounded-lg text-sm hover:bg-gray-800 transition-colors">
                                     <span class="text-white"> <i class="fa fa-cog mr-1"></i>设置</span>

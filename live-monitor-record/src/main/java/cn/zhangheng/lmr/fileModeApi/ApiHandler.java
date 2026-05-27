@@ -14,6 +14,7 @@ import com.zhangheng.util.ThrowableUtil;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +50,7 @@ public class ApiHandler extends JSONHandler {
                 List<Map<String, Object>> collect = FileModeMain.getRoomFileMap().values().stream()
                         .map(ApiHandler::getResponseMap)
                         .filter(m -> m != null && !m.isEmpty())
+                        .sorted(Comparator.comparing(m -> m.get("isRunning").equals(false)))
                         .collect(Collectors.toList());
                 msg.setData(collect);
             }
@@ -74,6 +76,7 @@ public class ApiHandler extends JSONHandler {
             Room room = main.getMonitorMain().getRoom();
             JSONObject entries = JSONUtil.parseObj(room);
             entries.remove("cookie");
+            entries.append("statistics",main.getMonitorMain().statistics(null,room));
             JSONObject setting = entries.getJSONObject("setting");
             setting.remove("cookieDouYin");
             setting.remove("cookieBili");

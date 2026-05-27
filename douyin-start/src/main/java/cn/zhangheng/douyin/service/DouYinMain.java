@@ -26,7 +26,7 @@ public class DouYinMain extends MonitorMain<DouYinRoom, DouYinRoomMonitor> {
     }
 
     @Override
-    protected String statistics(LogUtil logUtil, DouYinRoom room) {
+    public String statistics(LogUtil logUtil, DouYinRoom room) {
         if (room.isLiving() || room.getUserCountStr() != null) {
             String info = "在线人数：" + room.getUserCountStr() + "，点赞数：" + room.getLikeCount() + "，总观看人数：" + room.getTotalUserStr();
             if (room.getCounter() != null) info += ", " + room.getCounter();

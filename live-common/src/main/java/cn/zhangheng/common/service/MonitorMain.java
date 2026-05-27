@@ -277,7 +277,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         return logUtil;
     }
 
-    protected abstract String statistics(LogUtil logUtil, R room);
+    public abstract String statistics(LogUtil logUtil, R room);
 
 
     private void completeRecordFile(String path) {
