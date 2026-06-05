@@ -1,16 +1,21 @@
 package cn.zhangheng.douyin.util;
 
+import cn.hutool.core.map.MapUtil;
 import cn.hutool.core.text.UnicodeUtil;
 import cn.hutool.core.util.RandomUtil;
-import cn.hutool.http.HttpRequest;
-import cn.hutool.http.HttpResponse;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
+import cn.zhangheng.common.util.RequestUtils;
 import cn.zhangheng.common.util.UserAgentUtil;
+import com.zhangheng.util.ThrowableUtil;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 
 import java.net.HttpCookie;
+import java.net.HttpURLConnection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -20,11 +25,12 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @version: 1.0
  * @description:
  */
+@Slf4j
 public class DouYinUtils {
     @Getter
     private String ttwid, userAgent;
     private final AtomicInteger count = new AtomicInteger(0);
-    private final UserAgentUtil userAgentUtil = new UserAgentUtil();
+    private static final UserAgentUtil userAgentUtil = new UserAgentUtil();
 
     public int getCount() {
         return count.get();
@@ -42,56 +48,67 @@ public class DouYinUtils {
         String x = utils.fetchRoomPageBody(roomID);
 //        System.out.println(x);
 
-        System.out.println(extractRoomJson(x));
+        System.out.println(extractRoomJson(x).toStringPretty());
     }
 
     public String fetchTtwid() {
-        HttpRequest request = HttpRequest
-                .get("https://live.douyin.com/")
-                .header("User-Agent", userAgent);
-
-        try (HttpResponse resp = request.execute()) {
-            String setCookies = resp.header("Set-Cookie");
+        HttpURLConnection connection = null;
+        try {
+            connection = RequestUtils.getRequest("https://live.douyin.com/", MapUtil.of("User-Agent", userAgent));
+            String setCookies = connection.getHeaderField("Set-Cookie");
             for (String c : setCookies.split(";")) {
                 List<HttpCookie> cookies = HttpCookie.parse(c);
                 for (HttpCookie cookie : cookies) {
                     if ("ttwid".equals(cookie.getName())) {
-                        String value = cookie.getValue();
-                        return value;
+                        return cookie.getValue();
                     }
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("刷新ttwid错误:{}", ThrowableUtil.getAllCauseMessage(e));
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
         }
         return null;
     }
 
     public String fetchRoomPageBody(String liveId) {
-        String url = "https://live.douyin.com/" + liveId;
+        String domain = "https://live.douyin.com/";
+        String url = domain + liveId;
         String cookie = "ttwid=" + ttwid + ";msToken=" + msToken() + "; __ac_nonce=0123407cc00a9e438deb4";
-
-        HttpRequest request = HttpRequest.get(url)
-                .header("User-Agent", userAgent)
-                .header("Accept", "application/json, text/plain, */*")
-                .header("Referer", url)
-                .header("Cookie", cookie);
-        try (HttpResponse resp = request.execute()) {
-            String body = resp.body();
+        Map<String, String> headers = new HashMap<>();
+        headers.put("User-Agent", userAgent);
+        headers.put("Accept", "*/*");
+        headers.put("Cookie", cookie);
+        headers.put("Referer", domain);
+        HttpURLConnection connection = null;
+        try {
+            connection = RequestUtils.getRequest(url, headers);
             count.incrementAndGet();
-//            System.out.println(DouYinBrowserFactory.extractNickname(body));
-//            System.out.println(DouYinBrowserFactory.extractLivingStatus(body));
-            return body;
+            return RequestUtils.responseAsString(connection);
+        } catch (Exception e) {
+            log.error("请求失败！{}", ThrowableUtil.getAllCauseMessage(e));
         } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
             if (getCount() % 100 == 0) {
                 refresh();
             }
         }
+        return "";
     }
 
     private void refresh() {
         userAgent = userAgentUtil.get();
-        ttwid = fetchTtwid();
+        String fetchTtwid = fetchTtwid();
+        if (fetchTtwid != null) {
+            ttwid = fetchTtwid;
+        } else {
+            log.warn("获取ttwid为null");
+        }
     }
 
     public static JSONObject extractRoomJson(String pageBody) {

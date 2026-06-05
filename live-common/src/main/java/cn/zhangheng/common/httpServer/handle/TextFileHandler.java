@@ -1,9 +1,14 @@
 package cn.zhangheng.common.httpServer.handle;
 
+import cn.hutool.core.io.IoUtil;
 import com.sun.net.httpserver.HttpExchange;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.file.NoSuchFileException;
 import java.util.Scanner;
 
 /**
@@ -15,7 +20,8 @@ import java.util.Scanner;
  */
 public class TextFileHandler extends MyHandler {
 
-    private String response = "";
+    private static final Logger log = LoggerFactory.getLogger(TextFileHandler.class);
+    private final String file;
     private final String contextType;
 
     public TextFileHandler(String file) {
@@ -24,7 +30,7 @@ public class TextFileHandler extends MyHandler {
 
     public TextFileHandler(String file, String contextType) {
         this.contextType = contextType;
-        response = readText(file);
+        this.file = file;
     }
 
     private String readText(String file) {
@@ -43,14 +49,36 @@ public class TextFileHandler extends MyHandler {
     }
 
     @Override
-    public void handle(HttpExchange t) throws IOException {
-//        Map<String, String> map = parseQuery(t.getRequestURI().getQuery());
+    protected boolean filter(HttpExchange httpExchange) throws IOException {
+        String path = httpExchange.getRequestURI().getPath();
+        if ("/favicon.ico".equals(path)) {
+            try (InputStream is = getClass().getClassLoader().getResourceAsStream("img/favicon.ico")) {
+                httpExchange.getResponseHeaders().set("Content-Type", "application/octet-stream");
+                if (is == null) {
+                    throw new NoSuchFileException(path);
+                }
+                httpExchange.sendResponseHeaders(200, is.available());
+                try (OutputStream os = httpExchange.getResponseBody()) {
+                    IoUtil.copy(is, os);
+                }
+            }
+        }
+        return true;
+    }
 
+    @Override
+    public void request(HttpExchange t) throws IOException {
+        log.debug("{} 请求[{}]:{}", getClientIP(t), t.getRequestURI().getPath(), t.getRequestHeaders().getFirst("User-Agent"));
         t.getResponseHeaders().set("Content-Type", contextType + "; charset=" + charset.name());
-        // 计算字节长度时使用相同的字符集
-        byte[] responseBytes = response.getBytes(charset);
-        t.sendResponseHeaders(200, responseBytes.length);
-        t.getResponseBody().write(responseBytes);
-        t.getResponseBody().close();
+        try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream(file);
+             OutputStream outputStream = t.getResponseBody()) {
+            if (inputStream == null) {
+                throw new NoSuchFileException(file);
+            }
+            t.sendResponseHeaders(200, inputStream.available());
+            IoUtil.copy(inputStream, outputStream);
+        }finally {
+            t.close();
+        }
     }
 }

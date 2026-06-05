@@ -23,6 +23,8 @@ import com.zhangheng.util.TimeUtil;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 
 /**
@@ -76,15 +78,9 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
 //        System.out.println(JSONUtil.parseObj(headers).toStringPretty());
     }
 
-    @Override
-    public HttpRequest get(String url) {
-        return super.get(url)
-//                .header(Header.REFERER, room.getRoomUrl())
-                ;
-    }
 
     @Override
-    public void refresh(boolean force) {
+    protected boolean refresh(boolean force) {
         boolean success = false;
         if (!room.isLiving() || room.getBrowserApi().getDataUrl() == null) {
             if (RunMode.FILE.equals(room.getSetting().getRunMode())) {
@@ -99,9 +95,7 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
             }
             getData(force);
         }
-        if (success) {
-            room.setUpdateTime(new Date());
-        }
+        return success;
     }
 
     public void getData(boolean force) {
@@ -279,13 +273,16 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
     }
 
     @Override
-    public void stopSubtitle() {
-        if (webcast != null && subtitleLog != null) {
+    public synchronized void stopSubtitle() {
+        if (webcast != null && webcast.isRunning() && subtitleLog != null) {
             webcast.stop();
-            subtitleLog.close();
             chatLog.close();
+            subtitleLog.close();
             try {
-                new AssGenerator(10, chatLog.getLogPath().toString()).generate();
+                Path logPath = chatLog.getLogPath();
+                if (Files.exists(logPath)) {
+                    new AssGenerator(10, logPath.toString()).generate();
+                }
             } catch (IOException e) {
                 log.error("弹幕日志转换成字幕文件失败", e);
             }

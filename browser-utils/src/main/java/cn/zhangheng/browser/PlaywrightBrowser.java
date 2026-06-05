@@ -36,9 +36,9 @@ public class PlaywrightBrowser implements AutoCloseable {
     private Integer updateContextCounts; //更新BrowserContext的请求次数，请求次数达到时自动更换BrowserContext
     private AutoClearContextThread autoClearContextThread = null;
 
-    public synchronized void startAutoClearContextThread(int interval) {
+    public synchronized void startAutoClearContextThread(int intervalSec, AutoClearContextThreadListener listener) {
         if (autoClearContextThread == null) {
-            autoClearContextThread = new AutoClearContextThread(interval, contents);
+            autoClearContextThread = new AutoClearContextThread(intervalSec, contents, listener);
         }
     }
 
@@ -295,7 +295,15 @@ public class PlaywrightBrowser implements AutoCloseable {
                     if (pages != null && !pages.isEmpty()) {
                         pages.stream()
                                 .filter(Objects::nonNull)
-                                .filter(p -> "about:blank".equals(p.url()))
+                                .filter(p -> {
+                                    try {
+                                        // 尝试获取URL，失效页面会在这里抛异常，直接返回false过滤掉
+                                        return "about:blank".equals(p.url());
+                                    } catch (Exception e) {
+                                        // 页面已失效，直接忽略，不处理
+                                        return false;
+                                    }
+                                })
                                 .forEach(p -> {
                                     try {
                                         p.close();
@@ -333,30 +341,34 @@ public class PlaywrightBrowser implements AutoCloseable {
      */
     @Override
     public synchronized void close() {
-        // 先关闭浏览器（会自动关闭所有页面和上下文）
-        if (browser != null) {
-            try {
-                browser.close();
-//                log.debug("浏览器已关闭");
-            } catch (Exception e) {
-                log.warn("关闭浏览器失败", e);
-            } finally {
-                browser = null; // 标记为null，避免重复操作
-                threadLocalClear();
-
+        try {
+            threadLocalClear();
+            // 先关闭浏览器（会自动关闭所有页面和上下文）
+            if (browser != null) {
+                try {
+                    browser.close();
+                } catch (Throwable e) {
+                    if (e instanceof NegativeArraySizeException) {
+                        log.warn("关闭浏览器失败:{}", ThrowableUtil.getAllCauseMessage(e));//忽略异常
+                    } else {
+                        log.warn("关闭浏览器失败", e);
+                    }
+                } finally {
+                    browser = null; // 标记为null，避免重复操作
+                }
             }
-        }
-        stopAutoClearContextThread();
-        // 再关闭Playwright
-        if (playwright != null) {
-            try {
-                playwright.close();
-//                log.debug("Playwright已关闭");
-            } catch (Exception e) {
-                log.warn("关闭Playwright失败", e);
-            } finally {
-                playwright = null; // 标记为null
+            // 再关闭Playwright
+            if (playwright != null) {
+                try {
+                    playwright.close();
+                } catch (Throwable e) {
+                    log.warn("关闭Playwright失败", e);
+                } finally {
+                    playwright = null; // 标记为null
+                }
             }
+        } finally {
+            stopAutoClearContextThread();
         }
     }
 }

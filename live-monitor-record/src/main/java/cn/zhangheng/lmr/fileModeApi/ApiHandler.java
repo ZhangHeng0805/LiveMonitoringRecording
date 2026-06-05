@@ -4,6 +4,7 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import cn.zhangheng.common.bean.Room;
+import cn.zhangheng.common.httpServer.handle.JSONHandler;
 import cn.zhangheng.common.record.Recorder;
 import cn.zhangheng.lmr.FileModeMain;
 import cn.zhangheng.lmr.Main;
@@ -35,7 +36,7 @@ public class ApiHandler extends JSONHandler {
     }
 
     @Override
-    public void handle(HttpExchange httpExchange) throws IOException {
+    public void request(HttpExchange httpExchange) throws IOException {
         try {
             String indexPath = getIndexPath(httpExchange, prefix);
             Message<Object> msg = new Message<>();
@@ -76,7 +77,7 @@ public class ApiHandler extends JSONHandler {
             Room room = main.getMonitorMain().getRoom();
             JSONObject entries = JSONUtil.parseObj(room);
             entries.remove("cookie");
-            entries.append("statistics",main.getMonitorMain().statistics(null,room));
+            entries.append("statistics", main.getMonitorMain().statistics(null, room));
             JSONObject setting = entries.getJSONObject("setting");
             setting.remove("cookieDouYin");
             setting.remove("cookieBili");
@@ -106,7 +107,9 @@ public class ApiHandler extends JSONHandler {
             }
             return map;
         } catch (Exception e) {
-            log.error(ThrowableUtil.getAllCauseMessage(e), e);
+            if (!(e instanceof NullPointerException)) {
+                log.error(ThrowableUtil.getAllCauseMessage(e), e);
+            }
         }
         return null;
     }

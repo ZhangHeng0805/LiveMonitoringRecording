@@ -2,6 +2,7 @@ package cn.zhangheng.lmr.fileModeApi;
 
 import cn.hutool.core.util.StrUtil;
 import cn.zhangheng.common.bean.Constant;
+import cn.zhangheng.common.httpServer.handle.JSONHandler;
 import cn.zhangheng.common.service.MonitorMain;
 import cn.zhangheng.common.bean.Room;
 import cn.zhangheng.common.bean.enums.MonitorStatus;
@@ -36,12 +37,13 @@ public class ActionHandler extends JSONHandler {
 
 
     @Override
-    public void handle(HttpExchange httpExchange) throws IOException {
+    public void request(HttpExchange httpExchange) throws IOException {
         String indexPath = getIndexPath(httpExchange, prefix);
-        Message msg = new Message();
+        Message<Object> msg = new Message<>();
         try {
             if (indexPath.startsWith("monitor")) {
                 Map<String, String> query = parseQuery(httpExchange);
+                if ("127.0.0.1".equals(getClientIP(httpExchange))) query.put("actionKey", Constant.deviceUniqueId);
                 if (checkActionKey(query, msg) && checkRoomKey(query, msg)) {
                     actionMonitor(msg, query);
                 } else {
@@ -49,6 +51,7 @@ public class ActionHandler extends JSONHandler {
                 }
             } else if (indexPath.startsWith("record")) {
                 Map<String, String> query = parseQuery(httpExchange);
+                if ("127.0.0.1".equals(getClientIP(httpExchange))) query.put("actionKey", Constant.deviceUniqueId);
                 if (checkActionKey(query, msg) && checkRoomKey(query, msg)) {
                     actionRecord(msg, query);
                 } else {
@@ -56,6 +59,7 @@ public class ActionHandler extends JSONHandler {
                 }
             } else if (indexPath.startsWith("setting")) {
                 Map<String, String> query = parseQuery(httpExchange);
+                if ("127.0.0.1".equals(getClientIP(httpExchange))) query.put("actionKey", Constant.deviceUniqueId);
                 if (checkActionKey(query, msg) && checkRoomKey(query, msg)) {
                     actionSetting(msg, query);
                 } else {
@@ -71,7 +75,12 @@ public class ActionHandler extends JSONHandler {
             } else if (indexPath.startsWith("getThread")) {
                 getThread(msg);
             } else if (indexPath.startsWith("getCount")) {
-                msg.setData(DouYinBrowserFactory.getBrowser().getCount());
+                Map<String, Object> douYinCounter = DouYinBrowserFactory.getBrowser().getCount();
+                Map<String, Object> allCounter = FileModeMain.getCounter();
+                Map<String, Object> data = new HashMap<>();
+                data.put("DouYinCounter", douYinCounter);
+                data.put("AllCounter", allCounter);
+                msg.setData(data);
             } else if (indexPath.startsWith("clear")) {
                 Map<String, String> query = parseQuery(httpExchange);
                 if (checkActionKey(query, msg)) {

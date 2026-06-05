@@ -93,7 +93,7 @@ public class DouYinBrowserFactory {
             pageSource = pageSource.substring(index);
         } else {
             if (pageSource.indexOf("<title>验证码") > 0) {
-                log.warn("触发验证码验证机制！");
+                log.warn("API触发验证码验证机制！");
                 return null;
             }
             log.warn("pageSource未获取到有效内容");

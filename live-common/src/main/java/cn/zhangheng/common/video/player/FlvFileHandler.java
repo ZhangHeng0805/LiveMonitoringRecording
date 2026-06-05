@@ -22,7 +22,7 @@ public class FlvFileHandler extends MyHandler {
     }
 
     @Override
-    public void handle(HttpExchange httpExchange) throws IOException {
+    public void request(HttpExchange httpExchange) throws IOException {
         String query = httpExchange.getRequestURI().getQuery();
         Map<String, String> params = parseQuery(query);
         String fileName = params.get("file");

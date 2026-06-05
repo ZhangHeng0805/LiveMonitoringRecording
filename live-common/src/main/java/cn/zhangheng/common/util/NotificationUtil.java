@@ -1,8 +1,6 @@
 package cn.zhangheng.common.util;
 
 import cn.hutool.core.util.StrUtil;
-import cn.hutool.http.HttpRequest;
-import cn.hutool.http.HttpResponse;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import cn.hutool.log.Log;
@@ -11,6 +9,7 @@ import cn.zhangheng.common.bean.Setting;
 import com.zhangheng.util.ThrowableUtil;
 
 import java.awt.*;
+import java.util.HashMap;
 
 /**
  * @author: ZhangHeng
@@ -41,23 +40,32 @@ public class NotificationUtil {
         if (StrUtil.isBlank(xiZhiUrl)) {
             return;
         }
-        System.out.println(content);
-        HttpResponse execute = HttpRequest.post(xiZhiUrl)
-//                .timeout(10_000)
-                .setReadTimeout(30_000)
-                .setConnectionTimeout(10_000)
-                .form("title", title)
-                .form("content", content)
-                .execute();
-        String body = execute.body();
-        execute.close();
-        if (JSONUtil.isTypeJSON(body)) {
-            JSONObject object = JSONUtil.parseObj(body);
-            if (object.getInt("code", -1) != 200) {
-                log.error("息知API消息发送异常：" + body);
+        String[] urls = xiZhiUrl.split(",");
+        for (String u : urls) {
+            String url = StrUtil.isBlank(u) ? null : u.trim();
+            if (StrUtil.isBlank(url)) {
+                continue;
             }
-        } else {
-            log.error("息知API消息发送失败[{}]：{}", execute.getStatus(), body);
+            new Thread(() -> {
+                HashMap<String, String> param = new HashMap<>();
+                param.put("title", title);
+                param.put("content", content);
+                try {
+                    HttpUtils.HttpResponse response = HttpUtils.postForm(url, param);
+                    String body = response.getBody();
+                    log.debug("息知API通知响应: {} - {}", url, body);
+                    if (JSONUtil.isTypeJSON(body)) {
+                        JSONObject object = JSONUtil.parseObj(body);
+                        if (object.getInt("code", -1) != 200) {
+                            log.warn("息知API消息发送异常：{} - {}", url, body);
+                        }
+                    } else {
+                        log.error("息知API通知错误：{} - [{}] {}", url, response.getCode(), body);
+                    }
+                } catch (Exception e) {
+                    log.error("息知API通知失败：{} - {}", url, ThrowableUtil.getAllCauseMessage(e));
+                }
+            }).start();
         }
     }
 

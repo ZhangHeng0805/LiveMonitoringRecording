@@ -14,6 +14,7 @@ import cn.zhangheng.common.util.TrayIconUtil;
 import cn.zhangheng.douyin.browser.DouYinBrowserFactory;
 import cn.zhangheng.lmr.fileModeApi.LocalServerApi;
 import com.zhangheng.util.ThrowableUtil;
+import com.zhangheng.util.TimeUtil;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -22,7 +23,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -154,7 +157,7 @@ public class FileModeMain {
             model.setStartTime();
             main.start(setting, id, platform, isRecord);
             log.debug("{} 监听文件结束运行!", file);
-        } catch (Exception e) {
+        } catch (Throwable e) {
             log.error(file + " 监听发生异常:" + e.getMessage(), e);
         } finally {
             endMonitor(model);
@@ -203,5 +206,22 @@ public class FileModeMain {
 
     public static RoomFileModel getModelById(String id) {
         return roomFileMap.values().stream().filter(m -> m.getId().equals(id)).findFirst().orElse(null);
+    }
+
+    public static Map<String, Object> getCounter() {
+        Map<String, Object> platformData = new HashMap<>();
+        for (RoomFileModel model : roomFileMap.values()) {
+            Map<String, Object> counter = new HashMap<>();
+            Room room = model.getMain().getMonitorMain().getRoom();
+            counter.put("name", room.getNickname());
+            counter.put("url", room.getRoomUrl());
+            counter.put("platform", room.getPlatform().getName());
+            counter.put("living", room.isLiving());
+            counter.put("intervalSec", room.getSetting().getDelayIntervalSec());
+            counter.put("count", model.getMain().getMonitorMain().getRoomMonitor().getCount());
+            counter.put("updateTime", TimeUtil.toTime(room.getUpdateTime()));
+            platformData.put(model.getId(), counter);
+        }
+        return platformData;
     }
 }

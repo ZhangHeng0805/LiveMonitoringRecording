@@ -1,12 +1,15 @@
-package cn.zhangheng.lmr.fileModeApi;
+package cn.zhangheng.common.httpServer.handle;
 
+import cn.hutool.core.io.IoUtil;
 import cn.hutool.json.JSONUtil;
-import cn.zhangheng.common.httpServer.handle.MyHandler;
+import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import com.zhangheng.util.ThrowableUtil;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 
 /**
@@ -29,17 +32,21 @@ public abstract class JSONHandler extends MyHandler {
     }
 
     protected void responseJson(HttpExchange httpExchange, String json, int responseCode) throws IOException {
-//        System.out.println(json);
-        try (OutputStream os = httpExchange.getResponseBody()) {
-            String contentType = "application/json; charset=" + charset.name();
-            httpExchange.getResponseHeaders().set("Content-Type", contentType);
-            httpExchange.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
-            byte[] bytes = json.getBytes(charset);
+        if (httpExchange.getResponseCode() != -1) {
+            return;
+        }
+        String contentType = "application/json; charset=" + charset.name();
+        Headers responseHeaders = httpExchange.getResponseHeaders();
+        responseHeaders.set("Content-Type", contentType);
+        responseHeaders.set("Access-Control-Allow-Origin", "*");
+        byte[] bytes = json.getBytes(charset);
+        try (InputStream is = new ByteArrayInputStream(bytes);
+             OutputStream os = httpExchange.getResponseBody()) {
             httpExchange.sendResponseHeaders(responseCode, bytes.length);
-            os.write(bytes);
+            IoUtil.copy(is, os);
         } catch (Exception e) {
-            sendErrorResponse(httpExchange, e);
             log.error("响应JSON响应失败: {}, 错误: {}", json, ThrowableUtil.getAllCauseMessage(e));
+            throw e;
         } finally {
             httpExchange.close();
         }

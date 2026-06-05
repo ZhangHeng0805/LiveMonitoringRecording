@@ -40,14 +40,19 @@ public abstract class RoomMonitor<R extends Room, S extends RoomService<R>> exte
     protected abstract S getRoomService(R room);
 
     public synchronized void refresh(boolean force) {
-        roomService.refresh(force);
+        roomService.getRoomData(force);
     }
 
     public void startSubtitle() {
         roomService.startSubtitle();
     }
+
     public void stopSubtitle() {
         roomService.stopSubtitle();
+    }
+
+    public int getCount() {
+        return roomService.getCount();
     }
 
     @Override

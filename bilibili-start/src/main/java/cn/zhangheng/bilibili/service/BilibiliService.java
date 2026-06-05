@@ -1,15 +1,13 @@
 package cn.zhangheng.bilibili.service;
 
-import cn.hutool.http.Header;
-import cn.hutool.http.HttpRequest;
-import cn.hutool.http.HttpResponse;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import cn.zhangheng.bilibili.bean.BiliRoom;
 import cn.zhangheng.common.service.RoomService;
+import cn.zhangheng.common.util.HttpUtils;
+import cn.zhangheng.common.util.UserAgentUtil;
 import com.zhangheng.util.TimeUtil;
 
-import java.text.ParseException;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -26,15 +24,22 @@ public class BilibiliService extends RoomService<BiliRoom> {
 
 
     private final Map<Integer, String> qn = new HashMap<>();
+    private final UserAgentUtil ua = new UserAgentUtil();
+    private final Map<String, String> header = new HashMap<>();
 
     public static void main(String[] args) {
         BiliRoom biliRoom = new BiliRoom("55");
         BilibiliService service = new BilibiliService(biliRoom);
-        System.out.println(biliRoom.getNickname() + ":" + biliRoom.getAvatar());
+        System.out.println(biliRoom);
     }
 
     public BilibiliService(BiliRoom room) {
         super(room);
+        header.put("Referer", room.getRoomUrl());
+        header.put("User-Agent", ua.get());
+        if (room.getCookie() != null) {
+            header.put("Cookie", room.getCookie());
+        }
         initQn();
         room_init_living();
         room_info();
@@ -56,15 +61,21 @@ public class BilibiliService extends RoomService<BiliRoom> {
     }
 
     @Override
-    public void refresh(boolean force) {
-        if (!room.isLiving()){
+    protected boolean refresh(boolean force) {
+        if (!room.isLiving()) {
             room_init_living();
         }
         if (room.isLiving()) {
             room_info();
             if (force || room.getStreams() == null || room.getStreams().isEmpty()) room_stream();
         }
-        room.setUpdateTime(new Date());
+        if (counter.get() % 100 == 0) {
+            header.put("User-Agent", ua.get());
+            if (room.getCookie() != null) {
+                header.put("Cookie", room.getCookie());
+            }
+        }
+        return true;
     }
 
     @Override
@@ -77,18 +88,12 @@ public class BilibiliService extends RoomService<BiliRoom> {
 
     }
 
-    @Override
-    public HttpRequest get(String url) {
-        return super.get(url).header(Header.REFERER, room.getRoomUrl());
-    }
 
     public void room_init_living() {
-        HttpRequest header = get("https://api.live.bilibili.com/room/v1/Room/room_init?id=" + room.getId());
-        if (room.getCookie() != null) {
-            header = header.header("Cookie", room.getCookie());
-        }
-        try (HttpResponse execute = header.execute()) {
-            String body = execute.body();
+        String url = "https://api.live.bilibili.com/room/v1/Room/room_init?id=" + room.getId();
+        try {
+            HttpUtils.HttpResponse response = HttpUtils.get(url, header);
+            String body = response.getBody();
             if (JSONUtil.isTypeJSON(body)) {
                 JSONObject entries = JSONUtil.parseObj(body);
                 Integer code = entries.getInt("code");
@@ -105,17 +110,19 @@ public class BilibiliService extends RoomService<BiliRoom> {
                     log.warn("room_init_living失败<" + room.getId() + ">: (" + code + ") " + msg);
                     throw new RuntimeException(room.getPlatform().getName() + " [" + room.getId() + "]刷新异常：" + msg);
                 }
+            } else {
+                log.warn("room_init_living<{}>请求失败：{}", room.getId(), response);
             }
+        } catch (Exception e) {
+            throw new RuntimeException("room_init_living", e);
         }
     }
 
     private void room_info() {
-        HttpRequest header = get("https://api.live.bilibili.com/room/v1/Room/get_info?id=" + room.getId());
-        if (room.getCookie() != null) {
-            header = header.header("Cookie", room.getCookie());
-        }
-        try (HttpResponse execute = header.execute()) {
-            String body = execute.body();
+        String url = "https://api.live.bilibili.com/room/v1/Room/get_info?id=" + room.getId();
+        try {
+            HttpUtils.HttpResponse response = HttpUtils.get(url, header);
+            String body = response.getBody();
             if (JSONUtil.isTypeJSON(body)) {
                 JSONObject entries = JSONUtil.parseObj(body);
                 if (entries.getInt("code") == 0) {
@@ -137,19 +144,21 @@ public class BilibiliService extends RoomService<BiliRoom> {
                         room.setViewers(data.getInt("online"));
                     }
                 } else {
-                    log.warn("room_info失败：" + entries.getStr("message"));
+                    log.warn("room_info失败：{}", entries.getStr("message"));
                 }
+            } else {
+                log.warn("room_info<{}>请求失败：{}", room.getId(), response);
             }
+        } catch (Exception e) {
+            throw new RuntimeException("room_info", e);
         }
     }
 
     private void user_info() {
-        HttpRequest header = get("https://api.live.bilibili.com/live_user/v1/Master/info?uid=" + room.getUid());
-        if (room.getCookie() != null) {
-            header = header.header("Cookie", room.getCookie());
-        }
-        try (HttpResponse execute = header.execute()) {
-            String body = execute.body();
+        String url = "https://api.live.bilibili.com/live_user/v1/Master/info?uid=" + room.getUid();
+        try {
+            HttpUtils.HttpResponse response = HttpUtils.get(url, header);
+            String body = response.getBody();
             if (JSONUtil.isTypeJSON(body)) {
                 JSONObject entries = JSONUtil.parseObj(body);
                 if (entries.getInt("code") == 0) {
@@ -159,23 +168,22 @@ public class BilibiliService extends RoomService<BiliRoom> {
                     room.setAvatar(info.getStr("face"));
                     room.setFollowers(data.getInt("follower_num", 0));
                 } else {
-                    log.warn("user_info失败：" + entries.getStr("message"));
+                    log.warn("user_info失败：{}", entries.getStr("message"));
                 }
+            } else {
+                log.warn("user_info<{}>请求失败：{}", room.getId(), response);
             }
+        } catch (Exception e) {
+            throw new RuntimeException("user_info", e);
         }
     }
+
 
     private void room_stream() {
-        room_stream(true);
-    }
-
-    private void room_stream(boolean isCookie) {
-        HttpRequest header = get("https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo?protocol=0&format=0&codec=0&qn=30000&room_id=" + room.getRoom_id());
-        if (room.getCookie() != null && isCookie) {
-            header = header.header("Cookie", room.getCookie());
-        }
-        try (HttpResponse execute = header.execute()) {
-            String body = execute.body();
+        String url = "https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo?protocol=0&format=0&codec=0&qn=30000&room_id=" + room.getRoom_id();
+        try {
+            HttpUtils.HttpResponse response = HttpUtils.get(url, header);
+            String body = response.getBody();
             if (JSONUtil.isTypeJSON(body)) {
                 JSONObject entries = JSONUtil.parseObj(body);
                 if (entries.getInt("code") == 0) {
@@ -183,16 +191,20 @@ public class BilibiliService extends RoomService<BiliRoom> {
                     JSONObject codec = data.getJSONObject("playurl_info").getJSONObject("playurl").getJSONArray("stream").getJSONObject(0).getJSONArray("format").getJSONObject(0).getJSONArray("codec").getJSONObject(0);
                     String desc = qn.get(codec.getInt("current_qn", 10000));
                     String base_url = codec.getStr("base_url");
-                    Map<String, String> streams =  new LinkedHashMap<>();
+                    Map<String, String> streams = new LinkedHashMap<>();
                     JSONObject urls = codec.getJSONArray("url_info").getJSONObject(0);
-                    String url = urls.getStr("host") + base_url + urls.getStr("extra");
-                    streams.put(desc, url);
+                    String streamUrl = urls.getStr("host") + base_url + urls.getStr("extra");
+                    streams.put(desc, streamUrl);
                     room.setStreams(streams);
 //                    if (isCookie) room_stream(false);
                 } else {
-                    log.warn("room_stream失败：" + entries.getStr("message"));
+                    log.warn("room_stream失败：{}", entries.getStr("message"));
                 }
+            } else {
+                log.warn("room_stream<{}>请求失败：{}", room.getId(), response);
             }
+        } catch (Exception e) {
+            throw new RuntimeException("room_stream", e);
         }
     }
 

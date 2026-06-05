@@ -1,5 +1,6 @@
 package cn.zhangheng.common.util;
 
+import com.zhangheng.util.ArrayUtil;
 import com.zhangheng.util.RandomUtil;
 
 /**
@@ -41,6 +42,11 @@ public class UserAgentUtil {
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Safari/605.1.15",
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     };
+
+    public UserAgentUtil() {
+        //随机打乱顺序
+        ArrayUtil.shuffle(User_Agents);
+    }
 
     public String getRandomUser_Agent() {
         int random = RandomUtil.createRandom(0, User_Agents.length);

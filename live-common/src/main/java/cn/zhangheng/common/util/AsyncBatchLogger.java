@@ -73,7 +73,7 @@ public class AsyncBatchLogger {
      */
     public void highLog(String info) {
         if (info == null) return;
-
+        if (!isRunning) return;
         lock.lock();
         try {
             lines.add(info);

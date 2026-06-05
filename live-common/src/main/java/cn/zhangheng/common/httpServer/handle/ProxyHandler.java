@@ -15,7 +15,7 @@ import org.slf4j.LoggerFactory;
  * 支持长连接分片文件的代理请求处理器（JDK1.8兼容，修复302重定向+字节数不匹配异常）
  */
 public class ProxyHandler extends MyHandler {
-    private static final Logger log = LoggerFactory.getLogger(ProxyHandler.class);
+    private final Logger log = LoggerFactory.getLogger(this.getClass());
 
     // 超时设置
     private static final int CONNECT_TIMEOUT = 10000;
@@ -26,7 +26,7 @@ public class ProxyHandler extends MyHandler {
     private static final List<Integer> REDIRECT_CODES = Arrays.asList(301, 302, 303, 307, 308);
 
     @Override
-    public void handle(HttpExchange httpExchange) throws IOException {
+    public void request(HttpExchange httpExchange) throws IOException {
         Map<String, String> params = parseQuery(httpExchange);
         InputStream targetStream = null;
         OutputStream clientOs = null;

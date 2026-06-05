@@ -18,14 +18,16 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 public class AutoClearContextThread {
-    private final int interval;
+    private final int intervalSec;
     private final MyThreadLocal<BrowserContent> threadLocal;
     private final AtomicBoolean isRunning = new AtomicBoolean(true);
     private Thread thread;
+    private final AutoClearContextThreadListener listener;
 
-    public AutoClearContextThread(int interval, MyThreadLocal<BrowserContent> threadLocal) {
-        this.interval = interval;
+    public AutoClearContextThread(int intervalSec, MyThreadLocal<BrowserContent> threadLocal, AutoClearContextThreadListener listener) {
+        this.intervalSec = intervalSec;
         this.threadLocal = threadLocal;
+        this.listener = listener;
         run();
     }
 
@@ -33,22 +35,24 @@ public class AutoClearContextThread {
         thread = new Thread(() -> {
             try {
                 log.info("自动清除空闲的BrowserContext线程启动！");
+                if (listener != null) listener.threadStarted(intervalSec);
                 while (isRunning.get()) {
                     try {
-                        TimeUnit.SECONDS.sleep(interval);
+                        TimeUnit.SECONDS.sleep(intervalSec);
                     } catch (InterruptedException ignored) {
                     }
-
                     ConcurrentHashMap<String, BrowserContent> all = threadLocal.getAll();
+                    if (listener != null) listener.triggerCheck(intervalSec, all);
                     if (all != null && !all.isEmpty()) {
                         List<String> keys = all.entrySet().stream().filter(c -> {
                             long lastUsedTimestamp = c.getValue().getLastUsedTimestamp();
-                            return System.currentTimeMillis() - lastUsedTimestamp > interval * 1000L;
+                            return System.currentTimeMillis() - lastUsedTimestamp > intervalSec * 1000L;
                         }).map(Map.Entry::getKey).collect(Collectors.toList());
 
                         for (String key : keys) {
-                            threadLocal.remove(key);
+                            BrowserContent remove = threadLocal.remove(key);
                             log.info("自动清除空闲的BrowserContext-[{}]被清除!", key);
+                            if (listener != null) listener.triggerClear(intervalSec, key, remove);
                         }
                     }
 
@@ -65,6 +69,7 @@ public class AutoClearContextThread {
         isRunning.set(false);
         thread.interrupt();
         log.info("自动清除空闲的BrowserContext线程停止！");
+        if (listener != null) listener.threadStop();
     }
 
     public boolean isRunning() {

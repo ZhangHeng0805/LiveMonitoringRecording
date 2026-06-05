@@ -10,9 +10,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.UnsupportedEncodingException;
-import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
-import java.net.ServerSocket;
 import java.net.URLEncoder;
 
 /**
@@ -48,6 +46,7 @@ public class LocalServerApi {
                 server.createContext("/api", new ApiHandler("/api/"));
                 server.createContext("/action", new ActionHandler("/action/"));
                 server.createContext("/proxy", new ProxyHandler());
+                server.createContext("/fileRes", new FileResourcesHandler("/fileRes/"));
             } catch (Exception e) {
                 log.error("本地API服务创建失败！{}", ThrowableUtil.getAllCauseMessage(e));
             }

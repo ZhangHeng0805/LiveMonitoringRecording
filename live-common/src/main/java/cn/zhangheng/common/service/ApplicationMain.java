@@ -11,6 +11,7 @@ import cn.zhangheng.common.bean.Constant;
 import cn.zhangheng.common.bean.Room;
 import cn.zhangheng.common.bean.Setting;
 import cn.zhangheng.common.util.ObjectPropertyUpdater;
+import cn.zhangheng.common.util.TrayIconUtil;
 import com.zhangheng.util.ThrowableUtil;
 import lombok.Getter;
 
@@ -167,21 +168,28 @@ public abstract class ApplicationMain<R extends Room> {
         boolean isLoop;
         this.room = room;
         //是否循环监听
-        do {
-            Setting srcSetting = new Setting();
-            if (setting != null) {
-                try {
-                    ObjectPropertyUpdater.updateDifferentProperties(setting, srcSetting);
-                } catch (Exception e) {
-                    log.warn("读取配置文件异常：" + ThrowableUtil.getAllCauseMessage(e));
+        TrayIconUtil iconUtil = TrayIconUtil.getInstance(Constant.Application + " - " + room.getPlatform().getName() + ":" + room.getId());
+        try {
+            TrayIconUtil.getThreadInstance().set(iconUtil);
+            do {
+                Setting srcSetting = new Setting();
+                if (setting != null) {
+                    try {
+                        ObjectPropertyUpdater.updateDifferentProperties(setting, srcSetting);
+                    } catch (Exception e) {
+                        log.warn("读取配置文件异常：" + ThrowableUtil.getAllCauseMessage(e));
+                    }
                 }
-            }
-            room.reset();//重置直播间
-            room.setSetting(srcSetting);
-            monitorMain = getMonitorMain(room);
-            monitorMain.start(room, isRecord);
-            isLoop = !monitorMain.getIsForceStop() && room.getSetting().isLoop();
-        } while (isLoop);
+                room.reset();//重置直播间
+                room.setSetting(srcSetting);
+                monitorMain = getMonitorMain(room);
+                monitorMain.start(room, isRecord);
+                isLoop = !monitorMain.getIsForceStop() && room.getSetting().isLoop();
+            } while (isLoop);
+        } finally {
+            iconUtil.shutdown();
+            TrayIconUtil.getThreadInstance().remove();
+        }
         log.info("{}直播间 {}[{}]监听结束！", room.getPlatform().getName(), room.getNickname(), room.getId());
     }
 

@@ -39,17 +39,18 @@ public class MyThreadLocal<T> {
         map.put(Thread.currentThread().getName(), value);
     }
 
-    public void remove(String name) {
+    public T remove(String name) {
 
         T removedValue = map.remove(name);
         // 通知监听器移除了值
         if (listener != null && removedValue != null) {
             listener.removed(name, removedValue);
         }
+        return removedValue;
     }
 
-    public void remove() {
-        remove(Thread.currentThread().getName());
+    public T remove() {
+        return remove(Thread.currentThread().getName());
     }
 
     /**

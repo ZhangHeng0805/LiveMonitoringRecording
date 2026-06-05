@@ -12,6 +12,8 @@ import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -32,9 +34,9 @@ public class TrayIconUtil {
     @Getter
     private TrayIcon trayIcon;
     @Getter
-    private PopupMenu pop;//创建弹出式菜单
+    private JPopupMenu pop;//创建弹出式菜单
     @Getter
-    private MenuItem startRecordMenu, stopRecordMenu, closeMenu, openRoomMenu, playFlvVideo, openMonitorMenu;
+    private JMenuItem startRecordMenu, stopRecordMenu, closeMenu, openRoomMenu, playFlvVideo, openMonitorMenu;
     @Setter
     @Getter
     private ClickListener clickListener;
@@ -44,6 +46,8 @@ public class TrayIconUtil {
     private static final int MAX_ICON_LIMIT = Constant.maxMonitorThreads; // 系统托盘最大图标数量（根据系统调整）
     // 全局注册表：key=线程唯一标识，value=托盘图标实例（线程安全）
     private static final Map<String, TrayIconUtil> iconRegistry = new ConcurrentHashMap<>();
+    @Getter
+    private static final ThreadLocal<TrayIconUtil> threadInstance = new InheritableThreadLocal<>();
 
     // 静态初始化系统托盘
     static {
@@ -134,13 +138,57 @@ public class TrayIconUtil {
     }
 
     // 将原lambda中的逻辑提取为独立方法，便于调用
-    private void executeTrayIconTask() {
+    private synchronized void executeTrayIconTask() {
         ClassPathResource classPathResource = new ClassPathResource("/logo.png");
         try (InputStream inputStreamImg = classPathResource.getStream()) {
             Image iconImg = ImageIO.read(inputStreamImg);
-            this.pop = new PopupMenu();// 创建弹出式菜单
+            this.pop = new JPopupMenu();// 创建弹出式菜单
             addActionListener(pop);
-            trayIcon = new TrayIcon(iconImg, title, pop);
+            trayIcon = new TrayIcon(iconImg, title, null);
+            // 右键托盘图标弹出Swing菜单
+            trayIcon.addMouseListener(new MouseAdapter() {
+                // 右键弹出
+                @Override
+                public void mouseReleased(MouseEvent e) {
+                    if (e.isPopupTrigger()) {
+                        Point point = e.getLocationOnScreen();
+                        showMenu(point);
+                    } else {
+                        pop.setVisible(false);
+                    }
+                }
+
+
+                private void showMenu(Point point) {
+                    int mx = point.x;
+                    int my = point.y;
+                    SwingUtilities.invokeLater(() -> {
+                        // 先关闭旧的
+                        pop.setVisible(false);
+                        // 在屏幕坐标弹出
+                        pop.show(null, mx - 35, my);
+
+                        // 让菜单获得焦点 → 移开自动消失
+                        pop.requestFocus();
+
+                        // 定时器检查：鼠标是否离开菜单整体区域
+                        Timer timer = new Timer(100, e -> {
+                            Point mouse = MouseInfo.getPointerInfo().getLocation();
+                            Rectangle bounds = pop.getBounds();
+                            bounds.setLocation(pop.getLocationOnScreen());
+
+                            // 只有鼠标 完全不在菜单范围内 才关闭
+                            if (!bounds.contains(mouse)) {
+                                pop.setVisible(false);
+                                ((Timer) e.getSource()).stop();
+                            }
+                        });
+                        timer.setRepeats(true);
+                        timer.start();
+                    });
+                }
+            });
+
             trayIcon.setImageAutoSize(true);
             trayIcon.setToolTip(title);
             trayIcon.addActionListener(e -> {
@@ -198,14 +246,14 @@ public class TrayIconUtil {
         } else {
             try {
                 SwingUtilities.invokeAndWait(this::shutdownTrayIconTask);
-            }catch (InterruptedException ignored){
-            }catch (InvocationTargetException e) {
+            } catch (InterruptedException ignored) {
+            } catch (InvocationTargetException e) {
                 throw new RuntimeException(e);
             }
         }
     }
 
-    private void shutdownTrayIconTask() {
+    private synchronized void shutdownTrayIconTask() {
         // 双重校验：确保图标仍存在且系统托盘可用
         if (trayIcon == null) {
             log.debug("线程[{}]：图标已释放或未创建，跳过移除", threadKey);
@@ -217,7 +265,7 @@ public class TrayIconUtil {
             try {
                 // 先从系统托盘移除图标（native操作）
                 systemTray.remove(trayIcon);
-                log.debug("线程[{}]：系统托盘已移除图标", threadKey);
+//                log.debug("线程[{}]：系统托盘已移除图标", threadKey);
 
                 // 再清理本地资源
                 trayIcon = null;
@@ -235,20 +283,46 @@ public class TrayIconUtil {
         }
     }
 
-    private void addActionListener(PopupMenu pop) {
-        startRecordMenu = new MenuItem("Start Recording");
-        stopRecordMenu = new MenuItem("Stop Recording");
-        closeMenu = new MenuItem("Exit");
-        openRoomMenu = new MenuItem("Open Room");
-        playFlvVideo = new MenuItem("Play Flv Video");
-        openMonitorMenu = new MenuItem("Open Monitor");
+    private JMenuItem createMenuItem(String text) {
+        JMenuItem item = new JMenuItem(text);
+        // 正常颜色（黑色）
+        Color normal = Color.BLACK;
+        // 鼠标移入颜色（红色，你可以随便改）
+        Color hover = Color.BLUE;
+        item.setForeground(normal); // 默认黑色
+        // 鼠标移入 → 变红
+        item.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                item.setForeground(hover);
+            }
+
+            // 鼠标移出 → 恢复黑色
+            @Override
+            public void mouseExited(MouseEvent e) {
+                item.setForeground(normal);
+            }
+        });
+        return item;
+    }
+
+    private void addActionListener(JPopupMenu pop) {
+        startRecordMenu = createMenuItem("开始录制");
+        stopRecordMenu = createMenuItem("停止录制");
+        closeMenu = createMenuItem("退出监听");
+        openRoomMenu = createMenuItem("进入直播间");
+        playFlvVideo = createMenuItem("FLV播放器");
+        openMonitorMenu = createMenuItem("监控界面");
+
         Font boldFont = new Font(null, Font.BOLD, 14);
         closeMenu.setFont(boldFont);
+        openMonitorMenu.setFont(boldFont);
 
         pop.add(closeMenu);
+        pop.add(openMonitorMenu);
+        pop.addSeparator();
         pop.add(openRoomMenu);
         pop.add(playFlvVideo);
-        pop.add(openMonitorMenu);
 
         openMonitorMenu.addActionListener(e -> {
             if (clickListener != null) {
@@ -307,19 +381,22 @@ public class TrayIconUtil {
     }
 
 
-    public void setStartRecordStatue(boolean startRecordStatue) {
-        if (startRecordStatue) {
+    public void setStartRecordStatue(Boolean startRecordStatue) {
+        if (Boolean.TRUE.equals(startRecordStatue)) {
             pop.remove(startRecordMenu);
             pop.add(stopRecordMenu);
             setTrayIconImage("/logo-recording.png");
-        } else {
+        } else if (Boolean.FALSE.equals(startRecordStatue)) {
             pop.remove(stopRecordMenu);
             pop.add(startRecordMenu);
             setTrayIconImage("/logo-running.png");
+        } else {
+            pop.remove(startRecordMenu);
+            pop.remove(stopRecordMenu);
         }
     }
 
-    public void setMenuVisible(MenuItem item, boolean menuVisible) {
+    public void setMenuVisible(JMenuItem item, boolean menuVisible) {
         if (item != null) {
             if (menuVisible) {
                 pop.add(item);

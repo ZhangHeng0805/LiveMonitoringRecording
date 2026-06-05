@@ -1,5 +1,6 @@
 package cn.zhangheng.common.httpServer.handle;
 
+import cn.hutool.core.io.IoUtil;
 import cn.hutool.core.map.MapUtil;
 import com.sun.net.httpserver.HttpExchange;
 
@@ -28,12 +29,13 @@ public class StreamFileHandler extends MyHandler {
     public StreamFileHandler(String prefix) {
         this.prefix = prefix;
     }
+
     public StreamFileHandler() {
         this.prefix = null;
     }
 
     @Override
-    public void handle(HttpExchange httpExchange) throws IOException {
+    public void request(HttpExchange httpExchange) throws IOException {
         URI requestURI = httpExchange.getRequestURI();
         String file;
         if (prefix != null) {
@@ -48,7 +50,6 @@ public class StreamFileHandler extends MyHandler {
             }
             type = MapUtil.getStr(map, "type", type);
         }
-//        System.out.println(file);
         try (InputStream is = getClass().getClassLoader().getResourceAsStream(file)) {
             if (is == null) {
                 sendErrorResponse(httpExchange, 404, file + ": File not found");
@@ -57,12 +58,10 @@ public class StreamFileHandler extends MyHandler {
             httpExchange.getResponseHeaders().set("Content-Type", type);
             httpExchange.sendResponseHeaders(200, is.available());
             try (OutputStream os = httpExchange.getResponseBody()) {
-                byte[] buffer = new byte[8192];
-                int bytesRead;
-                while ((bytesRead = is.read(buffer)) != -1) {
-                    os.write(buffer, 0, bytesRead);
-                }
+                IoUtil.copy(is, os);
             }
+        } finally {
+            httpExchange.close();
         }
 
     }

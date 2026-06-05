@@ -76,7 +76,8 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
     }
 
     public MonitorMain(Setting setting) {
-        this.trayIconUtil = TrayIconUtil.getInstance(Constant.Application);
+        this.trayIconUtil = TrayIconUtil.getThreadInstance().get();
+        trayIconUtil.setStartRecordStatue(null);
         this.setting = setting;
         flvPlayer = new LocalServerFlvPlayer(setting.getFlvPlayerPort());
         startFlvPlayer();
@@ -142,7 +143,9 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         } finally {
             isRunning.set(false);
             status = MonitorStatus.END;
-            trayIconUtil.shutdown();
+            if (logUtil != null) {
+                logUtil.close();
+            }
         }
     }
 
@@ -160,9 +163,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                 isRunning.set(true);
                 tryMonitorSec = 1;
                 if (!RunMode.FILE.equals(setting.getRunMode())) {
-                    if (trayIconUtil != null) {
-                        trayIconUtil.setMenuVisible(trayIconUtil.getOpenMonitorMenu(), false);
-                    }
+                    trayIconUtil.setMenuVisible(trayIconUtil.getOpenMonitorMenu(), false);
                 }
             }
 
@@ -193,6 +194,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                     trayIconUtil.setStartLivingImage(false);
                     log.info(msg);
                 } else {
+                    roomMonitor.startSubtitle();//开启弹幕功能
                     while (getIsRunning() && (room.getStreams() == null || room.getStreams().isEmpty())) {
                         roomMonitor.refresh(true);
                         log.warn("直播已开启，未获取到直播源信息，重试中。。。");
@@ -201,7 +203,6 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                         } catch (InterruptedException ignored) {
                         }
                     }
-                    roomMonitor.startSubtitle();//开启弹幕功能
                     if (isRecord) {
                         recorderTask = getRecorderTask();
                         recorderTask.run(room);
@@ -343,7 +344,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
 
             @Override
             public void recorderError(Throwable throwable, String saveFilePath) {
-                log.error("FLV录制中发生异常：" + ThrowableUtil.getAllCauseMessage(throwable));
+                log.error("FLV录制中发生异常：{}", ThrowableUtil.getAllCauseMessage(throwable));
                 completeRecordFile(saveFilePath);
                 if (throwable instanceof InterruptedException) {
                     return;
@@ -497,7 +498,6 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             } catch (InterruptedException ignored) {
             }
         }
-        if (logUtil != null) logUtil.close();
         flvPlayer.stop(true);
     }
 
@@ -525,19 +525,19 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         } else {
 //            content += "\t\n- " + statistics(null, room);
         }
-        try {
 //            content += "\t\n ![直播封面](data:image/jpeg;base64," + Base64Encoder.encode(HttpUtil.downloadBytes(room.getCover())) + ")";
-            String footer = "\t\n------\t\n"
-                    + "\t\n **个人链接:**\t [微信公众号](" + Constant.WeChatOfficialAccount + ") / [Bilibili](https://b23.tv/fmqmfNv)"
+        String footer = "\t\n------\t\n"
+                + "\t\n **个人链接:**\t [微信公众号](" + Constant.WeChatOfficialAccount + ") / [Bilibili](https://b23.tv/fmqmfNv)"
 //                    + " / [抖音](https://v.douyin.com/cubL5sg7sNE/)"
-                    + " / [程序项目](https://github.com/ZhangHeng0805/LiveMonitoringRecording)";
-            notificationUtil.xiZhiSendMsg(Constant.Application,
-//                    URLEncoder.encode(
-                    title + content + footer
-//                            , "UTF-8")
-            );
+                + " / [程序项目](https://github.com/ZhangHeng0805/LiveMonitoringRecording)";
+
+        String msg = title + content + footer;
+
+        try {
+            notificationUtil.xiZhiSendMsg(Constant.Application, msg);
         } catch (Exception e) {
             log.error("xiZhiSendMsg发生异常：" + ThrowableUtil.getAllCauseMessage(e));
         }
+
     }
 }

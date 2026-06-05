@@ -292,9 +292,10 @@ public class DouYinWebcast {
 
     private static WebSocketModel browserGetWssUrl1(DouYinRoom room) {
         String roomUrl = room.getRoomUrl();
+        WebSocketModel wss = new WebSocketModel();
         if (roomUrl == null || roomUrl.trim().isEmpty()) {
             log.error("直播间URL为空，无法发起请求");
-            return null;
+            return wss;
         }
         Page page = null;
         String userAgent = UserAgentUtil.getRandomUser_Agent();
@@ -318,13 +319,11 @@ public class DouYinWebcast {
                     page.reload(new Page.ReloadOptions().setTimeout(10_000).setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
                     webSocket = BrowserUtil.waitForTargetWebSocket(page, TARGET_WSS, 15_000);
                 }
-                WebSocketModel wss = new WebSocketModel();
+
                 wss.setUserAgent(userAgent);
                 wss.setUrl(webSocket.url());
                 wss.setCookie(BrowserUtil.toCookieStr(page.context().cookies()));
-                return wss;
             }
-            System.out.println(room.getNickname() + " 直播间未开启直播！");
         } catch (Exception e) {
             log.error("获取直播弹幕wss失败！{}", e.getMessage());
         } finally {
@@ -333,7 +332,7 @@ public class DouYinWebcast {
                 page.close(new Page.CloseOptions().setRunBeforeUnload(false));
             }
         }
-        return null;
+        return wss;
     }
 
 

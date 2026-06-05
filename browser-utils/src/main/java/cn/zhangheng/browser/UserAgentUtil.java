@@ -1,5 +1,6 @@
 package cn.zhangheng.browser;
 
+import com.zhangheng.util.ArrayUtil;
 import com.zhangheng.util.RandomUtil;
 
 import java.util.*;
@@ -43,22 +44,25 @@ public class UserAgentUtil {
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Safari/605.1.15",
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     };
-    private final List<String> lists;
+
+    static {
+        ArrayUtil.shuffle(User_Agents);
+    }
 
     public UserAgentUtil() {
-        this.lists = Arrays.asList(User_Agents);
-        Collections.shuffle(lists);
+        ArrayUtil.shuffle(User_Agents);
     }
+
 
     public static String getRandomUser_Agent() {
         int random = RandomUtil.createRandom(0, User_Agents.length);
         return User_Agents[random];
     }
 
-    private volatile int index = 0;
+    private int index = 0;
 
     public synchronized String get() {
-        if (index >= lists.size()) index = 0;
-        return lists.get(index++);
+        if (index >= User_Agents.length) index = 0;
+        return User_Agents[index++];
     }
 }
