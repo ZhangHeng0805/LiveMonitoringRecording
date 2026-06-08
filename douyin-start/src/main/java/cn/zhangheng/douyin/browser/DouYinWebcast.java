@@ -2,7 +2,6 @@ package cn.zhangheng.douyin.browser;
 
 import cn.hutool.core.util.StrUtil;
 import cn.zhangheng.browser.BrowserUtil;
-import cn.zhangheng.browser.UserAgentUtil;
 import cn.zhangheng.common.bean.Setting;
 import cn.zhangheng.common.util.LogUtil;
 import cn.zhangheng.douyin.bean.DouYinCounter;
@@ -11,8 +10,8 @@ import cn.zhangheng.record.*;
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.WaitUntilState;
 import com.zhangheng.util.TimeUtil;
+import com.zhangheng.util.UserAgentUtil;
 import lombok.Getter;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;

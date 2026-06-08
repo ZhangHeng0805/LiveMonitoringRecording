@@ -6,7 +6,7 @@
     <parent>
         <groupId>cn.zhangheng.record</groupId>
         <artifactId>LiveMonitoringRecording</artifactId>
-        <version>3.5</version>
+        <version>3.6</version>
     </parent>
 
     <groupId>cn.zhangheng.douyin</groupId>
@@ -35,7 +35,7 @@
             <dependency>
                 <groupId>cn.zhangheng.record</groupId>
                 <artifactId>douyin-fetcher</artifactId>
-                <version>3.5</version>
+                <version>${xxxr.version}</version>
                 <scope>compile</scope>
             </dependency>
 

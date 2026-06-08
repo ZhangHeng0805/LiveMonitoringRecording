@@ -1,5 +1,6 @@
 package cn.zhangheng.common.activation;
 
+import com.zhangheng.util.EncryptUtil;
 import lombok.Data;
 
 import java.util.Date;
@@ -16,4 +17,8 @@ public class ActivationInfo {
     private String deviceUniqueId;//设备唯一ID
     private Long activationTime;//激活时间
     private int activationCodeValidDays;//激活码有效天数，小于0永久
+
+    public String generateSignature() throws Exception {
+        return EncryptUtil.getMyMd5(toString());
+    }
 }

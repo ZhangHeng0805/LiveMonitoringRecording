@@ -65,6 +65,7 @@ public class FileModeMain {
                 String message = StrUtil.format("{} 路径下没有获取到监听的直播间文件[{}]", path, fileSuffix);
                 iconUtil.notifyMessage(message, TrayIcon.MessageType.WARNING);
                 log.warn(message);
+                TimeUnit.SECONDS.sleep(3);
                 iconUtil.shutdown();
                 return;
             }
@@ -75,14 +76,16 @@ public class FileModeMain {
                 String message = ThrowableUtil.getAllCauseMessage(errorException);
                 TrayIconUtil iconUtil = TrayIconUtil.getInstance(Constant.Application);
                 iconUtil.notifyMessage(errorException.getMessage(), TrayIcon.MessageType.ERROR);
-                iconUtil.shutdown();
                 log.error("启动失败！{}", message);
+                TimeUnit.SECONDS.sleep(3);
+                iconUtil.shutdown();
                 return;
             } catch (WarnException warnException) {
                 TrayIconUtil iconUtil = TrayIconUtil.getInstance(Constant.Application);
                 String message = warnException.getMessage();
                 log.warn(message);
                 iconUtil.notifyMessage(message, TrayIcon.MessageType.WARNING);
+                TimeUnit.SECONDS.sleep(3);
                 iconUtil.shutdown();
             }
 

@@ -18,7 +18,8 @@ public abstract class RoomService<T extends Room> {
     protected final Logger log = LoggerFactory.getLogger(getClass());
     protected final T room;
     protected final AtomicInteger counter = new AtomicInteger(0);
-    public int getCount(){
+
+    public int getCount() {
         return counter.get();
     }
 
@@ -27,8 +28,8 @@ public abstract class RoomService<T extends Room> {
         //注意：子类调用super()方法后，需要调用refresh方法初始化room对象
     }
 
-    public void getRoomData(boolean forceRefresh){
-        if (refresh(forceRefresh)){
+    public void getRoomData(boolean forceRefresh) {
+        if (refresh(forceRefresh)) {
             room.setUpdateTime(new Date());
         }
         counter.incrementAndGet();

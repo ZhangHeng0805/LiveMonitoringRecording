@@ -40,6 +40,7 @@ public class ApiHandler extends JSONHandler {
         try {
             String indexPath = getIndexPath(httpExchange, prefix);
             Message<Object> msg = new Message<>();
+
             if (StrUtil.isNotBlank(indexPath)) {
                 RoomFileModel model = FileModeMain.getModelById(indexPath);
                 if (model == null) {

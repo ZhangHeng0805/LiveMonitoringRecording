@@ -1,19 +1,17 @@
 package cn.zhangheng.browser.login;
 
 import cn.zhangheng.browser.BrowserUtil;
-import cn.zhangheng.browser.UserAgentUtil;
 import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 import com.microsoft.playwright.options.Cookie;
 import com.zhangheng.file.TxtOperation;
+import com.zhangheng.util.UserAgentUtil;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
-
-import static cn.zhangheng.browser.PlaywrightBrowser.*;
 
 /**
  * @author: ZhangHeng

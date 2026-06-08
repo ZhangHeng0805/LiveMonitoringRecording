@@ -59,8 +59,8 @@ public class DouYinBrowserFactory {
                 try {
                     browser.close();
                     return true;
-                } catch (Exception e) {
-                    log.warn("Failed to close browser", e);
+                } catch (Throwable e) {
+                    log.error("Failed to close browser", e);
                 } finally {
                     browser = null;
                 }

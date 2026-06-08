@@ -3,6 +3,7 @@ package cn.zhangheng.browser;
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.WaitUntilState;
 import com.zhangheng.util.ThrowableUtil;
+import com.zhangheng.util.UserAgentUtil;
 import lombok.Getter;
 import lombok.Setter;
 import org.slf4j.Logger;

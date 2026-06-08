@@ -2,6 +2,7 @@ package cn.zhangheng.common.util;
 
 import cn.hutool.core.io.resource.ClassPathResource;
 import cn.zhangheng.common.bean.Constant;
+import com.zhangheng.bean.Debouncer;
 import com.zhangheng.util.ThrowableUtil;
 import lombok.Getter;
 import lombok.Setter;
@@ -40,6 +41,7 @@ public class TrayIconUtil {
     @Setter
     @Getter
     private ClickListener clickListener;
+    private final Debouncer debouncer = new Debouncer(250);
     private final String title;
     private static final SystemTray systemTray;
     private final String threadKey;
@@ -158,7 +160,6 @@ public class TrayIconUtil {
                     }
                 }
 
-
                 private void showMenu(Point point) {
                     int mx = point.x;
                     int my = point.y;
@@ -170,18 +171,20 @@ public class TrayIconUtil {
 
                         // 让菜单获得焦点 → 移开自动消失
                         pop.requestFocus();
-
                         // 定时器检查：鼠标是否离开菜单整体区域
-                        Timer timer = new Timer(100, e -> {
-                            Point mouse = MouseInfo.getPointerInfo().getLocation();
-                            Rectangle bounds = pop.getBounds();
-                            bounds.setLocation(pop.getLocationOnScreen());
-
-                            // 只有鼠标 完全不在菜单范围内 才关闭
-                            if (!bounds.contains(mouse)) {
-                                pop.setVisible(false);
-                                ((Timer) e.getSource()).stop();
+                        Timer timer = new Timer(200, e -> {
+                            if (pop.isVisible()) {
+                                Point mouse = MouseInfo.getPointerInfo().getLocation();
+                                Rectangle bounds = pop.getBounds();
+                                bounds.setLocation(pop.getLocationOnScreen());
+                                // 判断鼠标是否完全在菜单范围内
+                                if (bounds.contains(mouse)) {
+                                    return;
+                                }
                             }
+                            //关闭显示
+                            pop.setVisible(false);
+                            ((Timer) e.getSource()).stop();
                         });
                         timer.setRepeats(true);
                         timer.start();
@@ -263,6 +266,11 @@ public class TrayIconUtil {
         // 同步操作systemTray，避免并发冲突
         synchronized (systemTray) {
             try {
+                debouncer.destroy();
+                pop.setVisible(false);
+                trayIcon.setPopupMenu(null);
+                // 关键2：小延迟，让系统消息处理完（避免崩溃）
+                try { Thread.sleep(100); } catch (InterruptedException ignored) {}
                 // 先从系统托盘移除图标（native操作）
                 systemTray.remove(trayIcon);
 //                log.debug("线程[{}]：系统托盘已移除图标", threadKey);
@@ -302,6 +310,11 @@ public class TrayIconUtil {
             public void mouseExited(MouseEvent e) {
                 item.setForeground(normal);
             }
+
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                pop.setVisible(false);
+            }
         });
         return item;
     }
@@ -325,49 +338,61 @@ public class TrayIconUtil {
         pop.add(playFlvVideo);
 
         openMonitorMenu.addActionListener(e -> {
-            if (clickListener != null) {
-                String url = clickListener.openMonitor(e);
-                if (url != null) {
-                    log.debug("点击事件: 打开网页>" + url);
-                    openWebpage(url);
+            debouncer.debounce(() -> {
+                if (clickListener != null) {
+                    String url = clickListener.openMonitor(e);
+                    if (url != null) {
+                        log.debug("点击事件: 打开网页>" + url);
+                        openWebpage(url);
+                    }
                 }
-            }
+            });
         });
         startRecordMenu.addActionListener(e -> {
-            if (clickListener == null || clickListener.startRecordClick(e)) {
-                log.debug("点击事件: 开始录制");
-                setStartRecordStatue(true);
-            }
+            debouncer.debounce(() -> {
+                if (clickListener == null || clickListener.startRecordClick(e)) {
+                    log.debug("点击事件: 开始录制");
+                    setStartRecordStatue(true);
+                }
+            });
         });
         stopRecordMenu.addActionListener(e -> {
-            if (clickListener == null || clickListener.stopRecordClick(e)) {
-                log.debug("点击事件: 停止录制");
-                setStartRecordStatue(false);
-            }
+            debouncer.debounce(() -> {
+                if (clickListener == null || clickListener.stopRecordClick(e)) {
+                    log.debug("点击事件: 停止录制");
+                    setStartRecordStatue(false);
+                }
+            });
         });
         closeMenu.addActionListener(e -> {
-            if (clickListener == null || clickListener.closeClick(e)) {
-                log.debug("点击事件: 程序退出");
-                System.exit(0);
-            }
+            debouncer.debounce(() -> {
+                if (clickListener == null || clickListener.closeClick(e)) {
+                    log.debug("点击事件: 程序退出");
+                    System.exit(0);
+                }
+            });
         });
         openRoomMenu.addActionListener(e -> {
-            if (clickListener != null) {
-                String url = clickListener.openWebClick(e);
-                if (url != null) {
-                    log.debug("点击事件: 打开网页>" + url);
-                    openWebpage(url);
+            debouncer.debounce(() -> {
+                if (clickListener != null) {
+                    String url = clickListener.openWebClick(e);
+                    if (url != null) {
+                        log.debug("点击事件: 打开网页>" + url);
+                        openWebpage(url);
+                    }
                 }
-            }
+            });
         });
         playFlvVideo.addActionListener(e -> {
-            if (clickListener != null) {
-                String url = clickListener.playVideo(e);
-                if (url != null) {
-                    log.debug("点击事件: 播放视频>" + url);
-                    openWebpage(url);
+            debouncer.debounce(() -> {
+                if (clickListener != null) {
+                    String url = clickListener.playVideo(e);
+                    if (url != null) {
+                        log.debug("点击事件: 播放视频>" + url);
+                        openWebpage(url);
+                    }
                 }
-            }
+            });
         });
     }
 

@@ -12,6 +12,7 @@ import cn.zhangheng.common.util.RequestUtils;
 import cn.zhangheng.common.util.UserAgentUtil;
 import cn.zhangheng.kuaishou.bean.KuaiShouRoom;
 import cn.zhangheng.kuaishou.util.InitialStateExtractor;
+import com.zhangheng.util.HttpURLConnectionUtil;
 import com.zhangheng.util.ThrowableUtil;
 
 import java.net.HttpURLConnection;
@@ -33,13 +34,13 @@ public class KuaiShouService extends RoomService<KuaiShouRoom> {
 
     protected KuaiShouService(KuaiShouRoom room) {
         super(room);
-        header.put("Referer","https://live.kuaishou.cn/");
-        header.put("Origin","https://live.kuaishou.cn");
+        header.put("Referer", "https://live.kuaishou.cn/");
+        header.put("Origin", "https://live.kuaishou.cn");
         header.put("User-Agent", ua.get());
-        header.put("Accept","application/json,text/plain,*/*");
-        header.put("Accept-Language","zh-CN,zh;q=0.9");
-        header.put("sec-fetch-site","same-origin");
-        header.put("sec-fetch-mode","cors");
+        header.put("Accept", "application/json,text/plain,*/*");
+        header.put("Accept-Language", "zh-CN,zh;q=0.9");
+        header.put("sec-fetch-site", "same-origin");
+        header.put("sec-fetch-mode", "cors");
         if (room.getCookie() != null) {
             header.put("Cookie", room.getCookie());
         } else {
@@ -119,17 +120,19 @@ public class KuaiShouService extends RoomService<KuaiShouRoom> {
 
     private JSONObject getData() {
         String url = room.getRoomUrl();
-
+        HttpURLConnection connection = null;
         try {
-            HttpUtils.HttpResponse response = HttpUtils.get(url, header);
-            String body = response.getBody();
+            connection = HttpURLConnectionUtil.getRequest(url, header);
+            String body = HttpURLConnectionUtil.responseBodyStr(connection);
             String initialState = InitialStateExtractor.extractInitialState(body);
             if (StrUtil.isBlank(initialState)) {
-                log.warn("[{}]获取body异常：{}", response.getCode(), body);
+                log.warn("[{}]获取body异常：{}", HttpURLConnectionUtil.responseCode(connection), body);
             }
             return new JSONObject(initialState);
         } catch (Exception e) {
             throw new RuntimeException("getData", e);
+        } finally {
+            HttpURLConnectionUtil.close(connection);
         }
     }
 

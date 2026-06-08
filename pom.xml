@@ -6,7 +6,7 @@
 
     <groupId>cn.zhangheng.record</groupId>
     <artifactId>LiveMonitoringRecording</artifactId>
-    <version>3.5</version>
+    <version>3.6</version>
     <packaging>pom</packaging>
     <description>【星曦向荣】直播录屏工具</description>
     <modules>
@@ -19,10 +19,11 @@
         <module>activation-tool</module>
         <module>browser-utils</module>
         <module>douyin-fetcher</module>
+        <module>cpolar-tool</module>
     </modules>
 
     <properties>
-        <xxxr.version>3.5</xxxr.version>
+        <xxxr.version>3.6</xxxr.version>
         <project.encoding>UTF-8</project.encoding>
         <java.version>1.8</java.version>
         <maven.compiler.source>8</maven.compiler.source>
@@ -43,11 +44,11 @@
     </developers>
 
     <dependencies>
-        <!-- mvn install:install-file -Dfile=libs/ZH_Utils.jar -DgroupId=com.zhangheng -DartifactId=ZH_Utils -Dversion=25.05.22 -Dpackaging=jar -->
+        <!-- mvn install:install-file -Dfile=libs/ZH_Utils.jar -DgroupId=com.zhangheng -DartifactId=ZH_Utils -Dversion=26.06.07 -Dpackaging=jar -->
         <dependency>
             <groupId>com.zhangheng</groupId>
             <artifactId>ZH_Utils</artifactId>
-            <version>25.05.22</version>
+            <version>26.06.07</version>
         </dependency>
 
         <!-- Logback 作为 SLF4J 的实现 -->

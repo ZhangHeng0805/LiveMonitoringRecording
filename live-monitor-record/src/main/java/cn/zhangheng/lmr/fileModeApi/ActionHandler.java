@@ -31,6 +31,7 @@ import java.util.concurrent.ThreadPoolExecutor;
  * @description:
  */
 public class ActionHandler extends JSONHandler {
+
     protected ActionHandler(String prefix) {
         super(prefix);
     }
@@ -174,6 +175,7 @@ public class ActionHandler extends JSONHandler {
             res = monitorMain.stopRecord();
         }
         msg.setMessage(StrUtil.format("{}录制{}！", flag ? "开启" : "停止", res ? "成功" : "失败"));
+
     }
 
     private synchronized void actionRefresh(Message msg, Map<String, String> query) {

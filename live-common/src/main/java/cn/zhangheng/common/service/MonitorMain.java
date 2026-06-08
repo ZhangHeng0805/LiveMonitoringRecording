@@ -461,7 +461,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         };
     }
 
-    public boolean stopRecord() {
+    public synchronized boolean stopRecord() {
         if (recorder != null && recorder.isRunning()) {
             recordFlag.set(false);
             recorder.stop(false);
@@ -470,7 +470,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         return false;
     }
 
-    public boolean startRecord() {
+    public synchronized boolean startRecord() {
         if (recorderTask == null) {
             recorderTask = getRecorderTask();
         }

@@ -8,7 +8,6 @@ import cn.hutool.json.JSONUtil;
 import cn.zhangheng.browser.BrowserAPI;
 import cn.zhangheng.browser.BrowserUtil;
 import cn.zhangheng.browser.PlaywrightBrowser;
-import cn.zhangheng.browser.UserAgentUtil;
 import cn.zhangheng.common.bean.Constant;
 import cn.zhangheng.common.bean.Setting;
 import cn.zhangheng.common.util.RequestUtils;
@@ -18,6 +17,7 @@ import com.microsoft.playwright.options.WaitForSelectorState;
 import com.microsoft.playwright.options.WaitUntilState;
 import com.zhangheng.util.ThrowableUtil;
 import com.zhangheng.util.TimeUtil;
+import com.zhangheng.util.UserAgentUtil;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;

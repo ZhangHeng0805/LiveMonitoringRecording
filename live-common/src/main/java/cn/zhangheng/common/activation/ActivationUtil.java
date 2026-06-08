@@ -3,14 +3,11 @@ package cn.zhangheng.common.activation;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.zhangheng.util.EncryptUtil;
-import com.zhangheng.util.TimeUtil;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
-import java.util.Date;
 import java.util.List;
 
 /**
@@ -27,10 +24,10 @@ public class ActivationUtil {
     }
 
 
-    public static boolean verifyActivationCode(String deviceUniqueId, String activationCode) throws ErrorException, WarnException {
+    public static void verifyActivationCode(String deviceUniqueId, String activationCode) throws ErrorException, WarnException {
         String deJson = EncryptUtil.deBase64Str(activationCode);
         try {
-            boolean verify = EncryptUtil.signDecodeJson(deJson);
+            boolean verify = verify(deJson);
             if (verify) {
                 ActivationInfo info = JSONUtil.parseObj(deJson).get("data", ActivationInfo.class);
                 if (!deviceUniqueId.equals(info.getDeviceUniqueId())) {
@@ -49,7 +46,6 @@ public class ActivationUtil {
                         throw new WarnException("激活码有效期剩余" + l + "天，请及时更新激活码！以免影响后续使用");
                     }
                 }
-                return true;
             } else {
                 throw new ErrorException("激活码格式异常，验证失败！");
             }
@@ -60,8 +56,8 @@ public class ActivationUtil {
         }
     }
 
-    public static boolean verifyActivationCodeFile(String deviceUniqueId, String filePath) throws ErrorException, WarnException {
-        List<String> strings = null;
+    public static void verifyActivationCodeFile(String deviceUniqueId, String filePath) throws ErrorException, WarnException {
+        List<String> strings;
         try {
             strings = Files.readAllLines(Paths.get(filePath));
         } catch (NoSuchFileException e1) {
@@ -70,6 +66,13 @@ public class ActivationUtil {
             throw new ErrorException("激活文件读取失败！", e);
         }
         String activationCode = String.join("", strings);
-        return verifyActivationCode(deviceUniqueId, activationCode);
+        verifyActivationCode(deviceUniqueId, activationCode);
+    }
+
+    private static boolean verify(String json) throws Exception {
+        if (!JSONUtil.isTypeJSON(json)) return false;
+        JSONObject entries = JSONUtil.parseObj(json);
+        if (!entries.containsKey("data")) return false;
+        return entries.getStr("signature", "").equals(entries.get("data", ActivationInfo.class).generateSignature());
     }
 }
