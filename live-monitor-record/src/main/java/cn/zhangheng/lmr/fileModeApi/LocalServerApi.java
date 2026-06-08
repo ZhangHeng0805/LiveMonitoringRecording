@@ -37,7 +37,7 @@ public class LocalServerApi {
             }
             try {
                 server = HttpServer.create(new InetSocketAddress(port), 0);
-                server.createContext("/", new TextFileHandler("Monitor.html", "text/html"));
+                server.createContext("/", new TextFileHandler("index.html", "text/html"));
                 server.createContext("/DouYinVideoPares.html", new TextFileHandler("DouYinVideoPares.html", "text/html"));
                 server.createContext("/img", new StreamFileHandler("/img/"));
                 server.createContext("/js", new StreamFileHandler("/js/", "text/javascript"));
