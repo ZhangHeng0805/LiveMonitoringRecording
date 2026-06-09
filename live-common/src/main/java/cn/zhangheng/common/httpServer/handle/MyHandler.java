@@ -12,10 +12,7 @@ import com.zhangheng.util.ThrowableUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.UnsupportedEncodingException;
+import java.io.*;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.Charset;
@@ -76,6 +73,18 @@ public abstract class MyHandler implements HttpHandler {
 
     protected Map<String, String> parseQuery(HttpExchange exchange) {
         return parseQuery(exchange.getRequestURI().getQuery());
+    }
+
+    protected String parseRequestBodyStr(HttpExchange exchange) throws IOException {
+        try (InputStream in = exchange.getRequestBody();
+             BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(in, charset))) {
+            StringBuilder result = new StringBuilder();
+            String line;
+            while ((line = bufferedReader.readLine()) != null) {
+                result.append(line);
+            }
+            return result.toString();
+        }
     }
 
     // 解析URL查询参数

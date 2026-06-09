@@ -36,6 +36,7 @@ public class AsyncBatchLogger {
 
     public AsyncBatchLogger(Path logPath) {
         this.logPath = logPath;
+        Runtime.getRuntime().addShutdownHook(new Thread(this::flushRemaining));
     }
 
     /**

@@ -37,7 +37,7 @@ public class KuaiShouService extends RoomService<KuaiShouRoom> {
         header.put("Referer", "https://live.kuaishou.cn/");
         header.put("Origin", "https://live.kuaishou.cn");
         header.put("User-Agent", ua.get());
-        header.put("Accept", "application/json,text/plain,*/*");
+        header.put("Accept", "application/json,text/html,*/*");
         header.put("Accept-Language", "zh-CN,zh;q=0.9");
         header.put("sec-fetch-site", "same-origin");
         header.put("sec-fetch-mode", "cors");

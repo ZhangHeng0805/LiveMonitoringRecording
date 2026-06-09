@@ -1,20 +1,18 @@
 package cn.zhangheng.douyin.util;
 
-import cn.hutool.core.map.MapUtil;
 import cn.hutool.core.text.UnicodeUtil;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import cn.zhangheng.common.util.RequestUtils;
 import cn.zhangheng.common.util.UserAgentUtil;
+import com.zhangheng.util.HttpURLConnectionUtil;
 import com.zhangheng.util.ThrowableUtil;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
-import java.net.HttpCookie;
 import java.net.HttpURLConnection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -28,15 +26,21 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Slf4j
 public class DouYinUtils {
     @Getter
-    private String ttwid, userAgent;
+    private String cookie, userAgent;
     private final AtomicInteger count = new AtomicInteger(0);
     private static final UserAgentUtil userAgentUtil = new UserAgentUtil();
+    private final Map<String, String> headers = new HashMap<>();
 
     public int getCount() {
         return count.get();
     }
 
     public DouYinUtils() {
+        headers.put("Accept", "application/json,text/html,*/*");
+        headers.put("Accept-Language", "zh-CN,zh;q=0.9");
+        headers.put("sec-fetch-site", "same-origin");
+        headers.put("sec-fetch-mode", "cors");
+        headers.put("Referer", "https://live.douyin.com");
         refresh();
     }
 
@@ -45,27 +49,22 @@ public class DouYinUtils {
 //        String roomID = "208823316033";
         String roomID = "381351302222";
         DouYinUtils utils = new DouYinUtils();
+        System.out.println(utils.getCookie());
         String x = utils.fetchRoomPageBody(roomID);
 //        System.out.println(x);
-
         System.out.println(extractRoomJson(x).toStringPretty());
+        utils.refresh();
+        System.out.println(utils.getCookie());
+
     }
 
-    public String fetchTtwid() {
+    public String fetchCookie() {
         HttpURLConnection connection = null;
         try {
-            connection = RequestUtils.getRequest("https://live.douyin.com/", MapUtil.of("User-Agent", userAgent));
-            String setCookies = connection.getHeaderField("Set-Cookie");
-            for (String c : setCookies.split(";")) {
-                List<HttpCookie> cookies = HttpCookie.parse(c);
-                for (HttpCookie cookie : cookies) {
-                    if ("ttwid".equals(cookie.getName())) {
-                        return cookie.getValue();
-                    }
-                }
-            }
+            connection = RequestUtils.getRequest("https://live.douyin.com/", headers);
+            return HttpURLConnectionUtil.parseCookie(connection.getHeaderFields());
         } catch (Exception e) {
-            log.error("刷新ttwid错误:{}", ThrowableUtil.getAllCauseMessage(e));
+            log.error("刷新cookie错误:{}", ThrowableUtil.getAllCauseMessage(e));
         } finally {
             if (connection != null) {
                 connection.disconnect();
@@ -77,12 +76,8 @@ public class DouYinUtils {
     public String fetchRoomPageBody(String liveId) {
         String domain = "https://live.douyin.com/";
         String url = domain + liveId;
-        String cookie = "ttwid=" + ttwid + ";msToken=" + msToken() + "; __ac_nonce=0123407cc00a9e438deb4";
-        Map<String, String> headers = new HashMap<>();
-        headers.put("User-Agent", userAgent);
-        headers.put("Accept", "*/*");
+        String cookie = getCookie() + "; __ac_nonce=0123407cc00a9e438deb4; msToken=" + msToken() ;
         headers.put("Cookie", cookie);
-        headers.put("Referer", domain);
         HttpURLConnection connection = null;
         try {
             connection = RequestUtils.getRequest(url, headers);
@@ -103,11 +98,12 @@ public class DouYinUtils {
 
     private void refresh() {
         userAgent = userAgentUtil.get();
-        String fetchTtwid = fetchTtwid();
-        if (fetchTtwid != null) {
-            ttwid = fetchTtwid;
+        headers.put("User-Agent", userAgent);
+        String fetchCookie = fetchCookie();
+        if (fetchCookie != null) {
+            cookie = fetchCookie;
         } else {
-            log.warn("获取ttwid为null");
+            log.warn("获取cookie为null");
         }
     }
 
