@@ -1,6 +1,8 @@
 package cn.zhangheng.common.httpServer.handle;
 
 import cn.hutool.core.io.IoUtil;
+import cn.hutool.jwt.JWT;
+import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,10 +52,13 @@ public class TextFileHandler extends MyHandler {
 
     @Override
     protected boolean filter(HttpExchange httpExchange) throws IOException {
+        super.filter(httpExchange);
+
+        Headers responseHeaders = httpExchange.getResponseHeaders();
         String path = httpExchange.getRequestURI().getPath();
         if ("/favicon.ico".equals(path)) {
             try (InputStream is = getClass().getClassLoader().getResourceAsStream("img/favicon.ico")) {
-                httpExchange.getResponseHeaders().set("Content-Type", "application/octet-stream");
+                responseHeaders.set("Content-Type", "application/octet-stream");
                 if (is == null) {
                     throw new NoSuchFileException(path);
                 }
@@ -61,8 +66,15 @@ public class TextFileHandler extends MyHandler {
                 try (OutputStream os = httpExchange.getResponseBody()) {
                     IoUtil.copy(is, os);
                 }
+                return true;
             }
         }
+//        String session_id = getRequestCookie(httpExchange, "session_id");
+//        if (session_id == null) {
+//            session_id = getSessionID();
+//            setResponseCookie(httpExchange, "session_id", session_id);
+//            setResponseCookie(httpExchange, "token", JWTUtil.generateToken(session_id));
+//        }
         return true;
     }
 
@@ -77,7 +89,7 @@ public class TextFileHandler extends MyHandler {
             }
             t.sendResponseHeaders(200, inputStream.available());
             IoUtil.copy(inputStream, outputStream);
-        }finally {
+        } finally {
             t.close();
         }
     }

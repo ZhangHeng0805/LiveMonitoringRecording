@@ -1,6 +1,7 @@
 package cn.zhangheng.tool;
 
 import cn.hutool.json.JSONUtil;
+import cn.zhangheng.tool.git.GitUtil;
 import com.zhangheng.bean.Debouncer;
 import com.zhangheng.file.TxtOperation;
 import com.zhangheng.log.AsyncBatchLogger;
@@ -9,9 +10,7 @@ import com.zhangheng.util.TimeUtil;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -26,8 +25,8 @@ public class Main {
     private static Process process = null;
     private static final Debouncer debouncer = new Debouncer(1000);
     private static final AsyncBatchLogger logger = new AsyncBatchLogger(Paths.get("logs/cpolar-run" + ".log"));
-    private static final String gitFilePath = "F:\\Git Project\\LiveMonitoringRecordingPage\\redirect\\json";
-    private static final String gitFileName = "config.json";
+    private static final String gitRepoDir = "F:\\Git Project\\LiveMonitoringRecordingPage";
+    private static final String gitFileRelativePath = "redirect/json/config.json";
     private static final String exePath = "./bin/cpolar.exe";
     private static final String[] localCommand = {"http", "8005"};
 
@@ -37,7 +36,7 @@ public class Main {
                 process.destroyForcibly();
                 try {
                     int i = process.waitFor();
-                    System.out.println("程序已关闭：" + i);
+                    highLog("程序退出码:" + i,"info");
                 } catch (InterruptedException ignored) {
                 }
             }
@@ -49,7 +48,7 @@ public class Main {
         String mapping = args.length > 0 ? args[0] : "8005";
         localCommand[1] = mapping;
         System.out.println("=====启动HTTP端口映射 " + mapping + "=====");
-        highLog("运行命令: " + String.join(" ", localCommand));
+        highLog("运行命令: " + String.join(" ", localCommand), "info");
         if (!Files.exists(Paths.get(exePath))) {
             highLog(exePath + "端口映射工具不存在！", "warn");
             return;
@@ -64,8 +63,8 @@ public class Main {
         process = pb.start();
         // 单独线程读取字节流，手动处理\r \n
         new Thread(() -> processResult(process)).start();
-        int exitCode = process.waitFor();
-        System.out.println("退出码:" + exitCode);
+        process.waitFor();
+
     }
 
     private static void processResult(Process process) {
@@ -73,9 +72,10 @@ public class Main {
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
             String line;
+            AppLog appLog = new AppLog();
             while ((line = reader.readLine()) != null) {
                 try {
-                    processResult(line);
+                    processResult(line, appLog);
                 } catch (Exception e) {
                     highLog("处理processResult异常:" + ThrowableUtil.getAllCauseMessage(e), "error");
                 }
@@ -85,12 +85,12 @@ public class Main {
         }
     }
 
-    private static void processResult(String line) {
-        AppLog log = LogParser.parseLogLine(line);
+    private static void processResult(String line, AppLog appLog) {
+        AppLog log = LogParser.parseLogLine(line, appLog);
         if (log != null) {
-            highLog(log.toString());
             String msg = log.getMsg();
             if (msg.contains("Tunnel established at")) {
+                highLog(log.toString());
                 debouncer.debounce(() -> {
                     String url = msg.substring(msg.lastIndexOf("at ") + 3);
                     try {
@@ -105,10 +105,13 @@ public class Main {
     }
 
     public static void updateGitURLFile(String url) throws Exception {
-        Path path = Paths.get(gitFilePath, gitFileName);
-        String json = JSONUtil.createObj().set("redirectUrl", url).set("localCommand", String.join(" ", localCommand)).toStringPretty();
-        TxtOperation.writeTxtFile(json, path.toFile(), "UTF-8", false);
-        GitCmdUpload.gitUploadFile(gitFilePath, gitFileName);
+        Path file = Paths.get(gitRepoDir, gitFileRelativePath);
+        String json = JSONUtil.createObj().set("redirectUrl", url)
+                .set("localCommand", String.join(" ", localCommand))
+                .set("updateTime", TimeUtil.getNowTime())
+                .toStringPretty();
+        TxtOperation.writeTxtFile(json, file.toFile(), "UTF-8", false);
+        GitUtil.gitUploadFile(gitRepoDir, gitFileRelativePath, "自动提交");
     }
 
     private static void highLog(String msg, String level) {
@@ -119,32 +122,5 @@ public class Main {
     private static void highLog(String msg) {
         logger.highLog(msg);
         System.out.println(msg);
-    }
-
-    private static void parseRawStream(InputStream is) {
-        byte[] buf = new byte[1024];
-        int len;
-        StringBuilder sb = new StringBuilder();
-        Charset charset = Charset.forName("UTF-8");
-        try {
-            while ((len = is.read(buf)) != -1) {
-                String chunk = new String(buf, 0, len, charset);
-                for (char c : chunk.toCharArray()) {
-                    if (c == '\r') {
-                        // 回车：打印当前缓冲内容后清空（对应原地刷新的一行）
-                        System.out.println("[刷新行] " + sb);
-                        sb.setLength(0);
-                    } else if (c == '\n') {
-                        // 换行：标准一行
-                        System.out.println("[新行] " + sb);
-                        sb.setLength(0);
-                    } else {
-                        sb.append(c);
-                    }
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 }

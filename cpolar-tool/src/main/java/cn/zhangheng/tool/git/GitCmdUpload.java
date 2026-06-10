@@ -1,4 +1,4 @@
-package cn.zhangheng.tool;
+package cn.zhangheng.tool.git;
 
 import java.io.File;
 
@@ -9,14 +9,14 @@ import java.io.File;
  * @version: 1.0
  * @description: 提交更新Git文件
  */
-public class GitCmdUpload {
+class GitCmdUpload {
     public static void main(String[] args) throws Exception {
-        String repoPath = "F:\\Git Project\\LiveMonitoringRecordingPage\\redirect\\json";
-        String fileName = "config.json";
+        String repoPath = "F:\\Git Project\\LiveMonitoringRecordingPage";
+        String filePath = "redirect/json/config.json";
 
-        gitUploadFile(repoPath, fileName);
+        GitUtil.gitUploadFile(repoPath, filePath,"自动提交");
+//        gitUploadFile(repoPath, filePath);
 
-        System.out.println("提交完成");
     }
 
     public static void gitUploadFile(String filePath, String fileName) throws Exception {

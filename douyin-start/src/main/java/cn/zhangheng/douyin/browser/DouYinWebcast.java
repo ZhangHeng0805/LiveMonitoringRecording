@@ -223,6 +223,51 @@ public class DouYinWebcast {
         return wss;
     }
 
+    private static WebSocketModel browserGetWssUrl1(DouYinRoom room) {
+        String roomUrl = room.getRoomUrl();
+        WebSocketModel wss = new WebSocketModel();
+        if (roomUrl == null || roomUrl.trim().isEmpty()) {
+            log.error("直播间URL为空，无法发起请求");
+            return wss;
+        }
+        Page page = null;
+        String userAgent = UserAgentUtil.getRandomUser_Agent();
+        boolean headless = room.getSetting() == null || !Objects.equals(room.getSetting().getBrowserHeadless(), Boolean.FALSE);
+        try (Playwright playwright = Playwright.create();
+             Browser browser = playwright.chromium().launch(BrowserUtil.getLaunchOptions(userAgent, headless))
+        ) {
+            Browser.NewContextOptions contextOptions = new Browser.NewContextOptions().setUserAgent(userAgent);
+            BrowserContext context = browser.newContext(contextOptions);
+            page = context.newPage();
+            setRoomCookie(room, page, roomUrl);
+            BrowserUtil.navigatePage(room.getRoomUrl(), page, WaitUntilState.DOMCONTENTLOADED);
+            //提取界面信息
+            extractRoomInfo(room, page);
+            if (room.isLiving()) {
+                WebSocket webSocket;
+                try {
+                    webSocket = BrowserUtil.waitForTargetWebSocket(page, TARGET_WSS, 10_000);
+                } catch (Exception e) {
+                    log.info("页面刷新，重新监听请求！");
+                    page.reload(new Page.ReloadOptions().setTimeout(10_000).setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
+                    webSocket = BrowserUtil.waitForTargetWebSocket(page, TARGET_WSS, 15_000);
+                }
+
+                wss.setUserAgent(userAgent);
+                wss.setUrl(webSocket.url());
+                wss.setCookie(BrowserUtil.toCookieStr(page.context().cookies()));
+            }
+        } catch (Exception e) {
+            log.error("获取直播弹幕wss失败！{}", e.getMessage());
+        } finally {
+            if (page != null && !page.isClosed()) {
+                // 关闭页面（可选：触发beforeunload事件）
+                page.close(new Page.CloseOptions().setRunBeforeUnload(false));
+            }
+        }
+        return wss;
+    }
+
     public static WebSocketModel browserGetWssUrl2(DouYinRoom room) {
         // 校验房间URL有效性
         String roomUrl = room.getRoomUrl();
@@ -288,51 +333,5 @@ public class DouYinWebcast {
         }
         return null;
     }
-
-    private static WebSocketModel browserGetWssUrl1(DouYinRoom room) {
-        String roomUrl = room.getRoomUrl();
-        WebSocketModel wss = new WebSocketModel();
-        if (roomUrl == null || roomUrl.trim().isEmpty()) {
-            log.error("直播间URL为空，无法发起请求");
-            return wss;
-        }
-        Page page = null;
-        String userAgent = UserAgentUtil.getRandomUser_Agent();
-        boolean headless = room.getSetting() == null || !Objects.equals(room.getSetting().getBrowserHeadless(), Boolean.FALSE);
-        try (Playwright playwright = Playwright.create();
-             Browser browser = playwright.chromium().launch(BrowserUtil.getLaunchOptions(userAgent, headless))
-        ) {
-            Browser.NewContextOptions contextOptions = new Browser.NewContextOptions().setUserAgent(userAgent);
-            BrowserContext context = browser.newContext(contextOptions);
-            page = context.newPage();
-            setRoomCookie(room, page, roomUrl);
-            BrowserUtil.navigatePage(room.getRoomUrl(), page, WaitUntilState.DOMCONTENTLOADED);
-            //提取界面信息
-            extractRoomInfo(room, page);
-            if (room.isLiving()) {
-                WebSocket webSocket;
-                try {
-                    webSocket = BrowserUtil.waitForTargetWebSocket(page, TARGET_WSS, 10_000);
-                } catch (Exception e) {
-                    log.info("页面刷新，重新监听请求！");
-                    page.reload(new Page.ReloadOptions().setTimeout(10_000).setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
-                    webSocket = BrowserUtil.waitForTargetWebSocket(page, TARGET_WSS, 15_000);
-                }
-
-                wss.setUserAgent(userAgent);
-                wss.setUrl(webSocket.url());
-                wss.setCookie(BrowserUtil.toCookieStr(page.context().cookies()));
-            }
-        } catch (Exception e) {
-            log.error("获取直播弹幕wss失败！{}", e.getMessage());
-        } finally {
-            if (page != null && !page.isClosed()) {
-                // 关闭页面（可选：触发beforeunload事件）
-                page.close(new Page.CloseOptions().setRunBeforeUnload(false));
-            }
-        }
-        return wss;
-    }
-
 
 }

@@ -21,17 +21,23 @@ public class LogParser {
      * 把一行日志解析成 AppLog 对象
      */
     public static AppLog parseLogLine(String line) {
+        return parseLogLine(line, new AppLog());
+    }
+
+    public static AppLog parseLogLine(String line, AppLog appLog) {
+        if (appLog == null) return null;
         Matcher matcher = LOG_PATTERN.matcher(line);
         if (!matcher.find()) {
             return null;
         }
 
         String timeStr = matcher.group(1);
+        ZonedDateTime time = ZonedDateTime.parse(timeStr);
         String level = matcher.group(2);
         String msg = matcher.group(3);
-
-        ZonedDateTime time = ZonedDateTime.parse(timeStr);
-
-        return new AppLog(time, level, msg);
+        appLog.setTime(time);
+        appLog.setLevel(level);
+        appLog.setMsg(msg);
+        return appLog;
     }
 }

@@ -5,6 +5,7 @@ import cn.hutool.core.util.StrUtil;
 import cn.zhangheng.common.bean.Constant;
 import cn.zhangheng.common.bean.Room;
 import cn.zhangheng.common.httpServer.handle.JSONHandler;
+import cn.zhangheng.common.httpServer.handle.JWTUtil;
 import cn.zhangheng.lmr.FileModeMain;
 import cn.zhangheng.lmr.RoomFileModel;
 import com.sun.net.httpserver.Headers;
@@ -39,7 +40,16 @@ public class FileResourcesHandler extends JSONHandler {
     protected FileResourcesHandler(String prefix) {
         super(prefix);
     }
-
+    @Override
+    protected boolean filter(HttpExchange httpExchange) throws IOException {
+        return super.filter(httpExchange);
+//        Map<String, String> cookies = getRequestCookies(httpExchange);
+//        String session_id = cookies.get("session_id");
+//        String token = cookies.get("token");
+//        if (session_id == null || token == null) return false;
+//        if (!JWTUtil.checkToken(token)) return false;
+//        return session_id.equals(JWTUtil.getSessionID(token));
+    }
 
     @Override
     public void request(HttpExchange httpExchange) throws IOException {

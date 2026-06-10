@@ -51,26 +51,29 @@ public class DouYinVideoParse {
 //        String s = "8.43 j@P.xf 12/24 trr:/ 这个运镜好好玩，大家也可以试试# 感觉至上  https://v.douyin.com/BgpRfDDUeyw/ 复制此链接，打开Dou音搜索，直接观看视频！";
         Setting setting = new Setting();
         System.out.println(extractDouyinLink(s));
+        long sta = System.currentTimeMillis();
         System.out.println(JSONUtil.parseObj(
-                parse1(s
-                , setting
-        )).toStringPretty());
+                parse(s, setting, UserAgentUtil.getRandomUser_Agent())).toStringPretty());
+        System.out.println("耗时:"+(System.currentTimeMillis()-sta));
     }
 
-    public static DouYinVideo parse(String shareUrl) {
-        return parse1(shareUrl, null);
+    public static DouYinVideo parse(String shareUrl, String userAgent) {
+        return parse(shareUrl, null, userAgent);
     }
 
-    public static DouYinVideo parse1(String shareUrl, Setting setting) {
+    public static DouYinVideo parse(String shareUrl, Setting setting, String userAgent) {
         boolean success = false;
         String link = extractDouyinLink(shareUrl);
         if (link == null) {
             return null;
         }
+        if (userAgent == null) {
+            userAgent = UserAgentUtil.getRandomUser_Agent();
+        }
         Page page = null;
         boolean headless = setting == null || !Objects.equals(setting.getBrowserHeadless(), Boolean.FALSE);
         try (Playwright playwright = Playwright.create();
-             Browser browser = playwright.chromium().launch(BrowserUtil.getLaunchOptions(Constant.User_Agent, headless))
+             Browser browser = playwright.chromium().launch(BrowserUtil.getLaunchOptions(userAgent, headless))
         ) {
             Browser.NewContextOptions contextOptions = new Browser.NewContextOptions().setUserAgent(UserAgentUtil.getRandomUser_Agent());
             BrowserContext context = browser.newContext(contextOptions);
@@ -80,7 +83,7 @@ public class DouYinVideoParse {
             try {
                 response = BrowserUtil.waitForTargetResponse(page, browserApi.getUrlPrefix(), 10_000);
             } catch (Exception e) {
-                log.info("页面刷新，重新监听请求！");
+                log.info("页面刷新，重新监听响应！");
                 page.reload(new Page.ReloadOptions().setTimeout(10_000).setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
                 response = BrowserUtil.waitForTargetResponse(page, browserApi.getUrlPrefix(), 15_000);
             }
@@ -88,11 +91,6 @@ public class DouYinVideoParse {
             success = true;
         } catch (Exception e) {
             log.error("获取抖音视频信息失败！{}", e.getMessage());
-        } finally {
-            if (page != null && !page.isClosed()) {
-                // 关闭页面（可选：触发beforeunload事件）
-                page.close(new Page.CloseOptions().setRunBeforeUnload(false));
-            }
         }
         if (success) {
             String data = browserApi.getResponseBody();
@@ -103,7 +101,7 @@ public class DouYinVideoParse {
     }
 
 
-    public static DouYinVideo parse(String shareUrl, Setting setting) {
+    public static DouYinVideo parse1(String shareUrl, Setting setting) {
         boolean success = false;
         String link = extractDouyinLink(shareUrl);
         if (link == null) {
@@ -129,13 +127,6 @@ public class DouYinVideoParse {
                     }
                 }
             }
-//            page.onRequest(request -> {
-//                String url = request.url();
-//                if (url.startsWith(api.getUrlPrefix())) {
-//                    api.setDataUrl(url);
-//                    api.setHeaders(request.allHeaders());
-//                }
-//            });
             page.onResponse(response -> {
                 String url = response.url();
                 if (url.startsWith(browserApi.getUrlPrefix())) {

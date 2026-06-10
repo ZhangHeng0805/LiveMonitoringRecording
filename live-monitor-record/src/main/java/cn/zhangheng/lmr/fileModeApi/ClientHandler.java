@@ -1,5 +1,6 @@
 package cn.zhangheng.lmr.fileModeApi;
 
+import cn.zhangheng.common.httpServer.handle.JWTUtil;
 import cn.zhangheng.common.httpServer.handle.MyHandler;
 import cn.zhangheng.common.util.AsyncBatchLogger;
 import com.sun.net.httpserver.HttpExchange;
@@ -34,8 +35,8 @@ public class ClientHandler extends MyHandler {
     @Override
     protected void request(HttpExchange exchange) throws IOException {
         String requestBodyStr = parseRequestBodyStr(exchange);
-        logger.highLog(TimeUtil.getNowTime() + " " +
-                exchange.getAttribute("client-ip") + " - " +
+        logger.highLog(TimeUtil.getNowTime() + " [" +
+                exchange.getAttribute("client-ip") + "] - " +
                 exchange.getAttribute("User-Agent") + "\n" +
                 requestBodyStr);
         exchange.sendResponseHeaders(200, -1);

@@ -3,6 +3,7 @@ package cn.zhangheng.lmr.fileModeApi;
 import cn.hutool.core.util.StrUtil;
 import cn.zhangheng.common.bean.Constant;
 import cn.zhangheng.common.httpServer.handle.JSONHandler;
+import cn.zhangheng.common.httpServer.handle.JWTUtil;
 import cn.zhangheng.common.service.MonitorMain;
 import cn.zhangheng.common.bean.Room;
 import cn.zhangheng.common.bean.enums.MonitorStatus;
@@ -36,6 +37,16 @@ public class ActionHandler extends JSONHandler {
         super(prefix);
     }
 
+    @Override
+    protected boolean filter(HttpExchange httpExchange) throws IOException {
+        return super.filter(httpExchange);
+//        Map<String, String> cookies = getRequestCookies(httpExchange);
+//        String session_id = cookies.get("session_id");
+//        String token = cookies.get("token");
+//        if (session_id == null || token == null) return false;
+//        if (!JWTUtil.checkToken(token)) return false;
+//        return session_id.equals(JWTUtil.getSessionID(token));
+    }
 
     @Override
     public void request(HttpExchange httpExchange) throws IOException {
@@ -101,7 +112,7 @@ public class ActionHandler extends JSONHandler {
                 }
             } else if (indexPath.startsWith("videoParsing")) {
                 Map<String, String> query = parseQuery(httpExchange);
-                videoParsing(msg, query);
+                videoParsing(msg, query, getRequestUserAgent(httpExchange));
             } else {
                 msg.setCode(1);
                 msg.setMessage("访问的接口路径不存在！" + prefix + indexPath);
@@ -254,13 +265,13 @@ public class ActionHandler extends JSONHandler {
         msg.setMessage(StrUtil.format("核心线程数: {}， 正在工作的线程数: {}, 剩余可用线程数: {}", corePoolSize, activeCount, remainingThreads));
     }
 
-    private void videoParsing(Message msg, Map<String, String> query) {
+    private void videoParsing(Message msg, Map<String, String> query, String userAgent) {
         try {
             String url = query.get("url");
             if (url == null) {
                 throw new IllegalArgumentException("解析URl缺省！");
             }
-            DouYinVideo parse = DouYinVideoParse.parse(url);
+            DouYinVideo parse = DouYinVideoParse.parse(url, userAgent);
             msg.setData(parse);
             msg.setMessage("解析成功！");
         } catch (Exception e) {

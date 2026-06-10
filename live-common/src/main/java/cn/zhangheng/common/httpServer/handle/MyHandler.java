@@ -7,6 +7,7 @@ import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.zhangheng.util.CusAccessObjectUtil;
+import com.zhangheng.util.EncryptUtil;
 import com.zhangheng.util.FormatUtil;
 import com.zhangheng.util.ThrowableUtil;
 import org.slf4j.Logger;
@@ -18,7 +19,11 @@ import java.net.URLDecoder;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author: ZhangHeng
@@ -66,6 +71,10 @@ public abstract class MyHandler implements HttpHandler {
     protected abstract void request(HttpExchange httpExchange) throws IOException;
 
 
+    protected String getSessionID() {
+        return UUID.randomUUID().toString().replace("-", "");
+    }
+
     protected void handleThrowable(HttpExchange httpExchange, Throwable throwable) throws IOException {
         log.error("{}请求[{}]发生异常:{}", getClientIP(httpExchange), httpExchange.getRequestURI().getPath(), ThrowableUtil.getAllCauseMessage(throwable));
         sendErrorResponse(httpExchange, throwable);
@@ -73,6 +82,52 @@ public abstract class MyHandler implements HttpHandler {
 
     protected Map<String, String> parseQuery(HttpExchange exchange) {
         return parseQuery(exchange.getRequestURI().getQuery());
+    }
+
+    protected String getRequestCookie(HttpExchange exchange, String key) {
+        return getRequestCookies(exchange).get(key);
+    }
+
+    protected void setResponseCookie(HttpExchange httpExchange, String key, String value) {
+        httpExchange.getResponseHeaders().add("Set-Cookie", key + "=" + value +
+                "; HttpOnly" +          // 禁止JS访问，防XSS
+                "; Path=/" +            // 全路径生效
+                "; Max-Age=3600" +   // 1小时过期（单位秒）
+                "; SameSite=Lax"        // 防CSRF
+        );
+    }
+
+    protected Map<String, String> getRequestCookies(HttpExchange exchange) {
+        Map<String, String> map = new HashMap<>();
+        List<String> cookieList = exchange.getRequestHeaders().get("Cookie");
+        // 空值判断
+        if (cookieList == null || cookieList.isEmpty()) {
+            return map;
+        }
+        for (String cookieStr : cookieList) {
+            if (cookieStr == null || cookieStr.isEmpty()) {
+                continue;
+            }
+            // 按 ; 分割多个 cookie
+            String[] cookies = cookieStr.split(";");
+            for (String cookie : cookies) {
+                // 去除前后空格
+                String trimCookie = cookie.trim();
+                if (trimCookie.isEmpty()) continue;
+
+                // 按 = 分割 key 和 value，只分割成两段（防止 value 里有 =）
+                String[] keyValue = trimCookie.split("=", 2);
+                String key = keyValue[0].trim();
+
+                // value 可能为空
+                String value = keyValue.length > 1 ? keyValue[1].trim() : "";
+
+                if (!key.isEmpty()) {
+                    map.put(key, value);
+                }
+            }
+        }
+        return map;
     }
 
     protected String parseRequestBodyStr(HttpExchange exchange) throws IOException {
@@ -85,6 +140,10 @@ public abstract class MyHandler implements HttpHandler {
             }
             return result.toString();
         }
+    }
+
+    protected String getRequestUserAgent(HttpExchange httpExchange) {
+        return httpExchange.getRequestHeaders().getFirst("User-Agent");
     }
 
     // 解析URL查询参数
@@ -107,6 +166,23 @@ public abstract class MyHandler implements HttpHandler {
         return result;
     }
 
+    protected void sendResponseString(HttpExchange exchange, int code, String body) {
+        // 检查响应是否已发送
+        if (exchange.getResponseCode() != -1) {
+            return;
+        }
+        byte[] bytes = body.getBytes(charset);
+        try (ByteArrayInputStream is = new ByteArrayInputStream(bytes);
+             OutputStream os = exchange.getResponseBody()) {
+            exchange.sendResponseHeaders(code, bytes.length);
+            IoUtil.copy(is, os);
+        } catch (Exception e) {
+            log.error("响应失败: {}, 错误: {}", body, ThrowableUtil.getAllCauseMessage(e));
+        } finally {
+            exchange.close();
+        }
+    }
+
     // 发送错误响应
     protected void sendErrorResponse(HttpExchange exchange, int statusCode, String message) throws IOException {
         // 检查响应是否已发送
@@ -115,19 +191,11 @@ public abstract class MyHandler implements HttpHandler {
         }
         String response = "<html><head><title>" + Constant.Application + "</title></head><body>" +
                 "<h3>StatusCode:" + statusCode + "</h3>" +
-                "<span>Error:" + message + "</span>" +
+                "<div>Error:" + message + "</div>" +
                 "</body></html>";
-        byte[] bytes = response.getBytes(charset);
-        try (ByteArrayInputStream is = new ByteArrayInputStream(bytes);
-             OutputStream os = exchange.getResponseBody()) {
-            exchange.getResponseHeaders().set("Content-Type", "text/html; charset=" + charset.name());
-            exchange.sendResponseHeaders(statusCode, bytes.length);
-            IoUtil.copy(is, os);
-        } catch (Exception e) {
-            log.error("响应失败: {}, 错误: {}", message, ThrowableUtil.getAllCauseMessage(e));
-        } finally {
-            exchange.close();
-        }
+
+        exchange.getResponseHeaders().set("Content-Type", "text/html; charset=" + charset.name());
+        sendResponseString(exchange, statusCode, response);
     }
 
     // 发送错误响应

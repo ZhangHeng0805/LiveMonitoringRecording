@@ -5,6 +5,7 @@ import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import cn.zhangheng.common.bean.Room;
 import cn.zhangheng.common.httpServer.handle.JSONHandler;
+import cn.zhangheng.common.httpServer.handle.JWTUtil;
 import cn.zhangheng.common.record.Recorder;
 import cn.zhangheng.lmr.FileModeMain;
 import cn.zhangheng.lmr.Main;
@@ -33,6 +34,17 @@ public class ApiHandler extends JSONHandler {
 
     public ApiHandler(String prefix) {
         super(prefix);
+    }
+
+    @Override
+    protected boolean filter(HttpExchange httpExchange) throws IOException {
+        return super.filter(httpExchange);
+//        Map<String, String> cookies = getRequestCookies(httpExchange);
+//        String session_id = cookies.get("session_id");
+//        String token = cookies.get("token");
+//        if (session_id == null || token == null) return false;
+//        if (!JWTUtil.checkToken(token)) return false;
+//        return session_id.equals(JWTUtil.getSessionID(token));
     }
 
     @Override
