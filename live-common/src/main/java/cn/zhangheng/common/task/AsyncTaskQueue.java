@@ -176,7 +176,7 @@ public class AsyncTaskQueue implements AsyncTaskQueueMBean {
         PriorityTask<T> priorityTask = new PriorityTask<>(task, callback, priority, currentRetry);
         totalTaskCount.incrementAndGet(); // 总任务计数+1
 
-        executorService.submit(priorityTask);
+        executorService.execute(priorityTask);
     }
 
     //--------------------------------------------------------------------------

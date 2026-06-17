@@ -257,11 +257,11 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                         recorder.stop(false);
                         log.info("录制视频流清晰度已切换【{} >> {}】，自动结束录制", recorder.getDefinition(), definition);
                     }
-                    String url = streams.getValue();
-                    if (!recorder.getDownloadUrl().equals(url)) {
-                        recorder.stop(false);
-                        log.info("录制视频流地址已切换【{} >> {}】，自动结束录制", recorder.getDownloadUrl(), url);
-                    }
+//                    String url = streams.getValue();
+//                    if (!recorder.getDownloadUrl().equals(url)) {
+//                        recorder.stop(false);
+//                        log.info("录制视频流地址已切换【{} >> {}】，自动结束录制", recorder.getDownloadUrl(), url);
+//                    }
                 } else {
                     trayIconUtil.setToolTip(statistics);
                 }
