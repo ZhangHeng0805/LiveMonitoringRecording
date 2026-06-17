@@ -20,6 +20,7 @@
         <module>browser-utils</module>
         <module>douyin-fetcher</module>
         <module>cpolar-tool</module>
+        <module>smart-video-frame-extractor</module>
     </modules>
 
     <properties>
