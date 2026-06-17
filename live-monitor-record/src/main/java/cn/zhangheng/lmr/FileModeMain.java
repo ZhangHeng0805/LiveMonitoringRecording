@@ -44,7 +44,7 @@ import java.util.stream.Stream;
 @Slf4j
 public class FileModeMain {
     @Getter
-    private static final String basePath = "./";
+    private static String basePath = "./";
     @Getter
     private static final String fileSuffix = ".room.json";
     @Getter
@@ -58,13 +58,10 @@ public class FileModeMain {
 
     public static void main(String[] args) throws Exception {
         try {
-            String path;
             if (args.length > 0) {
-                path = args[0];
-            } else {
-                path = basePath;
+                basePath = args[0];
             }
-            List<Path> paths = retrieveFile(path, fileSuffix);
+            List<Path> paths = retrieveFile(basePath, fileSuffix);
 //            if (paths.isEmpty()) {
 //                TrayIconUtil iconUtil = TrayIconUtil.getInstance(Constant.Application);
 //                String message = StrUtil.format("{} 路径下没有获取到监听的直播间文件[{}]", path, fileSuffix);
@@ -138,6 +135,8 @@ public class FileModeMain {
             //解析文件
             String s = String.join("", Files.readAllLines(file));
             JSONObject json = JSONUtil.parseObj(s);
+            Boolean isEnable = json.getBool("isEnable", true);
+            if (!isEnable) return;//判断使用启用
             Boolean isRecord = json.getBool("isRecord", false);
             String id = json.getStr("id");
             Room.Platform platform = json.get("platform", Room.Platform.class);
@@ -189,15 +188,20 @@ public class FileModeMain {
 //        executeFileMap.remove(model.getId());
     }
 
-    public static void delMain(String key) throws WarnException {
+    public static void delMain(String key) throws WarnException, IOException {
         RoomFileModel model = getModelById(key);
         if (model == null) throw new WarnException(key + "直播监听不存在！");
         if (model.isRunning()) throw new WarnException(key + "直播监听已开启！请先停止后删除");
         Path filePath = model.getFilePath();
-        roomFileMap.remove(filePath);
+        List<String> strings = Files.readAllLines(filePath, StandardCharsets.UTF_8);
         String name = model.getMain().getMonitorMain().getRoom().getNickname();
-        name = StrUtil.isBlank(name) ? "" : name + "-";
-        Path rename = FileUtil.rename(filePath, name + filePath.getFileName().toString() + ".del", true);
+        JSONObject json = JSONUtil.parseObj(String.join("", strings)).set("isEnable", false);
+        if (StrUtil.isNotBlank(name)) {
+            json.set("name", name);
+        }
+        File file = FileUtil.writeString(json.toStringPretty(), filePath.toFile(), StandardCharsets.UTF_8);//修改重写
+        Path rename = FileUtil.rename(filePath, file.getName() + ".del", true);
+        roomFileMap.remove(filePath);
         log.info("{}直播监听已删除,监听文件重命名:{}", key, rename.toString());
     }
 
@@ -205,11 +209,19 @@ public class FileModeMain {
         Room.Platform platform = object.get("platform", Room.Platform.class);
         String roomID = object.getStr("id");
         String key = platform.name() + "-" + roomID;
+        object.set("isEnable", true);
         RoomFileModel model = getModelById(key);
         if (model != null) throw new WarnException(key + "直播监听已存在！");
         JSONObject setting = object.getJSONObject("setting");
-        setting.set("cookie" + platform.name(), setting.get("cookie"));
+        String cookie = setting.getStr("cookie");
+        if (StrUtil.isNotBlank(cookie)) {
+            setting.set("cookie" + platform.name(), cookie);
+        }
         setting.remove("cookie");
+        if (StrUtil.isBlank(setting.getStr("xiZhiUrl"))) {
+            setting.remove("xiZhiUrl");
+        }
+        setting.set("runMode", RunMode.FILE.name());
         Path path = Paths.get(getBasePath(), key + fileSuffix);
         FileUtil.mkdir(getBasePath());//若目录不存在直接新建
         File file = FileUtil.writeString(object.toStringPretty(), path.toFile(), StandardCharsets.UTF_8);

@@ -7,10 +7,10 @@
     <title>【星曦向荣】直播监听工具 - 数据监控面板</title>
     <script>
         var _hmt = _hmt || [];
-        (function() {
+        (function () {
             var hm = document.createElement("script");
             hm.src = "https://hm.baidu.com/hm.js?5087e13fa5fa20d0d364de6066042695";
-            var s = document.getElementsByTagName("script")[0]; 
+            var s = document.getElementsByTagName("script")[0];
             s.parentNode.insertBefore(hm, s);
         })();
     </script>
@@ -164,7 +164,8 @@
                 </button>
             </div>
             <!-- 新增监听 -->
-            <button onclick="addRoom()" class="inline-flex items-center px-6 py-2.5 bg-green-500 border border-green-300 text-white text-xl rounded-xl hover:bg-green-800 transition-colors">
+            <button onclick="addRoom()"
+                    class="inline-flex items-center px-6 py-2.5 bg-green-500 border border-green-300 text-white text-xl rounded-xl hover:bg-green-800 transition-colors">
                 <span class="text-white"> <i class="fa fa-plus mr-1"></i>新增直播监听</span>
             </button>
         </div>
@@ -634,8 +635,10 @@
 
         // 确定当前显示的观众数（用于封面显示）
         let displayViewers = 0;
+        let platVideoButton = getPlayVideoSelectButton("纯享播放", room.streams);
         if (room.platform === "Bili") {
             displayViewers = room.viewers || 0;
+            platVideoButton = "";//B站限制
         } else if (room.platform === "DouYin") {
             displayViewers = room.userCountStr || 0;
         }
@@ -701,6 +704,7 @@
                                        class="inline-flex items-center px-3 py-1.5 bg-primary text-white rounded-lg text-sm hover:bg-primary/50 transition-colors">
                                         <span><i class="fa fa-external-link mr-1"></i>进入直播间</span>
                                     </a>
+                                   ${platVideoButton}
                                     <button onclick="showFileSelectModal('${item.key}')" class="inline-flex items-center px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-sm hover:bg-yellow-600 transition-colors">
                                         <span><i class="fa fa-folder text-yellow-400 mr-1"></i>直播记录</span>
                                     </button>
@@ -796,7 +800,28 @@
                             </div>`;
         return div;
     }
-    
+
+    function getPlayVideoSelectButton(title, options) {
+        let html = `<div class="relative inline-block group">
+  <!-- 触发按钮 -->
+  <button class="px-3 py-1.5 bg-primary text-white rounded-lg hover:bg-primary/50 flex items-center gap-1 text-sm cursor-pointer transition-colors">
+    ${title}
+    <i class="fa fa-chevron-down text-xs transition-transform group-hover:rotate-180"></i>
+  </button>
+
+  <!-- 下拉菜单：hover 显示，a标签直接跳转 -->
+  <div class="absolute bottom-full mb-1 w-44 bg-white border rounded shadow-md z-50 invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all duration-150">`;
+
+        Object.keys(options).forEach(key => {
+            html += `<a href="https://zhangheng0805.github.io/FLVPlayer/?url=${btoa(options[key])}" class="block px-3 py-1.5 hover:bg-gray-100 whitespace-nowrap" target="_blank">
+                        <i class="fa fa-video-camera text-primary mr-1" title="${options[key]}"></i>${key}
+                    </a>`;
+        })
+
+        html += `</div></div>`;
+        return html;
+    }
+
     // 获取弹窗元素
     const modal = document.getElementById("modal");
     const modalTitle = document.getElementById("modalTitle");

@@ -5,6 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="img/favicon.ico" type="image/x-icon">
     <title>【星曦向荣】FLV 播放器</title>
+    <script>
+        var _hmt = _hmt || [];
+        (function () {
+            var hm = document.createElement("script");
+            hm.src = "https://hm.baidu.com/hm.js?5087e13fa5fa20d0d364de6066042695";
+            var s = document.getElementsByTagName("script")[0];
+            s.parentNode.insertBefore(hm, s);
+        })();
+    </script>
+    <meta name="referrer" content="no-referrer">
     <script src="js/flv.min.js"></script>
     <link href="css/font-awesome.min.css" rel="stylesheet">
     <script src="js/tailwindcss-3.4.16.js"></script>
@@ -134,7 +144,10 @@
         <!-- 视频播放区域 -->
         <div class="relative bg-gray-900">
             <div id="videoContainer" class="aspect-video w-full bg-black flex items-center justify-center">
-                <video id="videoElement" class="max-w-full max-h-full" controls></video>
+                <video id="videoElement" class="max-w-full max-h-full" controls playsinline
+                       webkit-playsinline
+                       x5-video-player-type="h5"
+                       x5-video-player-fullscreen="true"></video>
 
                 <!-- 加载动画 (默认隐藏) -->
                 <div id="loadingOverlay" class="absolute inset-0 bg-black/50 flex items-center justify-center hidden">
@@ -149,8 +162,8 @@
         <!-- 播放器信息 -->
         <div class="p-4 bg-gray-50 text-xs text-gray-500 flex justify-between">
             <div>
-                <span class="font-medium">GitHub</span> : <a target="_blank"
-                                                             href="https://github.com/ZhangHeng0805/LiveMonitoringRecording">LiveMonitoringRecording</a>
+                <span class="font-medium"><i class="fa fa-github mr-1"></i>GitHub</span> : <a target="_blank"
+                                                                                              href="https://github.com/ZhangHeng0805/FLVPlayer">FLVPlayer</a>
             </div>
             <div>
                 <span class="font-medium">支持格式:</span> FLV (H.264 + AAC/MP3)
@@ -210,7 +223,11 @@
 
             // 自动切换到在线播放标签页
             switchTab('online');
-
+            if (window.location.href.startsWith("https:")) {
+                if (videoUrl.startsWith("http:")) {
+                    videoUrl = videoUrl.replace("http:", "https:")
+                }
+            }
             // 填充URL输入框
             urlInput.value = videoUrl;
             playUrlBtn.disabled = false;
@@ -427,7 +444,13 @@
             flvPlayer.play();
             loadingOverlay.classList.add('hidden');
         } catch (error) {
-            showStatus(`播放错误: ${error.message}`, 'danger');
+            let msg = error.message;
+            if (window.location.href.startsWith("https:")) {
+                if (source.startsWith("http:")) {
+                    msg += " HTTPS 页面禁止加载 HTTP 资源"
+                }
+            }
+            showStatus(`播放错误: ${msg}`, 'danger');
             loadingOverlay.classList.add('hidden');
             console.error('播放错误:', error);
         }
@@ -492,6 +515,27 @@
 
     // 初始化应用
     document.addEventListener('DOMContentLoaded', init);
+
+    // 兼容所有浏览器进入全屏函数
+    function enterFullScreen(el) {
+        if (el.requestFullscreen) {
+            el.requestFullscreen();
+        } else if (el.webkitRequestFullscreen) {
+            el.webkitRequestFullscreen();
+        } else if (el.mozRequestFullScreen) {
+            el.mozRequestFullScreen();
+        } else if (el.msRequestFullscreen) {
+            el.msRequestFullscreen();
+        }
+        // iOS 专用全屏方法
+        else if (el.webkitEnterFullScreen) {
+            el.webkitEnterFullScreen();
+        }
+    }
+
+    videoElement.addEventListener('play', () => {
+        enterFullScreen(videoElement);
+    })
 </script>
 </body>
 </html>
