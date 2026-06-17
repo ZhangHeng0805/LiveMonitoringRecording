@@ -4,8 +4,17 @@
     <meta charset="UTF-8"/>
     <link rel="icon" href="img/favicon.ico" type="image/x-icon"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <meta name="referrer" content="no-referrer">
     <title>【星曦向荣】直播监听工具 - 数据监控面板</title>
+    <script>
+        var _hmt = _hmt || [];
+        (function() {
+            var hm = document.createElement("script");
+            hm.src = "https://hm.baidu.com/hm.js?5087e13fa5fa20d0d364de6066042695";
+            var s = document.getElementsByTagName("script")[0]; 
+            s.parentNode.insertBefore(hm, s);
+        })();
+    </script>
+    <meta name="referrer" content="no-referrer">
     <!-- 引入Tailwind CSS -->
     <script src="js/tailwindcss-3.4.17.js"></script>
     <!-- 引入Font Awesome图标库 -->
@@ -111,6 +120,8 @@
         }
     </style>
     <script src="js/index.js"></script>
+    <script src="js/util.js"></script>
+    <script src="js/RoomAction.js"></script>
     <script src="js/DouYinModel.js"></script>
     <script src="js/BiliBiliModel.js"></script>
     <script src="js/FileResourceSelect.js"></script>
@@ -152,6 +163,10 @@
                     <i class="fa fa-refresh"></i>
                 </button>
             </div>
+            <!-- 新增监听 -->
+            <button onclick="addRoom()" class="inline-flex items-center px-6 py-2.5 bg-green-500 border border-green-300 text-white text-xl rounded-xl hover:bg-green-800 transition-colors">
+                <span class="text-white"> <i class="fa fa-plus mr-1"></i>新增直播监听</span>
+            </button>
         </div>
 
         <!-- 状态概览卡片 -->
@@ -346,7 +361,7 @@
     const fullUrl = window.location.href;
     const MainUrl = getMainUrl(fullUrl);
 
-    
+
     function generateLink(links) {
         let html = "相关链接:";
         Object.keys(links).forEach(key => {
@@ -463,19 +478,6 @@
         }
     }
 
-    // 提取日期格式化函数
-    function formatDate(date) {
-        return date
-            .toLocaleString("zh-CN", {
-                year: "numeric",
-                month: "2-digit",
-                day: "2-digit",
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
-            })
-            .replace(/\//g, "-");
-    }
 
     // 显示刷新状态
     function showRefreshStatus(status) {
@@ -610,7 +612,7 @@
             index * 0.1
         }s forwards`;
 
-        const startTime = room.startTime? formatDate(new Date(room.startTime)) : "未知";
+        const startTime = room.startTime ? formatDate(new Date(room.startTime)) : "未知";
         // 平台特定信息网格
         let infoGridItems = `<div class="flex items-center">
                                 <i class="fa fa-calendar text-primary mr-1"></i>
@@ -626,8 +628,8 @@
             infoGridItems += createLivingDouYinInfoGridItems(room);
         }
         // 快手直播间数据
-        else if(room.platform === "KuaiShou"){
-            
+        else if (room.platform === "KuaiShou") {
+
         }
 
         // 确定当前显示的观众数（用于封面显示）
@@ -783,7 +785,9 @@
                                     <button onclick="actionMonitor('${item.key}',${!running})" class="inline-flex items-center px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-sm hover:bg-gray-500 transition-colors">
                                          <span class="${running ? "text-warning" : "text-success"}"><i class="fa ${running ? "fa-stop" : "fa-play"} mr-1"></i>${running ? "停止" : "开启"}监控</span>
                                     </button>
-
+                                    <button onclick="delRoom('${item.key}')" class="inline-flex items-center px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-sm hover:bg-red-200 transition-colors">
+                                        <span class="text-danger"><i class="fa fa-remove text-danger mr-1"></i>删除监听</span>
+                                    </button>
                                   <button onclick="
                                     actionSetting('${item.key}','${btoa(JSON.stringify(item.room.setting))}')"  class="inline-flex items-center px-3 py-1.5 bg-gray-500 border text-white border-gray-300 rounded-lg text-sm hover:bg-gray-800 transition-colors">
                                     <span class="text-white"> <i class="fa fa-cog mr-1"></i>设置</span>
@@ -792,307 +796,7 @@
                             </div>`;
         return div;
     }
-
-    function actionMonitor(roomKey, isOpen) {
-        showActionBeforeModal((key) => {
-            console.log("操作监听", roomKey, isOpen, key);
-            actionRequest("monitor", {
-                key: roomKey,
-                flag: isOpen,
-                actionKey: key,
-            }).then((data) => {
-                data.title = "监听操作结果";
-                showActionAfterModal(data);
-                if (data.code === 0) {
-                    handleManualRefresh();
-                }
-            });
-        });
-    }
-
-    function actionRecord(roomKey, isRecord) {
-        showActionBeforeModal((key) => {
-            console.log("操作录制", roomKey, isRecord, key);
-            actionRequest("record", {
-                key: roomKey,
-                flag: isRecord,
-                actionKey: key,
-            }).then((data) => {
-                data.title = "录制操作结果";
-                showActionAfterModal(data);
-                if (data.code === 0) {
-                    handleManualRefresh();
-                }
-            });
-        });
-    }
-
-    function actionSetting(roomKey, settingStr) {
-        let setting = JSON.parse(atob(settingStr));
-        showActionBeforeModal((key) => {
-            console.log("操作设置", roomKey, setting);
-            setModalContent(
-                `${roomKey} 监听设置`,
-                `<div id="inputContainer" class="mb-4">
-                  <label for="delayIntervalSec" class="block text-sm font-medium text-gray-700 mb-1">刷新频率(s)</label>
-                  <input type="number"
-                      value="${setting.delayIntervalSec}"
-                      id="delayIntervalSec"
-                      class="input-field"
-                      placeholder="请设置直播间刷新频率">
-                </div>
-                <div id="openSubtitleContainer" class="mb-4">
-                  <label class="flex items-center space-x-2 cursor-pointer">
-                    <input type="checkbox"
-                        id="openSubtitle"
-                        class="h-4 w-4 text-primary focus:ring-primary"
-                        ${setting.openSubtitle ? 'checked' : ''}>
-                    <span class="text-sm font-medium text-gray-700">开启弹幕记录</span>
-                  </label>
-                </div>
-                <div id="convertFileContainer" class="mb-4">
-                  <label class="flex items-center space-x-2 cursor-pointer">
-                    <input type="checkbox"
-                        id="convertFlvToMp4"
-                        class="h-4 w-4 text-primary focus:ring-primary"
-                        ${setting.convertFlvToMp4 ? 'checked' : ''}>
-                    <span class="text-sm font-medium text-gray-700">转换录制文件(FLV转MP4)</span>
-                  </label>
-                </div>
-                <div id="isLoopContainer" class="mb-4">
-                  <label class="flex items-center space-x-2 cursor-pointer" title="直播结束后是否继续监听">
-                    <input type="checkbox"
-                        id="isLoop"
-                        class="h-4 w-4 text-primary focus:ring-primary"
-                        ${setting.isLoop ? 'checked' : ''}>
-                    <span class="text-sm font-medium text-gray-700">是否循环监听</span>
-                  </label>
-                </div>
-                <div id="cookieContainer" class="mb-4">
-                  <label for="cookieValue" class="block text-sm font-medium text-gray-700 mb-1">Cookie设置</label>
-                  <textarea
-                      id="cookieValue"
-                      class="input-field w-full min-h-[100px] resize-y"
-                      placeholder="请输入Cookie内容"></textarea>
-                </div>
-                <p id="inputError" class="mt-1 text-sm text-red-600 hidden"></p>`,
-                [
-                    {
-                        text: "取消",
-                        className:
-                            "bg-gray text-gray-800 hover:bg-gray-300 focus:ring-gray-400",
-                        onClick: closeModal,
-                    },
-                    {
-                        text: "确定",
-                        className:
-                            "bg-primary text-white hover:bg-primary/90 focus:ring-primary",
-                        onClick: () => {
-                            const delayIntervalSecInput = document.getElementById("delayIntervalSec").value;
-                            const convertFlvToMp4Checked = document.getElementById("convertFlvToMp4").checked;
-                            const openSubtitleChecked = document.getElementById("openSubtitle").checked;
-                            const isLoopChecked = document.getElementById("isLoop").checked;
-                            const cookieValueInput = document.getElementById("cookieValue").value.trim();
-                            const errorElement = document.getElementById("inputError");
-                            // 简单的输入验证
-                            if (delayIntervalSecInput && (isNaN(delayIntervalSecInput) || Number(delayIntervalSecInput) < 1)) {
-                                errorElement.textContent = "刷新频率必须是大于0的数字";
-                                errorElement.classList.remove("hidden");
-                                return;
-                            }
-                            errorElement.classList.add("hidden");
-
-                            closeModal();
-                            actionRequest("setting", {
-                                key: roomKey,
-                                actionKey: key,
-                                delayIntervalSec: delayIntervalSecInput,
-                                convertFlvToMp4: convertFlvToMp4Checked,
-                                openSubtitle: openSubtitleChecked,
-                                isLoop: isLoopChecked,
-                                cookie: cookieValueInput // 添加Cookie参数
-                            }).then(msg => {
-                                showActionAfterModal(msg);
-                                if (msg.code === 0) {
-                                    handleManualRefresh();
-                                }
-                            })
-                        },
-                    },
-                ]
-            );
-        });
-    }
-
-
-    /**
-     * 操作秘钥验证
-     * @param onSubmit
-     */
-    function showActionBeforeModal(onSubmit) {
-        setModalContent(
-            "操作验证",
-            `<div id="inputContainer" class="mb-4">
-                  <label for="actionKey" class="block text-sm font-medium text-gray-700 mb-1">操作秘钥</label>
-                  <input type="password"
-                      id="actionKey"
-                      class="input-field"
-                      placeholder="请输入操作秘钥">
-             </div>
-             <p id="inputError" class="mt-1 text-sm text-red-600 hidden"></p>`,
-            [
-                {
-                    text: "取消",
-                    className:
-                        "bg-gray text-gray-800 hover:bg-gray-300 focus:ring-gray-400",
-                    onClick: closeModal,
-                },
-                {
-                    text: "确定",
-                    className:
-                        "bg-primary text-white hover:bg-primary/90 focus:ring-primary",
-                    onClick: () => {
-                        let val = document.getElementById("actionKey").value;
-                        // console.log("秘钥", val);
-                        if (val.length < 1) {
-                            let inputError = document.getElementById("inputError");
-                            inputError.textContent = "输入内容不能为空！";
-                            inputError.classList.remove("hidden");
-                            return;
-                        }
-                        closeModal();
-                        onSubmit(val);
-                    },
-                },
-            ]
-        );
-    }
-
-    function showActionAfterModal(msg) {
-        setModalContent(
-            msg.title || "操作结果",
-            `<p class="
-                ${msg.code !== 0 ? "text-red-600" : "text-black"} text-center">${msg.message}</p>`,
-            [
-                {
-                    text: "知道了",
-                    className:
-                        "bg-primary text-white hover:bg-primary/90 focus:ring-primary",
-                    onClick: closeModal,
-                },
-            ]
-        );
-    }
-
-    function actionRefresh(key) {
-        actionRequest("refresh", {
-            key: key,
-        }).then((data) => {
-            data.title = "刷新操作结果";
-            showActionAfterModal(data);
-            if (data.code === 0) {
-                handleManualRefresh();
-            }
-        });
-    }
-
-    async function actionRequest(path, params) {
-        return request(`action/${path}`,params);
-    }
-
-    async function request(path, params) {
-        // console.log("操作监听", roomKey, flag)
-        return await new Promise((resolve) => {
-            fetch(MainUrl + `${path}/?${objectToUrlParams(params)}`)
-                .then((response) => {
-                    // 检查响应状态
-                    if (!response.ok) {
-                        throw new Error("网络响应不正常");
-                    }
-                    // 解析JSON数据
-                    return response.json();
-                })
-                .then((mockData) => {
-                    console.log(path+"获取的数据:", mockData);
-                    // 处理数据
-                    resolve(mockData);
-                })
-                .catch((error) => {
-                    console.error("请求失败:", error);
-                    throw error;
-                });
-        });
-    }
-
-    function objectToUrlParams(obj) {
-        if (obj === null || typeof obj !== "object") {
-            return "";
-        }
-
-        const searchParams = new URLSearchParams();
-        for (const key in obj) {
-            if (!obj.hasOwnProperty(key)) continue;
-
-            const value = obj[key];
-            if (value === undefined || value === null) continue;
-
-            // 直接 append 键值对，内部会自动编码
-            searchParams.append(key, value);
-        }
-
-        // 转换为查询字符串（已包含编码）
-        return searchParams.toString();
-    }
-
-    // 数字格式化（如10000 -> 10,000或10万）
-    function formatNumber(num) {
-        if (!num && num !== 0) return "0";
-        // 处理字符串类型的数字
-        if (typeof num === "string") {
-            if (num.indexOf("万") > 0) {
-                return num;
-            }
-            num = parseInt(num);
-            if (isNaN(num)) return num;
-        }
-
-        if (num >= 1000000) {
-            return (num / 1000000).toFixed(1) + "百万";
-        } else if (num >= 10000) {
-            return (num / 10000).toFixed(1) + "万";
-        } else if (num >= 1000) {
-            return num.toLocaleString();
-        }
-        return num;
-    }
-
-    // 数字变化动画
-    function updateCounter(elementId, targetValue) {
-        const element = document.getElementById(elementId);
-        if (!element) return;
-
-        const startValue = parseInt(element.textContent) || 0;
-        const duration = 500; // 动画持续时间（毫秒）
-        const frameDuration = 16; // 每帧持续时间（约16ms = 60fps）
-        const totalFrames = Math.round(duration / frameDuration);
-        let frame = 0;
-
-        const counter = setInterval(() => {
-            frame++;
-            const progress = frame / totalFrames;
-            const currentValue = Math.round(
-                startValue + (targetValue - startValue) * progress
-            );
-
-            element.textContent = currentValue;
-
-            if (frame === totalFrames) {
-                clearInterval(counter);
-                element.textContent = targetValue; // 确保最终值正确
-            }
-        }, frameDuration);
-    }
-
+    
     // 获取弹窗元素
     const modal = document.getElementById("modal");
     const modalTitle = document.getElementById("modalTitle");

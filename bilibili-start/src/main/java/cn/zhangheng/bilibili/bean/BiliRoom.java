@@ -32,7 +32,7 @@ public class BiliRoom extends Room {
 
     @Override
     public void initSetting(Setting setting) {
-        String cookie = setting.parseCookie(setting.getCookieBili());
+        String cookie = Setting.parseCookie(setting.getCookieBili());
         if (StrUtil.isNotBlank(cookie))
             setCookie(cookie);
     }

@@ -32,9 +32,39 @@ public class RecorderTask {
     private ActionListener actionListener;
 
     public RecorderTask(Setting setting) {
-        this.asyncTaskQueue = new AsyncTaskQueue(1, 10);
+        this.asyncTaskQueue = new AsyncTaskQueue(1, 10, 3, 0);
         asyncTaskQueue.start();
         this.setting = setting;
+    }
+
+    public void run(Room room) {
+        try {
+            asyncTaskQueue.submit(() -> {
+                Recorder recorder = getRecorder(room);
+                if (actionListener != null) {
+                    actionListener.onRecorderCreated(recorder);
+                }
+                recorder.run(false);
+                return recorder;
+            }, new TaskCallback<Recorder>() {
+                @Override
+                public void onSuccess(Recorder result) {
+                    log.info("录制结束！[{}]:{}", result.getDefinition(), result.getSaveFilePath());
+                }
+
+                @Override
+                public void onFailure(Throwable e) {
+                    if (actionListener != null) {
+                        actionListener.onFailure(e);
+                    }
+                }
+            });
+        } catch (RejectedExecutionException e) {
+            log.error("任务提交失败，队列已满", e);
+            if (actionListener != null) {
+                actionListener.onFailure(e); // 通知外部提交失败
+            }
+        }
     }
 
     protected Recorder getRecorder(Room room) {
@@ -91,37 +121,6 @@ public class RecorderTask {
         return streamRecorder;
     }
 
-
-
-    public void run(Room room) {
-        try {
-            asyncTaskQueue.submit(() -> {
-                Recorder recorder = getRecorder(room);
-                if (actionListener != null) {
-                    actionListener.onRecorderCreated(recorder);
-                }
-                recorder.run(false);
-                return recorder;
-            }, new TaskCallback<Recorder>() {
-                @Override
-                public void onSuccess(Recorder result) {
-                    log.info("录制结束！[{}]:{}", result.getDefinition(), result.getSaveFilePath());
-                }
-
-                @Override
-                public void onFailure(Throwable e) {
-                    if (actionListener != null) {
-                        actionListener.onFailure(e);
-                    }
-                }
-            });
-        } catch (RejectedExecutionException e) {
-            log.error("任务提交失败，队列已满", e);
-            if (actionListener != null) {
-                actionListener.onFailure(e); // 通知外部提交失败
-            }
-        }
-    }
 
     public void shutdown() {
         if (asyncTaskQueue != null) {

@@ -28,6 +28,7 @@ public class LocalServerFlvPlayer extends Task {
     private final String mainUrl;
 
     public LocalServerFlvPlayer(int port) {
+        super("LocalServerFlvPlayer-" + port, 1);
         this.port = port;
         mainUrl = "http://localhost:" + port + "/?url=";
     }
@@ -51,7 +52,6 @@ public class LocalServerFlvPlayer extends Task {
     @Override
     public void run(boolean isAsync) throws ExecutionException {
         Future<?> future = mainExecutors.submit(() -> {
-            Thread.currentThread().setName("LocalServerFlvPlayer-" + Thread.currentThread().getId() + "-" + port);
             if (!NetworkUtil.isPortUsed(port)) {
                 try {
                     this.server = HttpServer.create(new java.net.InetSocketAddress(port), 0);
@@ -86,14 +86,9 @@ public class LocalServerFlvPlayer extends Task {
 
     @Override
     public void stop(boolean force) {
-        isRunning.set(false);
+        super.stop(force);
         if (server != null) {
             server.stop(0);
-        }
-        if (force) {
-            mainExecutors.shutdownNow();
-        } else {
-            mainExecutors.shutdown();
         }
     }
 }

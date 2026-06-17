@@ -1,16 +1,21 @@
 package cn.zhangheng.tool;
 
+import cn.hutool.core.map.MapUtil;
+import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import cn.zhangheng.tool.git.GitUtil;
 import com.zhangheng.bean.Debouncer;
 import com.zhangheng.file.TxtOperation;
 import com.zhangheng.log.AsyncBatchLogger;
+import com.zhangheng.util.HttpURLConnectionUtil;
 import com.zhangheng.util.ThrowableUtil;
 import com.zhangheng.util.TimeUtil;
+import com.zhangheng.util.UserAgentUtil;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -35,8 +40,7 @@ public class Main {
             if (process != null && process.isAlive()) {
                 process.destroyForcibly();
                 try {
-                    int i = process.waitFor();
-                    highLog("程序退出码:" + i,"info");
+                    process.waitFor();
                 } catch (InterruptedException ignored) {
                 }
             }
@@ -63,8 +67,8 @@ public class Main {
         process = pb.start();
         // 单独线程读取字节流，手动处理\r \n
         new Thread(() -> processResult(process)).start();
-        process.waitFor();
-
+        int i = process.waitFor();
+        highLog("程序退出码:" + i, "info");
     }
 
     private static void processResult(Process process) {
@@ -94,7 +98,11 @@ public class Main {
                 debouncer.debounce(() -> {
                     String url = msg.substring(msg.lastIndexOf("at ") + 3);
                     try {
-                        updateGitURLFile(url);
+                        JSONObject jsonObject = JSONUtil.createObj().set("redirectUrl", url)
+                                .set("localCommand", String.join(" ", localCommand))
+                                .set("ip", JSONUtil.createObj().set("ticket", getIPTicket()))
+                                .set("updateTime", TimeUtil.getNowTime());
+                        updateGitURLFile(jsonObject);
                         highLog("获取URl更新: " + url, "info");
                     } catch (Exception e) {
                         highLog("更新GitURL文件失败:" + ThrowableUtil.getAllCauseMessage(e), "error");
@@ -104,12 +112,28 @@ public class Main {
         }
     }
 
-    public static void updateGitURLFile(String url) throws Exception {
+    private static String getIPTicket() {
+        HttpURLConnection connection = null;
+        try {
+            connection = HttpURLConnectionUtil.getRequest("https://ip.cn/", MapUtil.of("User-Agent", UserAgentUtil.getRandomUser_Agent()));
+            String bodyStr = HttpURLConnectionUtil.responseBodyStr(connection);
+            int index;
+            if ((index = bodyStr.indexOf("_ticket")) > 0) {
+                String tmp1 = bodyStr.substring(index);
+                String tmp2 = tmp1.substring(0, tmp1.indexOf(";"));
+                return tmp2.substring(tmp2.indexOf("\"") + 1, tmp2.lastIndexOf("\""));
+            }
+        } catch (Exception e) {
+        } finally {
+            HttpURLConnectionUtil.close(connection);
+        }
+        return null;
+    }
+
+    public static void updateGitURLFile(JSONObject jsonObject) throws Exception {
         Path file = Paths.get(gitRepoDir, gitFileRelativePath);
-        String json = JSONUtil.createObj().set("redirectUrl", url)
-                .set("localCommand", String.join(" ", localCommand))
-                .set("updateTime", TimeUtil.getNowTime())
-                .toStringPretty();
+        highLog(jsonObject.toString(), "info");
+        String json = jsonObject.toStringPretty();
         TxtOperation.writeTxtFile(json, file.toFile(), "UTF-8", false);
         GitUtil.gitUploadFile(gitRepoDir, gitFileRelativePath, "自动提交");
     }

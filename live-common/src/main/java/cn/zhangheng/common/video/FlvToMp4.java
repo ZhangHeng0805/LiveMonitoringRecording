@@ -2,6 +2,7 @@ package cn.zhangheng.common.video;
 
 import cn.zhangheng.common.bean.Constant;
 import cn.zhangheng.common.util.LogUtil;
+import cn.zhangheng.common.video.ffmpeg.FFmpegService;
 import com.zhangheng.util.ThrowableUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,7 +61,7 @@ public class FlvToMp4 extends FFmpegService {
                     "-c", "copy",// 直接复制
                     output // 输出文件
             );
-            boolean run = run(command);
+            boolean run = run(command) == 0;
             String res = run ? "转换成功! " : "转换失败! ";
             if (logUtil != null) logUtil.log(res + output);
             return run;

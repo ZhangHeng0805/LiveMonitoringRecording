@@ -35,6 +35,7 @@ public abstract class Recorder extends Task {
     protected int timeoutSeconds = 0;
 
     protected Recorder(String downloadUrl, String saveFilePath, String definition) {
+        super();
         this.downloadUrl = downloadUrl;
         this.saveFilePath = saveFilePath;
         this.definition = definition;
@@ -100,6 +101,8 @@ public abstract class Recorder extends Task {
 
     @Override
     public void run(boolean isAsync) throws ExecutionException {
+        if (mainExecutors.isShutdown() || mainExecutors.isTerminated())
+            throw new RuntimeException("线程任务已关闭，不能重复运行！");
         initRunnable();
         Future<?> future = mainExecutors.submit(runnable);
         if (!isAsync) {
@@ -116,12 +119,7 @@ public abstract class Recorder extends Task {
 
     @Override
     public void stop(boolean force) {
-        isRunning.set(false);
-        if (force) {
-            mainExecutors.shutdownNow();
-        } else {
-            mainExecutors.shutdown();
-        }
+        super.stop(false);
     }
 
     public interface ProgressCallback {

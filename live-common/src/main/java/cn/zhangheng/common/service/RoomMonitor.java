@@ -143,13 +143,8 @@ public abstract class RoomMonitor<R extends Room, S extends RoomService<R>> exte
 
     @Override
     public void stop(boolean force) {
-        isRunning.set(false);
         state = State.END;
-        if (force) {
-            mainExecutors.shutdownNow();
-        } else {
-            mainExecutors.shutdown();
-        }
+        super.stop(force);
     }
 
 

@@ -9,6 +9,7 @@ package cn.zhangheng.common.video;
  */
 
 import cn.zhangheng.common.bean.Constant;
+import cn.zhangheng.common.video.ffmpeg.FFmpegService;
 import com.zhangheng.util.ThrowableUtil;
 
 import java.io.IOException;

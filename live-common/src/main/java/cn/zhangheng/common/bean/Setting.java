@@ -154,7 +154,7 @@ public class Setting {
     private String cookieBili;
 
 
-    public String parseCookie(String cookie) {
+    public static String parseCookie(String cookie) {
         if (StrUtil.isNotBlank(cookie)) {
             if (cookie.startsWith("file:")) {
                 cookie = FileUtil.readString(new File(cookie.substring(5).trim()), StandardCharsets.UTF_8).trim();

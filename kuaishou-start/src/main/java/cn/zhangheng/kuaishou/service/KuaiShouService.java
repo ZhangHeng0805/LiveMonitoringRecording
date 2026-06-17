@@ -75,7 +75,8 @@ public class KuaiShouService extends RoomService<KuaiShouRoom> {
             JSONObject data = getData();
             return initRoom(data, force);
         } catch (Exception e) {
-            log.error("快手refresh错误", e);
+            log.error("快手refresh错误，{}", ThrowableUtil.getAllCauseMessage(e));
+            throw new RuntimeException(e);
         } finally {
             if (counter.get() % 10 == 0) {
                 header.put("User-Agent", ua.get());
@@ -90,7 +91,6 @@ public class KuaiShouService extends RoomService<KuaiShouRoom> {
                 }
             }
         }
-        return false;
     }
 
     @Override

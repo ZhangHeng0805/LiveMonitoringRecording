@@ -251,10 +251,16 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                         recorder.stop(false);
                         log.info("录制文件大小超过15G，自动结束录制");
                     }
-                    String definition = room.getStreams().entrySet().iterator().next().getKey();
+                    Map.Entry<String, String> streams = room.getStreams().entrySet().iterator().next();
+                    String definition = streams.getKey();
                     if (!recorder.getDefinition().equals(definition)) {
                         recorder.stop(false);
                         log.info("录制视频流清晰度已切换【{} >> {}】，自动结束录制", recorder.getDefinition(), definition);
+                    }
+                    String url = streams.getValue();
+                    if (!recorder.getDownloadUrl().equals(url)) {
+                        recorder.stop(false);
+                        log.info("录制视频流地址已切换【{} >> {}】，自动结束录制", recorder.getDownloadUrl(), url);
                     }
                 } else {
                     trayIconUtil.setToolTip(statistics);
@@ -389,7 +395,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             try {
                 roomMonitor.refresh(true);
             } catch (Exception e) {
-                log.error("直播监听刷新异常：" + ThrowableUtil.getAllCauseMessage(e), e);
+                log.error("直播监听刷新异常：{}", ThrowableUtil.getAllCauseMessage(e));
             }
         }
         if (room.isLiving() && isRunning.get() && recordFlag.get()) {

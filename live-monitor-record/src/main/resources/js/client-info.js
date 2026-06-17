@@ -243,7 +243,8 @@ function setCookie(key, value) {
     let host = window.location.host;
     // let date = new Date();
     let expiresTime = 60 * 60 * 24;
-    document.cookie = key + "=" + value + ";path=/;domain=" + host + ";expires=" + expiresTime;
+    document.cookie =
+        key + "=" + value + ";path=/;domain=" + host + ";expires=" + expiresTime;
 }
 
 // const setCookie = (a, b) => {
@@ -376,8 +377,8 @@ function debounce(func, wait, immediate) {
 }
 
 function client_result() {
-    var sid = getSid();
-    var cid = getCid();
+    // var sid = getSid();
+    // var cid = getCid();
     var os = getOS();
     var browser = getBrowser();
     var spider = getSpider();
@@ -398,8 +399,8 @@ function client_result() {
     var vp = 0 >= ca[0] || 0 >= ca[1] ? "" : ca.join("x");
 
     var ClientData = {
-        sid: sid,
-        cid: cid, //Cookie ID
+        // sid: sid,
+        // cid: cid, //Cookie ID
         dt: document.title || "", //页面title
         dl: location.href, //页面地址
         dr: ref.rurl,
@@ -416,7 +417,7 @@ function client_result() {
         je: b.javaEnabled ? 1 : 0, //浏览器是否已启用 Java
         app: appName, //APP名
         br: brandName, //设备名
-        t: dongle(sid, cid, r, browser.version),
+        // t: dongle(sid, cid, r, browser.version),
         r: r, //时间戳
     };
     // console.log(ClientData);
@@ -425,18 +426,22 @@ function client_result() {
 }
 
 function getClientIP() {
+    let ticket = "";
+    try {
+        if (window.xxxr.ip.ticket) {
+            ticket = window.xxxr.ip.ticket;
+        }
+    } catch (e) {
+        throw e;
+    }
     const xhr = new XMLHttpRequest();
-    xhr.open(
-        "GET",
-        "https://my.ip.cn/json/?ticket=de8cf64c0d7484e8ed32714de89e178c1780890467",
-        false
-    ); // false = 同步阻塞
+    xhr.open("GET", "https://my.ip.cn/json/?ticket=" + ticket, false); // false = 同步阻塞
     xhr.send(null);
 
     if (xhr.status >= 200 && xhr.status < 300) {
         return JSON.parse(xhr.responseText);
     } else {
-        throw new Error("获取getClientIP失败"+ xhr);
+        throw new Error("获取getClientIP失败" + xhr);
     }
 }
 

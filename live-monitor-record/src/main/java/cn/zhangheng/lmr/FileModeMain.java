@@ -13,13 +13,16 @@ import cn.zhangheng.common.bean.enums.RunMode;
 import cn.zhangheng.common.util.TrayIconUtil;
 import cn.zhangheng.douyin.browser.DouYinBrowserFactory;
 import cn.zhangheng.lmr.fileModeApi.LocalServerApi;
+import com.zhangheng.file.FileUtil;
 import com.zhangheng.util.ThrowableUtil;
 import com.zhangheng.util.TimeUtil;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.awt.*;
+import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -40,7 +43,9 @@ import java.util.stream.Stream;
  */
 @Slf4j
 public class FileModeMain {
+    @Getter
     private static final String basePath = "./";
+    @Getter
     private static final String fileSuffix = ".room.json";
     @Getter
     private static ThreadPoolExecutor ThreadPool = null;
@@ -60,15 +65,15 @@ public class FileModeMain {
                 path = basePath;
             }
             List<Path> paths = retrieveFile(path, fileSuffix);
-            if (paths.isEmpty()) {
-                TrayIconUtil iconUtil = TrayIconUtil.getInstance(Constant.Application);
-                String message = StrUtil.format("{} 路径下没有获取到监听的直播间文件[{}]", path, fileSuffix);
-                iconUtil.notifyMessage(message, TrayIcon.MessageType.WARNING);
-                log.warn(message);
-                TimeUnit.SECONDS.sleep(3);
-                iconUtil.shutdown();
-                return;
-            }
+//            if (paths.isEmpty()) {
+//                TrayIconUtil iconUtil = TrayIconUtil.getInstance(Constant.Application);
+//                String message = StrUtil.format("{} 路径下没有获取到监听的直播间文件[{}]", path, fileSuffix);
+//                iconUtil.notifyMessage(message, TrayIcon.MessageType.WARNING);
+//                log.warn(message);
+//                TimeUnit.SECONDS.sleep(3);
+//                iconUtil.shutdown();
+//                return;
+//            }
             Setting setting = new Setting();
             try {
                 ActivationUtil.verifyActivationCodeFile(Constant.deviceUniqueId, setting.getActivateVoucherPath());
@@ -91,20 +96,18 @@ public class FileModeMain {
 
             serverApi = new LocalServerApi(Constant.monitorServerPort);
             serverApi.start();
-            int coreSize = Math.min(paths.size(), setting.getMaxMonitorThreads());
-            ThreadPool = (ThreadPoolExecutor) Executors.newFixedThreadPool(coreSize);
+            int coreSize = setting.getMaxMonitorThreads();
+            ThreadPool = new ThreadPoolExecutor(coreSize, coreSize, 0, TimeUnit.SECONDS, new ArrayBlockingQueue<>(coreSize * 2));
             log.info("启动监听线程数：{}个", coreSize);
-            for (int i = 0; i < coreSize; i++) {
+            for (int i = 0; i < paths.size(); i++) {
                 Path file = paths.get(i);
-                ThreadPool.execute(() -> {
-                    startMonitor(file);
-                });
+                submitRoomFileModel(file);
                 try {
-                    TimeUnit.SECONDS.sleep(i);
+                    //延时启动
+                    TimeUnit.SECONDS.sleep(i + 1);
                 } catch (InterruptedException ignored) {
                 }
             }
-
         } catch (Exception e) {
             log.error(e.getMessage(), e);
         } finally {
@@ -164,6 +167,7 @@ public class FileModeMain {
             log.error(file + " 监听发生异常:" + e.getMessage(), e);
         } finally {
             endMonitor(model);
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -185,15 +189,42 @@ public class FileModeMain {
 //        executeFileMap.remove(model.getId());
     }
 
-    public static void restartMain(String key) throws RuntimeException {
+    public static void delMain(String key) throws WarnException {
+        RoomFileModel model = getModelById(key);
+        if (model == null) throw new WarnException(key + "直播监听不存在！");
+        if (model.isRunning()) throw new WarnException(key + "直播监听已开启！请先停止后删除");
+        Path filePath = model.getFilePath();
+        roomFileMap.remove(filePath);
+        String name = model.getMain().getMonitorMain().getRoom().getNickname();
+        name = StrUtil.isBlank(name) ? "" : name + "-";
+        Path rename = FileUtil.rename(filePath, name + filePath.getFileName().toString() + ".del", true);
+        log.info("{}直播监听已删除,监听文件重命名:{}", key, rename.toString());
+    }
+
+    public static void addMain(JSONObject object) throws WarnException {
+        Room.Platform platform = object.get("platform", Room.Platform.class);
+        String roomID = object.getStr("id");
+        String key = platform.name() + "-" + roomID;
+        RoomFileModel model = getModelById(key);
+        if (model != null) throw new WarnException(key + "直播监听已存在！");
+        JSONObject setting = object.getJSONObject("setting");
+        setting.set("cookie" + platform.name(), setting.get("cookie"));
+        setting.remove("cookie");
+        Path path = Paths.get(getBasePath(), key + fileSuffix);
+        FileUtil.mkdir(getBasePath());//若目录不存在直接新建
+        File file = FileUtil.writeString(object.toStringPretty(), path.toFile(), StandardCharsets.UTF_8);
+        log.info("新增直播监听文件{}创建成功", file.getPath());
+        submitRoomFileModel(file.toPath());
+    }
+
+    private static void submitRoomFileModel(Path path) {
         try {
             ThreadPool.execute(() -> {
-                RoomFileModel model = getModelById(key);
-                if (model == null) {
-                    log.warn("{}标识的不存在，无法重新启动监听", key);
+                if (path == null) {
+                    log.warn("监听文件path为null，无法重新启动监听");
                     return;
                 }
-                startMonitor(model.getFilePath());
+                startMonitor(path);
             });
         } catch (RejectedExecutionException e) {
             // 处理任务被拒绝的情况（如线程池关闭、队列满等）
@@ -207,12 +238,20 @@ public class FileModeMain {
         }
     }
 
+    public static void restartMain(String key) throws RuntimeException {
+        RoomFileModel model = getModelById(key);
+        if (model == null) throw new RuntimeException(key + "直播标识不存在");
+        if (model.isRunning()) throw new RuntimeException("直播监听已启动运行,不可重复启动");
+        submitRoomFileModel(model.getFilePath());
+    }
+
     public static RoomFileModel getModelById(String id) {
         return roomFileMap.values().stream().filter(m -> m.getId().equals(id)).findFirst().orElse(null);
     }
 
     public static Map<String, Object> getCounter() {
         Map<String, Object> platformData = new HashMap<>();
+        long total = 0L;
         for (RoomFileModel model : roomFileMap.values()) {
             Map<String, Object> counter = new HashMap<>();
             Room room = model.getMain().getMonitorMain().getRoom();
@@ -220,11 +259,17 @@ public class FileModeMain {
             counter.put("url", room.getRoomUrl());
             counter.put("platform", room.getPlatform().getName());
             counter.put("living", room.isLiving());
+            counter.put("running", model.isRunning());
             counter.put("intervalSec", room.getSetting().getDelayIntervalSec());
-            counter.put("count", model.getMain().getMonitorMain().getRoomMonitor().getCount());
+            int count = model.getMain().getMonitorMain().getRoomMonitor().getCount();
+            total += count;
+            counter.put("count", count);
             counter.put("updateTime", TimeUtil.toTime(room.getUpdateTime()));
+            counter.put("startTime", TimeUtil.toTime(model.getStartTime()));
+            counter.put("endTime", model.getEndTime() > 0 ? TimeUtil.toTime(model.getEndTime()) : null);
             platformData.put(model.getId(), counter);
         }
+        platformData.put("totalCount", total);
         return platformData;
     }
 }

@@ -29,6 +29,7 @@ public class RequestUtils {
         connection.setRequestMethod("GET");
         connection.setConnectTimeout(connectTimeout);
         connection.setReadTimeout(readTimeout);
+        connection.setRequestProperty("Connection", "keep-alive");
 //        connection.setDoOutput(true);
         if (headers != null && !headers.isEmpty()) {
             for (Map.Entry<String, String> entry : headers.entrySet()) {
@@ -43,7 +44,7 @@ public class RequestUtils {
         try (InputStream inputStream = connection.getResponseCode() == HttpURLConnection.HTTP_OK ? connection.getInputStream() : connection.getErrorStream();
              InputStream in = "gzip".equalsIgnoreCase(encoding) ? new GZIPInputStream(inputStream) : inputStream;
              BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(in, charset))) {
-            StringBuilder result = new StringBuilder();
+            StringBuilder result = new StringBuilder(4096);
             String line;
             while ((line = bufferedReader.readLine()) != null) {
                 result.append(line);

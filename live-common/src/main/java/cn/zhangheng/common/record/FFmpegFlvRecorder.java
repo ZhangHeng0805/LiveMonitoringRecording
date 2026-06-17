@@ -2,6 +2,7 @@ package cn.zhangheng.common.record;
 
 import cn.zhangheng.common.bean.Constant;
 import cn.zhangheng.common.video.FlvDownload;
+import cn.zhangheng.common.video.ffmpeg.FFmpegProgress;
 import com.zhangheng.file.FileUtil;
 import com.zhangheng.util.TimeUtil;
 
@@ -39,15 +40,15 @@ public class FFmpegFlvRecorder extends Recorder {
 
     @Override
     public long getDownloadSize() {
-        return flvDownload.getFfmpegProgress().getSize();
+        return flvDownload.getFfmpegProgress().getSizeByte();
     }
 
     @Override
     public String getProgressMsg() {
-        FlvDownload.FFmpegProgress ffmpegProgress = flvDownload.getFfmpegProgress();
+        FFmpegProgress ffmpegProgress = flvDownload.getFfmpegProgress();
         return "已录制: "
                 + TimeUtil.formatMSToCn((int) ffmpegProgress.getTimeMs()) + " / "
-                + FileUtil.fileSizeStr(ffmpegProgress.getSize()) + " / "
+                + FileUtil.fileSizeStr(ffmpegProgress.getSizeByte()) + " / "
                 + ffmpegProgress.getFps() + "fps / "
                 + ffmpegProgress.getBitrate() + "kbits/s"
                 ;

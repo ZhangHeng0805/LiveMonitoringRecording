@@ -123,7 +123,6 @@ public class DouYinBrowser implements Closeable {
     }
 
 
-
     public boolean browserRequest1(DouYinRoom room) {
         String roomUrl = room.getRoomUrl();
         Page page = null;
@@ -320,6 +319,8 @@ public class DouYinBrowser implements Closeable {
      */
     @Override
     public void close() {
+        counters.clear();
+        apis.clear();
         closeBrowser();
     }
 }

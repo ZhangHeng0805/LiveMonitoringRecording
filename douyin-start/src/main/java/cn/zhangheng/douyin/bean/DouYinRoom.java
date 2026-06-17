@@ -52,7 +52,7 @@ public class DouYinRoom extends Room {
 
     @Override
     public void initSetting(Setting setting) {
-        String cookie = setting.parseCookie(setting.getCookieDouYin());
+        String cookie = Setting.parseCookie(setting.getCookieDouYin());
         if (StrUtil.isNotBlank(cookie)) {
             setCookie(cookie);
         }

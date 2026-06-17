@@ -27,7 +27,7 @@ public class KuaiShouRoom extends Room {
 
     @Override
     public void initSetting(Setting setting) {
-        String cookie = setting.parseCookie(setting.getCookieKuaiShou());
+        String cookie = Setting.parseCookie(setting.getCookieKuaiShou());
         if (StrUtil.isNotBlank(cookie))
             setCookie(cookie);
     }

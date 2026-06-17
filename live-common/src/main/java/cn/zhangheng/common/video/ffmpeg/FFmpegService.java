@@ -1,4 +1,4 @@
-package cn.zhangheng.common.video;
+package cn.zhangheng.common.video.ffmpeg;
 
 import com.zhangheng.util.TimeUtil;
 import lombok.Getter;
@@ -22,7 +22,7 @@ import java.util.List;
  * @description: FFmpeg抽象类
  */
 public abstract class FFmpegService {
-    protected static final Logger log = LoggerFactory.getLogger(FFmpegService.class);
+    protected final Logger log = LoggerFactory.getLogger(getClass());
     protected Process process;
     @Getter
     private volatile boolean isRunning;
@@ -30,16 +30,25 @@ public abstract class FFmpegService {
     private final List<String> commands;
 
     public FFmpegService(String ffmpegExePath) {
+        this(ffmpegExePath, false);
+    }
+
+    public FFmpegService(String ffmpegExePath, boolean isAutoClose) {
         if (!Files.exists(Paths.get(ffmpegExePath))) {
             throw new IllegalArgumentException("未找到" + ffmpegExePath + "(Not Found ffmpeg.exe)");
         }
         this.ffmpegExePath = ffmpegExePath;
         commands = new ArrayList<>();
         commands.add(this.ffmpegExePath);
+        if (isAutoClose) {
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                stop(true);
+            }));
+        }
     }
 
 
-    protected boolean run(List<String> command) throws IOException, InterruptedException {
+    public int run(List<String> command) throws IOException, InterruptedException {
         try {
             isRunning = true;
             commands.addAll(command);
@@ -51,8 +60,7 @@ public abstract class FFmpegService {
             pb.redirectErrorStream(true);
             process = pb.start();
             processResult(process);
-            int exitCode = process.waitFor();
-            return exitCode == 0;
+            return process.waitFor();
         } finally {
             isRunning = false;
         }

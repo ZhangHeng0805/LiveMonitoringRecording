@@ -1,7 +1,6 @@
 package cn.zhangheng.douyin.service;
 
 import cn.hutool.core.util.StrUtil;
-import cn.hutool.http.HttpRequest;
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
@@ -138,11 +137,16 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
                         if (force || room.getStreams() == null) {
                             room.setStreams(handleStream(stream_data));
                         }
-                        if (!room.isSubtitleRunning()) {
-                            JSONObject stats = data1.getJSONObject("stats");
+                        JSONObject stats = data1.getJSONObject("stats");
+                        boolean b = !room.isSubtitleRunning();
+                        if (room.getTotalUserStr() == null || b) {
                             room.setTotalUserStr(stats.getStr("total_user_str"));
+                        }
+                        if (room.getUserCountStr() == null || b) {
                             room.setUserCountStr(stats.getStr("user_count_str"));
-                            room.setLikeCount(data1.getInt("like_count"));
+                        }
+                        if (room.getLikeCount() == 0 || b) {
+                            room.setLikeCount(data1.getLong("like_count"));
                         }
                     }
                 } else {

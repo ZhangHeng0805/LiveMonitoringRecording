@@ -5,7 +5,6 @@ import cn.hutool.core.util.StrUtil;
 import cn.zhangheng.common.bean.Constant;
 import cn.zhangheng.common.bean.Room;
 import cn.zhangheng.common.httpServer.handle.JSONHandler;
-import cn.zhangheng.common.httpServer.handle.JWTUtil;
 import cn.zhangheng.lmr.FileModeMain;
 import cn.zhangheng.lmr.RoomFileModel;
 import com.sun.net.httpserver.Headers;
@@ -14,6 +13,7 @@ import com.zhangheng.bean.Message;
 import com.zhangheng.file.FileUtil;
 import com.zhangheng.file.FiletypeUtil;
 import com.zhangheng.util.ThrowableUtil;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.*;
@@ -21,9 +21,8 @@ import java.net.URLEncoder;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -40,6 +39,7 @@ public class FileResourcesHandler extends JSONHandler {
     protected FileResourcesHandler(String prefix) {
         super(prefix);
     }
+
     @Override
     protected boolean filter(HttpExchange httpExchange) throws IOException {
         return super.filter(httpExchange);
@@ -60,26 +60,15 @@ public class FileResourcesHandler extends JSONHandler {
             String path = query.getOrDefault("path", "./");
             Room room = model.getMain().getRoom();
             String basePathStr = Constant.Application + "/" + room.getPlatform().getName() + "/[" + FileUtil.filterFileName(room.getNickname()) + "]/";
-            File target = Paths.get(basePathStr, path).toFile();
-            if (target.exists()) {
-                if (target.isDirectory()) {
-                    try (Stream<Path> stream = Files.list(target.toPath())) {
-                        List<Map<String, String>> list = stream.map(p -> {
-                            File file = p.toFile();
-                            Map<String, String> map = new HashMap<>();
-                            map.put("name", file.getName());
-                            String filePath = file.getPath().replace("\\", "/");
-                            map.put("path", filePath.substring(filePath.indexOf("]") + 2));
-                            map.put("type", file.isDirectory() ? "folder" : "file");
-                            if (file.isFile()) {
-                                map.put("size", FileUtil.fileSizeStr(file.length()));
-                            }
-                            return map;
-                        }).collect(Collectors.toList());
+            Path targetPath = Paths.get(basePathStr, path);
+            if (Files.exists(targetPath)) {
+                if (Files.isDirectory(targetPath)) {
+                    try {
+                        Predicate<FileResult> filePredicate = null;
                         if (!"127.0.0.1".equals(getClientIP(httpExchange))) {
-                            list = list.stream().filter(f -> {
-                                if ("file".equals(f.get("type"))) {
-                                    String name = f.get("name");
+                            filePredicate = r -> {
+                                if ("file".equals(r.getType())) {
+                                    String name = r.getName();
                                     return !name.endsWith(".mp4") &&
                                             !name.endsWith(".flv") &&
                                             !name.endsWith("视频转换.log") &&
@@ -87,22 +76,25 @@ public class FileResourcesHandler extends JSONHandler {
                                             ;
                                 }
                                 return true;
-                            }).collect(Collectors.toList());
+                            };
                         }
-                        message.setData(list);
+                        int pageNum = Integer.parseInt(query.getOrDefault("pageNum", "1"));
+                        int pageSize = Integer.parseInt(query.getOrDefault("pageSize", "100"));
+                        FilePageResult filePageResult = getFilePage(targetPath, pageNum, pageSize, filePredicate);
+                        message.setData(filePageResult);
                     } catch (Exception e) {
                         message.setCode(1);
                         message.setTitle(ThrowableUtil.getAllCauseMessage(e));
                         message.setMessage(ThrowableUtil.toString(e));
                     }
                 } else {
-                    responseFile(httpExchange, target);
+                    responseFile(httpExchange, targetPath.toFile());
                     return;
                 }
             } else {
                 message.setCode(1);
                 message.setTitle("路径不存在！");
-                message.setMessage(target.getPath() + "路径不存在");
+                message.setMessage(targetPath + "路径不存在");
             }
         }
         responseJson(httpExchange, message);
@@ -164,5 +156,93 @@ public class FileResourcesHandler extends JSONHandler {
             return null;
         }
         return model;
+    }
+
+    private FilePageResult getFilePage(Path dir, int pageNum, int pageSize, Predicate<FileResult> filePredicate) throws IOException {
+        pageNum = Math.max(pageNum, 1);
+        pageSize = Math.max(pageSize, 1);
+        long skip = (long) (pageNum - 1) * pageSize;
+        // 前置校验：目录不存在 / 不是目录直接返回空分页
+        if (!Files.exists(dir) || !Files.isDirectory(dir)) {
+            FilePageResult res = new FilePageResult();
+            res.files = new ArrayList<>();
+            res.total = 0;
+            res.pageNum = pageNum;
+            res.pageSize = pageSize;
+            return res;
+        }
+        // 兜底：null 代表不过滤所有数据
+        Predicate<FileResult> predicate = (filePredicate != null) ? filePredicate : r -> true;
+        // 一次遍历，缓存所有符合条件数据，保证分页顺序完全一致
+        List<FileResult> matchedList;
+        try (Stream<Path> stream = Files.list(dir)) {
+            matchedList = stream
+                    .map(this::buildFileResultSafe)
+                    .filter(Objects::nonNull)
+                    .filter(predicate)
+                    .collect(Collectors.toList());
+        }
+
+
+        long total = matchedList.size();
+        List<FileResult> pageList = matchedList.stream()
+                .skip(skip)
+                .limit(pageSize)
+                .collect(Collectors.toList());
+
+        FilePageResult res = new FilePageResult();
+        res.files = pageList;
+        res.total = total;
+        res.pageNum = pageNum;
+        res.pageSize = pageSize;
+        return res;
+    }
+
+    /**
+     * 抽取复用：安全构造FileResult，异常返回null
+     */
+    private FileResult buildFileResultSafe(Path path) {
+        try {
+            FileResult result = new FileResult();
+            // NIO原生获取文件名，不用转File
+            String fileName = path.getFileName().toString();
+            result.setName(fileName);
+
+            String filePath = path.toAbsolutePath().toString().replace('\\', '/');
+            int idx = filePath.indexOf(']');
+            String realPath = idx > -1 ? filePath.substring(idx + 2) : filePath;
+            result.setPath(realPath);
+
+            boolean isDir = Files.isDirectory(path);
+            result.setType(isDir ? "folder" : "file");
+            long size = 0;
+            if (!isDir) {
+                try {
+                    size = Files.size(path);
+                } catch (IOException ignored) {
+                }
+                result.setSize(FileUtil.fileSizeStr(size));
+            }
+            return result;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    // 分页返回实体
+    @Data
+    static class FilePageResult {
+        private List<FileResult> files;
+        private long total;
+        private int pageNum;
+        private int pageSize;
+    }
+
+    @Data
+    static class FileResult {
+        private String name;
+        private String path;
+        private String type;
+        private String size;
     }
 }

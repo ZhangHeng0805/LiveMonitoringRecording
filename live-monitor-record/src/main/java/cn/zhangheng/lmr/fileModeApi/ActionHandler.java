@@ -1,7 +1,11 @@
 package cn.zhangheng.lmr.fileModeApi;
 
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
+import cn.zhangheng.common.activation.WarnException;
 import cn.zhangheng.common.bean.Constant;
+import cn.zhangheng.common.bean.Setting;
 import cn.zhangheng.common.httpServer.handle.JSONHandler;
 import cn.zhangheng.common.httpServer.handle.JWTUtil;
 import cn.zhangheng.common.service.MonitorMain;
@@ -14,6 +18,7 @@ import cn.zhangheng.douyin.browser.DouYinVideoParse;
 import cn.zhangheng.lmr.FileModeMain;
 import cn.zhangheng.lmr.Main;
 import cn.zhangheng.lmr.RoomFileModel;
+import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import com.zhangheng.bean.Message;
 import com.zhangheng.util.ThrowableUtil;
@@ -39,13 +44,21 @@ public class ActionHandler extends JSONHandler {
 
     @Override
     protected boolean filter(HttpExchange httpExchange) throws IOException {
-        return super.filter(httpExchange);
+        super.filter(httpExchange);
+        if (httpExchange.getRequestMethod().equalsIgnoreCase("OPTIONS")) {
+            Headers responseHeaders = httpExchange.getResponseHeaders();
+            responseHeaders.set("Access-Control-Allow-Origin", "*");
+            responseHeaders.set("Access-Control-Allow-Headers", "Content-Type");
+            httpExchange.sendResponseHeaders(204, -1);
+            return false;
+        }
 //        Map<String, String> cookies = getRequestCookies(httpExchange);
 //        String session_id = cookies.get("session_id");
 //        String token = cookies.get("token");
 //        if (session_id == null || token == null) return false;
 //        if (!JWTUtil.checkToken(token)) return false;
 //        return session_id.equals(JWTUtil.getSessionID(token));
+        return true;
     }
 
     @Override
@@ -69,11 +82,27 @@ public class ActionHandler extends JSONHandler {
                 } else {
                     msg.setCode(1);
                 }
+            } else if (indexPath.startsWith("addRoom")) {
+                Map<String, String> query = parseQuery(httpExchange);
+                if ("127.0.0.1".equals(getClientIP(httpExchange))) query.put("actionKey", Constant.deviceUniqueId);
+                if (checkActionKey(query, msg)) {
+                    addMonitor(msg, httpExchange);
+                } else {
+                    msg.setCode(1);
+                }
+            } else if (indexPath.startsWith("delRoom")) {
+                Map<String, String> query = parseQuery(httpExchange);
+                if ("127.0.0.1".equals(getClientIP(httpExchange))) query.put("actionKey", Constant.deviceUniqueId);
+                if (checkActionKey(query, msg) && checkRoomKey(query, msg)) {
+                    delMonitor(msg, query);
+                } else {
+                    msg.setCode(1);
+                }
             } else if (indexPath.startsWith("setting")) {
                 Map<String, String> query = parseQuery(httpExchange);
                 if ("127.0.0.1".equals(getClientIP(httpExchange))) query.put("actionKey", Constant.deviceUniqueId);
                 if (checkActionKey(query, msg) && checkRoomKey(query, msg)) {
-                    actionSetting(msg, query);
+                    actionSetting(msg, httpExchange, query);
                 } else {
                     msg.setCode(1);
                 }
@@ -125,6 +154,28 @@ public class ActionHandler extends JSONHandler {
         }
 //        System.out.println(msg);
         responseJson(httpExchange, msg);
+    }
+
+    private synchronized void delMonitor(Message msg, Map<String, String> query) {
+        String key = query.get("key");
+        try {
+            FileModeMain.delMain(key);
+            msg.setMessage("直播监听删除成功");
+        } catch (Exception e) {
+            msg.setCode(1);
+            msg.setMessage(e.getMessage());
+        }
+    }
+
+    private synchronized void addMonitor(Message msg, HttpExchange httpExchange) throws IOException {
+        String bodyStr = parseRequestBodyStr(httpExchange);
+        try {
+            FileModeMain.addMain(JSONUtil.parseObj(bodyStr));
+            msg.setMessage("直播监听新增成功");
+        } catch (Exception e) {
+            msg.setCode(1);
+            msg.setMessage(e.getMessage());
+        }
     }
 
     private synchronized void actionMonitor(Message msg, Map<String, String> query) {
@@ -212,7 +263,7 @@ public class ActionHandler extends JSONHandler {
         }
     }
 
-    private synchronized void actionSetting(Message msg, Map<String, String> query) {
+    private synchronized void actionSetting(Message msg, HttpExchange httpExchange, Map<String, String> query) {
         String key = query.get("key");
         RoomFileModel model = FileModeMain.getModelById(key);
         if (model == null) {
@@ -223,26 +274,42 @@ public class ActionHandler extends JSONHandler {
         Main main = model.getMain();
         try {
             MonitorMain<Room, ?> monitorMain = main.getMonitorMain();
-            if (query.containsKey("delayIntervalSec")) {
-                int delayIntervalSec = Integer.parseInt(query.get("delayIntervalSec"));
+            String bodyStr = parseRequestBodyStr(httpExchange);
+            JSONObject setting = JSONUtil.parseObj(bodyStr);
+            if (setting.containsKey("delayIntervalSec")) {
+                int delayIntervalSec = setting.getInt("delayIntervalSec");
                 monitorMain.getRoom().getSetting().setDelayIntervalSec(delayIntervalSec);
             }
-            if (query.containsKey("convertFlvToMp4")) {
-                boolean convertFlvToMp4 = Boolean.parseBoolean(query.get("convertFlvToMp4"));
+            if (setting.containsKey("convertFlvToMp4")) {
+                boolean convertFlvToMp4 = setting.getBool("convertFlvToMp4");
                 monitorMain.getRoom().getSetting().setConvertFlvToMp4(convertFlvToMp4);
             }
-            if (query.containsKey("openSubtitle")) {
-                boolean openSubtitle = Boolean.parseBoolean(query.get("openSubtitle"));
+            if (setting.containsKey("openSubtitle")) {
+                boolean openSubtitle = setting.getBool("openSubtitle");
                 monitorMain.getRoom().getSetting().setOpenSubtitle(openSubtitle);
             }
-            if (query.containsKey("isLoop")) {
-                boolean isLoop = Boolean.parseBoolean(query.get("isLoop"));
+            if (setting.containsKey("isLoop")) {
+                boolean isLoop = setting.getBool("isLoop");
                 monitorMain.getRoom().getSetting().setLoop(isLoop);
             }
-            if (query.containsKey("cookie")) {
-                String cookie = query.get("cookie");
+            if (setting.containsKey("cookie")) {
+                String cookie = setting.getStr("cookie");
                 if (StrUtil.isNotBlank(cookie)) {
-                    monitorMain.getRoom().setCookie(cookie);
+                    if (cookie.equalsIgnoreCase("null")) {
+                        monitorMain.getRoom().setCookie(null);
+                    } else {
+                        monitorMain.getRoom().setCookie(Setting.parseCookie(cookie));
+                    }
+                }
+            }
+            if (setting.containsKey("xiZhiUrl")) {
+                String xiZhiUrl = setting.getStr("xiZhiUrl");
+                if (StrUtil.isNotBlank(xiZhiUrl)) {
+                    if (xiZhiUrl.equalsIgnoreCase("null")) {
+                        monitorMain.getRoom().getSetting().setXiZhiUrl(null);
+                    } else {
+                        monitorMain.getRoom().getSetting().setXiZhiUrl(xiZhiUrl);
+                    }
                 }
             }
             msg.setMessage("设置成功!");

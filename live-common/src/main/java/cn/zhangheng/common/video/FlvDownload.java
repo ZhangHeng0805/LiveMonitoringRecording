@@ -2,6 +2,8 @@ package cn.zhangheng.common.video;
 
 import cn.zhangheng.common.bean.Constant;
 import cn.zhangheng.common.util.LogUtil;
+import cn.zhangheng.common.video.ffmpeg.FFmpegProgress;
+import cn.zhangheng.common.video.ffmpeg.FFmpegService;
 import com.zhangheng.file.FileUtil;
 import com.zhangheng.util.ThrowableUtil;
 import com.zhangheng.util.TimeUtil;
@@ -106,78 +108,4 @@ public class FlvDownload extends FFmpegService {
         }
     }
 
-
-    public static class FFmpegProgress {
-        @Getter
-        private long frame;       // 帧号
-        @Getter
-        private float fps;        // 帧率
-        @Getter
-        private long size;      // 大小 (B)
-        @Getter
-        private long timeMs;      // 时间 (毫秒)
-        @Getter
-        private float bitrate;    // 比特率 (kbits/s)
-        @Getter
-        private float speed;      // 处理速度 (x)
-        // 定义正则表达式模式
-        private static final Pattern FRAME_PATTERN = Pattern.compile("frame=\\s*(\\d+)");
-        private static final Pattern FPS_PATTERN = Pattern.compile("fps=\\s*(\\d+\\.?\\d*)");
-        private static final Pattern SIZE_PATTERN = Pattern.compile("size=\\s*(\\d+)");
-        private static final Pattern TIME_PATTERN = Pattern.compile("time=(\\d\\d):(\\d\\d):(\\d\\d\\.\\d\\d)");
-        private static final Pattern BITRATE_PATTERN = Pattern.compile("bitrate=\\s*(\\d+\\.?\\d*)kbits/s");
-        private static final Pattern SPEED_PATTERN = Pattern.compile("speed=\\s*(\\d+\\.?\\d*)x");
-
-        public void parse(String line) {
-            if (line == null || !line.contains("frame=")) {
-                return;
-            }
-
-
-            // 解析 frame
-            frame = parseLong(FRAME_PATTERN, line);
-
-            // 解析 fps
-            fps = parseFloat(FPS_PATTERN, line);
-
-            // 解析 size (B)
-            size = parseLong(SIZE_PATTERN, line) * 1024L;
-
-            // 解析 time (毫秒)
-            Matcher timeMatcher = TIME_PATTERN.matcher(line);
-            if (timeMatcher.find()) {
-                int hours = Integer.parseInt(timeMatcher.group(1));
-                int minutes = Integer.parseInt(timeMatcher.group(2));
-                double seconds = Double.parseDouble(timeMatcher.group(3));
-                timeMs = (long) ((hours * 3600L + minutes * 60L + seconds) * 1000);
-            }
-
-            // 解析 bitrate
-            bitrate = parseFloat(BITRATE_PATTERN, line);
-
-            // 解析 speed
-            speed = parseFloat(SPEED_PATTERN, line);
-        }
-
-        @Override
-        public String toString() {
-            return "已录制：" +
-                    "帧号: " + frame +
-                    ", 大小=" + FileUtil.fileSizeStr(size) +
-                    ", 时间=" + TimeUtil.formatMSToCn((int) timeMs) +
-                    ", 比特率=" + bitrate + "kbits/s" +
-                    ", 帧率: " + fps +
-                    ", 速度=" + speed + "x";
-        }
-
-        private long parseLong(Pattern pattern, String line) {
-            Matcher matcher = pattern.matcher(line);
-            return matcher.find() ? Long.parseLong(matcher.group(1)) : -1;
-        }
-
-        private float parseFloat(Pattern pattern, String line) {
-            Matcher matcher = pattern.matcher(line);
-            return matcher.find() ? Float.parseFloat(matcher.group(1)) : -1;
-        }
-    }
 }
