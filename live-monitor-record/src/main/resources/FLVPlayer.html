@@ -16,8 +16,8 @@
     </script>
     <meta name="referrer" content="no-referrer">
     <script src="js/flv.min.js"></script>
-    <link href="css/font-awesome.min.css" rel="stylesheet">
-    <script src="js/tailwindcss-3.4.16.js"></script>
+    <link href="css/font-awesome.min-4.7.0.css" rel="stylesheet">
+    <script src="js/tailwindcss-3.4.17.js"></script>
 
     <!-- 配置Tailwind自定义颜色和字体 -->
     <script>
@@ -41,6 +41,33 @@
 
     <!-- 自定义工具类 -->
     <style type="text/tailwindcss">
+        /* 每行3个，减去gap补偿 */
+        .snap-item {
+            width: calc((100% - 2 * 16px) / 3);
+            text-align: center;
+        }
+
+
+        /* 全局固定在屏幕右上角，层级拉满 */
+        #captureBtn {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            z-index: 999999;
+            padding: 8px 14px;
+            cursor: pointer;
+            background: rgba(0, 0, 0, 0.6);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            pointer-events: auto;
+        }
+
+        #captureBtn:hover {
+            background: rgba(0, 0, 0, 0.8);
+        }
+
         @layer utilities {
             .content-auto {
                 content-visibility: auto;
@@ -147,8 +174,11 @@
                 <video id="videoElement" class="max-w-full max-h-full" controls playsinline
                        webkit-playsinline
                        x5-video-player-type="h5"
-                       x5-video-player-fullscreen="true"></video>
-
+                       x5-video-player-fullscreen="true">
+                </video>
+                <button disabled class="capture-overlay-btn" id="captureBtn">
+                    <i class="fa fa-camera"></i> 截取视频帧
+                </button>
                 <!-- 加载动画 (默认隐藏) -->
                 <div id="loadingOverlay" class="absolute inset-0 bg-black/50 flex items-center justify-center hidden">
                     <div class="flex flex-col items-center">
@@ -169,8 +199,16 @@
                 <span class="font-medium">支持格式:</span> FLV (H.264 + AAC/MP3)
             </div>
         </div>
-    </div>
+        <div>
+            <!-- 隐藏画布用于绘图 -->
+            <canvas id="canvas" style="display: none;"></canvas>
+            <!--            <h3>截图列表</h3>-->
+            <div id="snapList" class="p-4 bg-gray-50 text-xs text-gray-500 flex items-center justify-between"
+                 style="flex-wrap: wrap;">
 
+            </div>
+        </div>
+    </div>
     <!-- 功能说明 -->
     <div class="mt-8 bg-white rounded-lg p-6 card-shadow">
         <h3 class="text-lg font-semibold text-gray-800 mb-3">使用说明</h3>
@@ -201,6 +239,77 @@
     const loadingOverlay = document.getElementById('loadingOverlay');
     let flvPlayer = null;
     let currentBlobUrl = null;
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const captureBtn = document.getElementById('captureBtn');
+    const snapList = document.getElementById('snapList');
+
+    // 视频元数据加载完成设置画布尺寸
+    function setCanvasSize() {
+        canvas.width = videoElement.videoWidth;
+        canvas.height = videoElement.videoHeight;
+        captureBtn.disabled = false;
+    }
+
+    videoElement.addEventListener('loadedmetadata', setCanvasSize);
+
+    // 截图核心逻辑
+    function captureFrame() {
+        if (!videoElement.videoWidth || !videoElement.videoHeight) {
+            alert('视频尚未加载完成，无法截图');
+            return;
+        }
+        setCanvasSize();
+        // 绘制当前视频帧
+        ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+        const imgBase64 = canvas.toDataURL('image/png');
+
+        // 创建列表项DOM
+        const item = document.createElement('div');
+        item.className = 'snap-item bg-gray-200 my-2';
+
+        const img = document.createElement('img');
+        img.src = imgBase64;
+        img.onclick = () => {
+            if (isFullscreen()) {
+                exitFullscreen();
+            } else {
+                enterFullScreen(img);
+            }
+        };
+
+        // 按钮容器（存放保存+删除）
+        const btnWrap = document.createElement('div');
+        btnWrap.className = 'btn-row py-2';
+
+        // 保存按钮
+        const saveBtn = document.createElement('button');
+        saveBtn.className = 'save-btn px-2 text-primary';
+        saveBtn.textContent = '保存图片';
+        saveBtn.onclick = () => {
+            const a = document.createElement('a');
+            a.href = imgBase64;
+            a.download = `视频截图_${Date.now()}.png`;
+            a.click();
+        };
+
+        // 删除按钮
+        const delBtn = document.createElement('button');
+        delBtn.className = 'del-btn px-2 text-red-500';
+        delBtn.textContent = '删除';
+        delBtn.onclick = () => {
+            item.remove();
+        };
+
+        btnWrap.appendChild(saveBtn);
+        btnWrap.appendChild(delBtn);
+        item.appendChild(img);
+        item.appendChild(btnWrap);
+        snapList.appendChild(item);
+    }
+
+    captureBtn.addEventListener('click', captureFrame);
+
 
     // 初始化
     function init() {
@@ -533,9 +642,30 @@
         }
     }
 
+    function exitFullscreen() {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+        } else if (document.mozCancelFullScreen) {
+            document.mozCancelFullScreen();
+        } else if (document.msExitFullscreen) {
+            document.msExitFullscreen();
+        }
+    }
+
+    function isFullscreen() {
+        return !!(document.fullscreenElement ||
+            document.webkitFullscreenElement ||
+            document.mozFullScreenElement ||
+            document.msFullscreenElement);
+    }
+
+
     videoElement.addEventListener('play', () => {
-        enterFullScreen(videoElement);
+        // enterFullScreen(videoElement);
     })
+
 </script>
 </body>
 </html>

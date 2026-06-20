@@ -1,6 +1,8 @@
 package cn.zhangheng.tool.bean;
 
+import cn.zhangheng.tool.extractor.FaceDetector;
 import cn.zhangheng.tool.util.OpenCvUtil;
+import cn.zhangheng.tool.util.SimilarFrameUtil;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.bytedeco.opencv.opencv_core.Mat;
@@ -18,6 +20,7 @@ import java.nio.file.Path;
 @Data
 @AllArgsConstructor
 public class FrameScoreResult {
+    private static final SimilarFrameUtil similarFrameUtil=new SimilarFrameUtil();
     private final Path frame;
     private final boolean valid;
     private final double totalScore;
@@ -26,16 +29,19 @@ public class FrameScoreResult {
 
     public static FrameScoreResult scoreFrame(Path frame) {
         try (AutoMat mat = OpenCvUtil.pathToMat(frame)) {
-            if (mat.get() == null || mat.get().empty()) {
+            Mat src = mat.get();
+            if (src == null || src.empty()) {
                 return new FrameScoreResult(frame, false, 0, "");
             }
-//            double fastBlurScore = OpenCvUtil.fastBlurScore(mat);
-//            double calcLaplaceScore = OpenCvUtil.calcLaplaceScore(mat);
-            double blackPixelRatio = OpenCvUtil.calcBlackPixelRatio(mat.get());
-            String hash = OpenCvUtil.calcAHash(mat.get());
-
-            double totalScore = (1 - blackPixelRatio) * 100;
-            return new FrameScoreResult(frame, true, totalScore, hash);
+//            double fastBlurScore = OpenCvUtil.fastBlurScore(src);
+//            double calcLaplaceScore = OpenCvUtil.calcLaplaceScore(src);
+            double blackPixelRatio = (1 - OpenCvUtil.calcBlackPixelRatio(src)) * 100;
+            String hash = OpenCvUtil.calcAHash(src);
+            boolean similarFrame = similarFrameUtil.isSimilarFrame(hash, blackPixelRatio);
+            if (similarFrame) return new FrameScoreResult(frame, false, blackPixelRatio, hash);
+            int faceScore = FaceDetector.detectAllAngleFace(src).size() * 100;
+            double totalScore = blackPixelRatio + faceScore;
+            return new FrameScoreResult(frame, faceScore > 0, totalScore, hash);
         } catch (IOException e) {
             return new FrameScoreResult(frame, false, 0, "");
         }

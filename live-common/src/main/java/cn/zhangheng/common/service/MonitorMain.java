@@ -12,10 +12,8 @@ import cn.zhangheng.common.util.LogUtil;
 import cn.zhangheng.common.util.NotificationUtil;
 import cn.zhangheng.common.util.TrayIconUtil;
 import cn.zhangheng.common.video.FlvToMp4;
-import cn.zhangheng.common.video.player.LocalServerFlvPlayer;
 import com.zhangheng.file.FileUtil;
 import com.zhangheng.util.EncryptUtil;
-import com.zhangheng.util.NetworkUtil;
 import com.zhangheng.util.ThrowableUtil;
 import lombok.Getter;
 import org.slf4j.Logger;
@@ -23,11 +21,11 @@ import org.slf4j.LoggerFactory;
 
 import java.awt.event.ActionEvent;
 import java.io.IOException;
+import java.net.URLEncoder;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -58,7 +56,6 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
     @Getter
     protected R room;
     protected FlvToMp4 flvToMp4;
-    private final LocalServerFlvPlayer flvPlayer;
     private int tryMonitorSec = 1;
     private int tryRecordSec = 1;
     private final AtomicBoolean isForceStop = new AtomicBoolean(false);//是否强制停止
@@ -79,21 +76,6 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         this.trayIconUtil = TrayIconUtil.getThreadInstance().get();
         trayIconUtil.setStartRecordStatue(null);
         this.setting = setting;
-        flvPlayer = new LocalServerFlvPlayer(setting.getFlvPlayerPort());
-        startFlvPlayer();
-    }
-
-    /**
-     * 启动FLV播放服务
-     */
-    private void startFlvPlayer() {
-        if (!flvPlayer.isRunning() && !NetworkUtil.isPortUsed(setting.getFlvPlayerPort())) {
-            try {
-                flvPlayer.run(true);
-            } catch (ExecutionException e) {
-                log.error("LocalServerFlvPlayer启动失败：" + ThrowableUtil.getAllCauseMessage(e), e);
-            }
-        }
     }
 
     public void stop() {
@@ -164,6 +146,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                 tryMonitorSec = 1;
                 if (!RunMode.FILE.equals(setting.getRunMode())) {
                     trayIconUtil.setMenuVisible(trayIconUtil.getOpenMonitorMenu(), false);
+                    trayIconUtil.setMenuVisible(trayIconUtil.getPlayFlvVideo(), false);
                 }
             }
 
@@ -452,12 +435,18 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
 
             @Override
             public String playVideo(ActionEvent e) {
-                startFlvPlayer();
                 if (room.isLiving()) {
-                    return flvPlayer.getUrlFromUrl(room.getFlvUrl());
+                    try {
+                        return "http://localhost:" + System.getProperty("monitor.port") + "/FLVPlayer.html?url=" + URLEncoder.encode(room.getFlvUrl(), "UTF-8");
+                    } catch (Exception ignored) {
+                    }
                 } else {
-                    return flvPlayer.getMainUrl();
+                    try {
+                        return "http://localhost:" + System.getProperty("monitor.port") + "/FLVPlayer.html";
+                    } catch (Exception ignored) {
+                    }
                 }
+                return null;
             }
 
             @Override
@@ -504,7 +493,6 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             } catch (InterruptedException ignored) {
             }
         }
-        flvPlayer.stop(true);
     }
 
     public void xiZhiSendMsg(NotificationUtil notificationUtil, R room) {

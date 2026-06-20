@@ -13,20 +13,20 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * @description:
  */
 public class SimilarFrameUtil {
-    private static final int PHASH_SIMILAR_THRESHOLD = 10;
+    private static final int PHASH_SIMILAR_THRESHOLD = 20;
     // 限制最大缓存数量，防止无限膨胀
     private static final int MAX_CACHE_SIZE = 200;
-    private static final List<FrameHashItem> frameItemList = new ArrayList<>();
+    private final List<FrameHashItem> frameItemList = new ArrayList<>(MAX_CACHE_SIZE);
     // 读写锁：读共享、写独占
-    private static final ReentrantReadWriteLock rwLock = new ReentrantReadWriteLock();
-    private static final Lock writeLock = rwLock.writeLock();
+    private final ReentrantReadWriteLock rwLock = new ReentrantReadWriteLock();
+    private final Lock writeLock = rwLock.writeLock();
 
     /**
      * @param newHash  当前帧aHash
      * @param newScore 当前帧综合打分
      * @return true=相似舍弃当前帧；false=不相似/当前分更高，保留
      */
-    public static boolean isSimilarFrame(String newHash, double newScore) {
+    public boolean isSimilarFrame(String newHash, double newScore) {
         // 空哈希直接丢弃
         if (newHash == null || newHash.isEmpty()) {
             return true;

@@ -139,7 +139,11 @@
                 </h1>
                 <p class="text-gray-500 mt-1">实时监控各平台直播状态与录制信息</p>
             </div>
-
+            <!-- 新增监听 -->
+            <button onclick="addRoom()"
+                    class="inline-flex items-center px-6 py-2.5 bg-green-500 border border-green-300 text-white text-xl rounded-xl hover:bg-green-800 transition-colors">
+                <span class="text-white"> <i class="fa fa-plus mr-1"></i>新增直播监听</span>
+            </button>
             <!-- 数据更新时间、刷新状态和手动刷新按钮 -->
             <div class="bg-white rounded-lg px-4 py-2 card-shadow flex items-center">
                 <i class="fa fa-clock-o text-primary mr-2"></i>
@@ -163,11 +167,7 @@
                     <i class="fa fa-refresh"></i>
                 </button>
             </div>
-            <!-- 新增监听 -->
-            <button onclick="addRoom()"
-                    class="inline-flex items-center px-6 py-2.5 bg-green-500 border border-green-300 text-white text-xl rounded-xl hover:bg-green-800 transition-colors">
-                <span class="text-white"> <i class="fa fa-plus mr-1"></i>新增直播监听</span>
-            </button>
+
         </div>
 
         <!-- 状态概览卡片 -->
@@ -333,7 +333,8 @@
     <!-- 页脚 -->
     <footer class="mt-12 text-center text-sm text-gray-500 pb-8 animate-fade" style="animation-delay: 0.2s">
         <p>
-            © 2025 <a class="text-primary" href="https://zhangheng0805.github.io/XXXR-Page/"
+            © 2025 <a class="text-primary"
+                      href="https://mp.weixin.qq.com/s?__biz=MzIwMDQ2OTg4NA==&mid=2247484118&idx=1&sn=30dd3f7f2a4d93a6fdce4fb808e7c506&chksm=96fdfec5a18a77d35645d8e8f55477353aeb9a949fc73a2c302ca336155f8becae635e26f022#rd"
                       target="_blank">星曦向荣</a>直播监听工具 | 数据更新时间:
             <span id="footer-update-time">加载中...</span>
         </p>
@@ -375,13 +376,11 @@
     const REFRESH_INTERVAL = 30; // 刷新间隔（秒）
     const platformName = {DouYin: "抖音", Bili: "Bilibili", KuaiShou: "快手"};
     let refreshTimer = null;
-    // let viewerUpdateTimers = []; // 存储观众数更新定时器
-    // let recordTimeUpdateTimers = []; // 存储录制时间更新定时器
-    // let likeCountUpdateTimers = []; // 存储点赞数更新定时器
     let isRefreshing = false; // 标记是否正在刷新中
-    document.getElementById("other-links").innerHTML = generateLink(
-        {"抖音作品解析": "DouYinVideoPares.html?url=" + encodeURIComponent(MainUrl)}
-    );
+    document.getElementById("other-links").innerHTML = generateLink({
+        "抖音作品解析": "DouYinVideoPares.html?url=" + encodeURIComponent(MainUrl),
+        "FLV视频播放器": "https://zhangheng0805.github.io/FLVPlayer/",
+    });
     // 页面加载完成后初始化
     document.addEventListener("DOMContentLoaded", function () {
         // 初始化显示刷新间隔

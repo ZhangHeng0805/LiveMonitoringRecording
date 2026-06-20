@@ -48,6 +48,7 @@ public class VideoFrameExtractor {
     private final String video, tempDir, resDir;
     @Setter
     private int frameStepSecond = 2;
+    private final SimilarFrameUtil similarFrameUtil=new SimilarFrameUtil();
 
 
     public VideoFrameExtractor(String video, String tempDir, String resDir) {
@@ -87,7 +88,7 @@ public class VideoFrameExtractor {
                         }
                         FrameScoreResult frame = FrameScoreResult.scoreFrame(path);
                         if (!frame.isValid()) continue;
-                        if (SimilarFrameUtil.isSimilarFrame(frame.getHash(), frame.getTotalScore())) continue;
+                        if (similarFrameUtil.isSimilarFrame(frame.getHash(), frame.getTotalScore())) continue;
                         String outName = String.format(FileUtil.getMainName(frame.getFrame().getFileName().toString()) + "_score_%.2f" + IMG_SUFFIX, frame.getTotalScore());
                         Path target = Paths.get(resDir, outName);
                         Path src = frame.getFrame();

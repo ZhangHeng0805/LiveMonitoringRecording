@@ -3,7 +3,7 @@ function showFileSelectModal(key) {
       `${key}直播记录`,
       `<div class="bg-white rounded-lg shadow p-5">
         <!-- 根目录：设置纵向滚动，避免内容溢出撑爆弹窗 -->
-        <div id="fileTree" data-key="${key}"></div>
+        <div id="fileTree" data-key="${key}" style="overflow-x: auto; white-space: nowrap;"></div>
     </div>`,
       [
         {
@@ -98,13 +98,13 @@ async function renderContent(boxDom, path, isAppend = false) {
       </div>`;
     } else {
       htmlStr += `
-      <a href="${MainUrl}fileRes?key=${key}&path=${encodeURIComponent(item.path)}" target="_blank">
-          <div class="flex items-center justify-between py-1 text-gray-600">
+      <a href="${MainUrl}fileRes?key=${key}&path=${encodeURIComponent(item.path)}" target="_blank" style="overflow-x: auto;">
+          <div class="flex items-center justify-between hover:text-blue-600 py-1 text-gray-600">
               <div class="flex items-center gap-2">
                   <i class="fa fa-file"></i>
                   <span>${item.name}</span>
               </div>
-              <span class="text-xs text-gray-400">${item.size}</span> 
+              <div class="text-xs text-gray-400 ml-3">${formatFileSize(item.size)}</div> 
           </div>
       </a>`;
     }

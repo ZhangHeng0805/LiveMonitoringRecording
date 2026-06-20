@@ -1,11 +1,10 @@
-package cn.zhangheng.lmr.fileModeApi;
+package cn.zhangheng.lmr.http_server.handler;
 
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import cn.zhangheng.common.bean.Room;
 import cn.zhangheng.common.httpServer.handle.JSONHandler;
-import cn.zhangheng.common.httpServer.handle.JWTUtil;
 import cn.zhangheng.common.record.Recorder;
 import cn.zhangheng.lmr.FileModeMain;
 import cn.zhangheng.lmr.Main;

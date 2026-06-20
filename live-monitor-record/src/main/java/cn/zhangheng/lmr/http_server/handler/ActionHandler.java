@@ -1,13 +1,11 @@
-package cn.zhangheng.lmr.fileModeApi;
+package cn.zhangheng.lmr.http_server.handler;
 
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
-import cn.zhangheng.common.activation.WarnException;
 import cn.zhangheng.common.bean.Constant;
 import cn.zhangheng.common.bean.Setting;
 import cn.zhangheng.common.httpServer.handle.JSONHandler;
-import cn.zhangheng.common.httpServer.handle.JWTUtil;
 import cn.zhangheng.common.service.MonitorMain;
 import cn.zhangheng.common.bean.Room;
 import cn.zhangheng.common.bean.enums.MonitorStatus;
@@ -38,7 +36,7 @@ import java.util.concurrent.ThreadPoolExecutor;
  */
 public class ActionHandler extends JSONHandler {
 
-    protected ActionHandler(String prefix) {
+    public ActionHandler(String prefix) {
         super(prefix);
     }
 

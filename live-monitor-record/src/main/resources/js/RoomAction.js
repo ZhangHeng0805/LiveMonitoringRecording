@@ -3,132 +3,158 @@
  * @param onSubmit
  */
 function showActionBeforeModal(onSubmit) {
-  setModalContent(
-    "操作验证",
-    `<div id="inputContainer" class="mb-4">
-              <label for="actionKey" class="block text-sm font-medium text-gray-700 mb-1">操作秘钥</label>
-              <input type="password"
-                  id="actionKey"
-                  class="input-field"
-                  placeholder="请输入操作秘钥">
-         </div>
-         <p id="inputError" class="mt-1 text-sm text-red-600 hidden"></p>`,
-    [
-      {
-        text: "取消",
-        className:
-          "bg-gray text-gray-800 hover:bg-gray-300 focus:ring-gray-400",
-        onClick: closeModal,
-      },
-      {
-        text: "确定",
-        className:
-          "bg-primary text-white hover:bg-primary/90 focus:ring-primary",
-        onClick: () => {
-          let val = document.getElementById("actionKey").value;
-          // console.log("秘钥", val);
-          if (val.length < 1) {
-            let inputError = document.getElementById("inputError");
-            inputError.textContent = "输入内容不能为空！";
-            inputError.classList.remove("hidden");
-            return;
-          }
-          closeModal();
-          onSubmit(val);
-        },
-      },
-    ]
-  );
+    setModalContent(
+        "操作验证",
+        `<div id="inputContainer" class="mb-4">
+                <label for="actionKey" class="block text-sm font-medium text-gray-700 mb-1">操作秘钥</label>
+                <input type="password"
+                    value="${window.localStorage ? window.localStorage.getItem("actionKey") : window.actionKey || ""}"
+                    id="actionKey"
+                    class="input-field"
+                    placeholder="请输入操作秘钥">
+              </div>
+             <div id="isRememberContainer" class="mb-0">
+                  <label class="flex items-center space-x-2 cursor-pointer">
+                    <input type="checkbox"
+                        id="isRemember"
+                        class="h-4 w-4 text-primary focus:ring-primary" checked>
+                    <span class="text-sm font-medium text-gray-700">记住秘钥</span>
+                  </label>
+                </div>
+            <p id="inputError" class="mt-1 text-sm text-red-600 hidden"></p>`,
+        [
+            {
+                text: "取消",
+                className:
+                    "bg-gray text-gray-800 hover:bg-gray-300 focus:ring-gray-400",
+                onClick: closeModal,
+            },
+            {
+                text: "确定",
+                className:
+                    "bg-primary text-white hover:bg-primary/90 focus:ring-primary",
+                onClick: () => {
+                    let key = document.getElementById("actionKey").value;
+                    let remember = document.getElementById("isRemember").checked
+                    // console.log("秘钥", val);
+                    if (key.length < 1) {
+                        let inputError = document.getElementById("inputError");
+                        inputError.textContent = "输入内容不能为空！";
+                        inputError.classList.remove("hidden");
+                        return;
+                    }
+                    if (remember) {
+                        if (window.localStorage) {
+                            window.localStorage.setItem("actionKey", key);
+                        }
+                        window.actionKey = key;
+                    } else {
+                        if (window.localStorage) {
+                            window.localStorage.setItem("actionKey", '');
+                        }
+                        window.actionKey = '';
+                    }
+                    closeModal();
+                    onSubmit(key);
+                },
+            },
+        ]
+    );
 }
+
 //操作结果弹窗
 function showActionAfterModal(msg) {
-  setModalContent(
-    msg.title || "操作结果",
-    `<p class="
+    setModalContent(
+        msg.title || "操作结果",
+        `<p class="
             ${msg.success ? "text-green-600" : "text-red-600"} text-center">${
-      msg.message
-    }</p>`,
-    [
-      {
-        text: "知道了",
-        className:
-          "bg-primary text-white hover:bg-primary/90 focus:ring-primary",
-        onClick: closeModal,
-      },
-    ]
-  );
+            msg.message
+        }</p>`,
+        [
+            {
+                text: "知道了",
+                className:
+                    "bg-primary text-white hover:bg-primary/90 focus:ring-primary",
+                onClick: closeModal,
+            },
+        ]
+    );
 }
+
 //房间刷新
 function actionRefresh(key) {
-  actionRequest("refresh", {
-    key: key,
-  }).then((data) => {
-    data.title = "刷新操作结果";
-    showActionAfterModal(data);
-    if (data.success) {
-      handleManualRefresh();
-    }
-  });
+    actionRequest("refresh", {
+        key: key,
+    }).then((data) => {
+        data.title = "刷新操作结果";
+        showActionAfterModal(data);
+        if (data.success) {
+            handleManualRefresh();
+        }
+    });
 }
 
 async function actionRequest(path, params) {
-  return getRequest(`action/${path}`, params);
+    return getRequest(`action/${path}`, params);
 }
+
 //直播监听操作
 function actionMonitor(roomKey, isOpen) {
-  showActionBeforeModal((key) => {
-    console.log("操作监听", roomKey, isOpen, key);
-    actionRequest("monitor", {
-      key: roomKey,
-      flag: isOpen,
-      actionKey: key,
-    }).then((data) => {
-      data.title = "监听操作结果";
-      showActionAfterModal(data);
-      if (data.success) {
-        handleManualRefresh();
-      }
+    showActionBeforeModal((key) => {
+        console.log("操作监听", roomKey, isOpen, key);
+        actionRequest("monitor", {
+            key: roomKey,
+            flag: isOpen,
+            actionKey: key,
+        }).then((data) => {
+            data.title = "监听操作结果";
+            showActionAfterModal(data);
+            if (data.success) {
+                handleManualRefresh();
+            }
+        });
     });
-  });
 }
+
 //直播录制操作
 function actionRecord(roomKey, isRecord) {
-  showActionBeforeModal((key) => {
-    console.log("操作录制", roomKey, isRecord, key);
-    actionRequest("record", {
-      key: roomKey,
-      flag: isRecord,
-      actionKey: key,
-    }).then((data) => {
-      data.title = "录制操作结果";
-      showActionAfterModal(data);
-      if (data.success) {
-        handleManualRefresh();
-      }
+    showActionBeforeModal((key) => {
+        console.log("操作录制", roomKey, isRecord, key);
+        actionRequest("record", {
+            key: roomKey,
+            flag: isRecord,
+            actionKey: key,
+        }).then((data) => {
+            data.title = "录制操作结果";
+            showActionAfterModal(data);
+            if (data.success) {
+                handleManualRefresh();
+            }
+        });
     });
-  });
 }
+
 function delRoom(roomKey) {
-  showActionBeforeModal((key) => {
-    actionRequest("delRoom", {
-      key: roomKey,
-      actionKey: key,
-    }).then((data) => {
-      data.title = "操作结果";
-      showActionAfterModal(data);
-      if (data.success) {
-        handleManualRefresh();
-      }
+    showActionBeforeModal((key) => {
+        actionRequest("delRoom", {
+            key: roomKey,
+            actionKey: key,
+        }).then((data) => {
+            data.title = "操作结果";
+            showActionAfterModal(data);
+            if (data.success) {
+                handleManualRefresh();
+            }
+        });
     });
-  });
 }
 
 //直播间设置操作
 function addRoom() {
-  showActionBeforeModal((key) => {
-    setModalContent(
-      `新增直播监听`,
-      `<div id="roomIDContainer" class="mb-4">
+    showActionBeforeModal((key) => {
+        setModalContent(
+            `新增直播监听`,
+            `<div id="roomIDContainer" class="mb-4">
                 <label for="roomID" class="block text-sm font-medium text-gray-700 mb-1">直播间ID</label>
                 <input type="text"
                     id="roomID"
@@ -197,93 +223,93 @@ function addRoom() {
                   placeholder="请输入Cookie内容"></textarea>
             </div>
             <p id="inputError" class="mt-1 text-sm text-red-600 hidden"></p>`,
-      [
-        {
-          text: "取消",
-          className:
-            "bg-gray text-gray-800 hover:bg-gray-300 focus:ring-gray-400",
-          onClick: closeModal,
-        },
-        {
-          text: "确定",
-          className:
-            "bg-primary text-white hover:bg-primary/90 focus:ring-primary",
-          onClick: () => {
-            const roomIDInput = document.getElementById("roomID").value.trim();
-            const xiZhiUrlInput = document
-              .getElementById("xiZhiUrl")
-              .value.trim();
-            const delayIntervalSecInput =
-              document.getElementById("delayIntervalSec").value;
-            const platformSelect = document.getElementById("platform").value;
-            const convertFlvToMp4Checked =
-              document.getElementById("convertFlvToMp4").checked;
-            const openSubtitleChecked =
-              document.getElementById("openSubtitle").checked;
-            const isLoopChecked = document.getElementById("isLoop").checked;
-            const isRecordChecked = document.getElementById("isRecord").checked;
-            const cookieValueInput = document
-              .getElementById("cookieValue")
-              .value.trim();
-            const errorElement = document.getElementById("inputError");
-            // 简单的输入验证
-            if (roomIDInput && roomIDInput.length < 1) {
-              errorElement.textContent = "直播间ID不能为空！";
-              errorElement.classList.remove("hidden");
-              return;
-            }
-            if (
-              delayIntervalSecInput &&
-              (isNaN(delayIntervalSecInput) ||
-                Number(delayIntervalSecInput) < 10)
-            ) {
-              errorElement.textContent = "刷新频率必须是大于等于10的数字";
-              errorElement.classList.remove("hidden");
-              return;
-            }
-            errorElement.classList.add("hidden");
+            [
+                {
+                    text: "取消",
+                    className:
+                        "bg-gray text-gray-800 hover:bg-gray-300 focus:ring-gray-400",
+                    onClick: closeModal,
+                },
+                {
+                    text: "确定",
+                    className:
+                        "bg-primary text-white hover:bg-primary/90 focus:ring-primary",
+                    onClick: () => {
+                        const roomIDInput = document.getElementById("roomID").value.trim();
+                        const xiZhiUrlInput = document
+                            .getElementById("xiZhiUrl")
+                            .value.trim();
+                        const delayIntervalSecInput =
+                            document.getElementById("delayIntervalSec").value;
+                        const platformSelect = document.getElementById("platform").value;
+                        const convertFlvToMp4Checked =
+                            document.getElementById("convertFlvToMp4").checked;
+                        const openSubtitleChecked =
+                            document.getElementById("openSubtitle").checked;
+                        const isLoopChecked = document.getElementById("isLoop").checked;
+                        const isRecordChecked = document.getElementById("isRecord").checked;
+                        const cookieValueInput = document
+                            .getElementById("cookieValue")
+                            .value.trim();
+                        const errorElement = document.getElementById("inputError");
+                        // 简单的输入验证
+                        if (roomIDInput && roomIDInput.length < 1) {
+                            errorElement.textContent = "直播间ID不能为空！";
+                            errorElement.classList.remove("hidden");
+                            return;
+                        }
+                        if (
+                            delayIntervalSecInput &&
+                            (isNaN(delayIntervalSecInput) ||
+                                Number(delayIntervalSecInput) < 10)
+                        ) {
+                            errorElement.textContent = "刷新频率必须是大于等于10的数字";
+                            errorElement.classList.remove("hidden");
+                            return;
+                        }
+                        errorElement.classList.add("hidden");
 
-            closeModal();
-            postRequest("action/addRoom?actionKey=" + key, {
-              id: roomIDInput,
-              platform: platformSelect,
-              isRecord: isRecordChecked,
-              setting: {
-                delayIntervalSec: delayIntervalSecInput,
-                convertFlvToMp4: convertFlvToMp4Checked,
-                openSubtitle: openSubtitleChecked,
-                isLoop: isLoopChecked,
-                cookie: cookieValueInput,
-                xiZhiUrl: xiZhiUrlInput,
-              },
-            }).then((msg) => {
-              showActionAfterModal(msg);
-              if (msg.success) {
-                handleManualRefresh();
-              }
-            });
-          },
-        },
-      ]
-    );
-    // 遍历对象动态生成下拉选项
-    Object.entries(platformName).forEach(([key, text]) => {
-      const option = document.createElement("option");
-      option.value = key;
-      option.textContent = text;
-      document.getElementById("platform").appendChild(option);
+                        closeModal();
+                        postRequest("action/addRoom?actionKey=" + key, {
+                            id: roomIDInput,
+                            platform: platformSelect,
+                            isRecord: isRecordChecked,
+                            setting: {
+                                delayIntervalSec: delayIntervalSecInput,
+                                convertFlvToMp4: convertFlvToMp4Checked,
+                                openSubtitle: openSubtitleChecked,
+                                isLoop: isLoopChecked,
+                                cookie: cookieValueInput,
+                                xiZhiUrl: xiZhiUrlInput,
+                            },
+                        }).then((msg) => {
+                            showActionAfterModal(msg);
+                            if (msg.success) {
+                                handleManualRefresh();
+                            }
+                        });
+                    },
+                },
+            ]
+        );
+        // 遍历对象动态生成下拉选项
+        Object.entries(platformName).forEach(([key, text]) => {
+            const option = document.createElement("option");
+            option.value = key;
+            option.textContent = text;
+            document.getElementById("platform").appendChild(option);
+        });
     });
-  });
 }
 
 //直播间设置操作
 function actionSetting(roomKey, settingStr) {
-  let setting = JSON.parse(atob(settingStr));
-  showActionBeforeModal((key) => {
-    console.log("操作设置", roomKey, setting);
-    setModalContent(
-      `${roomKey} 监听设置`,
-      `<div id="inputContainer" class="mb-4">
+    let setting = JSON.parse(atob(settingStr));
+    showActionBeforeModal((key) => {
+        console.log("操作设置", roomKey, setting);
+        setModalContent(
+            `${roomKey} 监听设置`,
+            `<div id="inputContainer" class="mb-4">
               <label for="delayIntervalSec" class="block text-sm font-medium text-gray-700 mb-1">刷新频率(s)</label>
               <input type="number"
                   value="${setting.delayIntervalSec}"
@@ -333,61 +359,61 @@ function actionSetting(roomKey, settingStr) {
                   placeholder="请输入Cookie内容"></textarea>
             </div>
             <p id="inputError" class="mt-1 text-sm text-red-600 hidden"></p>`,
-      [
-        {
-          text: "取消",
-          className:
-            "bg-gray text-gray-800 hover:bg-gray-300 focus:ring-gray-400",
-          onClick: closeModal,
-        },
-        {
-          text: "确定",
-          className:
-            "bg-primary text-white hover:bg-primary/90 focus:ring-primary",
-          onClick: () => {
-            const delayIntervalSecInput =
-              document.getElementById("delayIntervalSec").value;
-            const convertFlvToMp4Checked =
-              document.getElementById("convertFlvToMp4").checked;
-            const openSubtitleChecked =
-              document.getElementById("openSubtitle").checked;
-            const isLoopChecked = document.getElementById("isLoop").checked;
-            const cookieValueInput = document
-              .getElementById("cookieValue")
-              .value.trim();
-            const xiZhiUrlInput = document
-              .getElementById("xiZhiUrl")
-              .value.trim();
-            const errorElement = document.getElementById("inputError");
-            // 简单的输入验证
-            if (
-              delayIntervalSecInput &&
-              (isNaN(delayIntervalSecInput) ||
-                Number(delayIntervalSecInput) < 10)
-            ) {
-              errorElement.textContent = "刷新频率必须是大于等于10的数字";
-              errorElement.classList.remove("hidden");
-              return;
-            }
-            errorElement.classList.add("hidden");
+            [
+                {
+                    text: "取消",
+                    className:
+                        "bg-gray text-gray-800 hover:bg-gray-300 focus:ring-gray-400",
+                    onClick: closeModal,
+                },
+                {
+                    text: "确定",
+                    className:
+                        "bg-primary text-white hover:bg-primary/90 focus:ring-primary",
+                    onClick: () => {
+                        const delayIntervalSecInput =
+                            document.getElementById("delayIntervalSec").value;
+                        const convertFlvToMp4Checked =
+                            document.getElementById("convertFlvToMp4").checked;
+                        const openSubtitleChecked =
+                            document.getElementById("openSubtitle").checked;
+                        const isLoopChecked = document.getElementById("isLoop").checked;
+                        const cookieValueInput = document
+                            .getElementById("cookieValue")
+                            .value.trim();
+                        const xiZhiUrlInput = document
+                            .getElementById("xiZhiUrl")
+                            .value.trim();
+                        const errorElement = document.getElementById("inputError");
+                        // 简单的输入验证
+                        if (
+                            delayIntervalSecInput &&
+                            (isNaN(delayIntervalSecInput) ||
+                                Number(delayIntervalSecInput) < 10)
+                        ) {
+                            errorElement.textContent = "刷新频率必须是大于等于10的数字";
+                            errorElement.classList.remove("hidden");
+                            return;
+                        }
+                        errorElement.classList.add("hidden");
 
-            closeModal();
-            postRequest(`action/setting?actionKey=${key}&key=${roomKey}`, {
-              delayIntervalSec: delayIntervalSecInput,
-              convertFlvToMp4: convertFlvToMp4Checked,
-              openSubtitle: openSubtitleChecked,
-              isLoop: isLoopChecked,
-              cookie: cookieValueInput,
-              xiZhiUrl: xiZhiUrlInput,
-            }).then((msg) => {
-              showActionAfterModal(msg);
-              if (msg.success) {
-                handleManualRefresh();
-              }
-            });
-          },
-        },
-      ]
-    );
-  });
+                        closeModal();
+                        postRequest(`action/setting?actionKey=${key}&key=${roomKey}`, {
+                            delayIntervalSec: delayIntervalSecInput,
+                            convertFlvToMp4: convertFlvToMp4Checked,
+                            openSubtitle: openSubtitleChecked,
+                            isLoop: isLoopChecked,
+                            cookie: cookieValueInput,
+                            xiZhiUrl: xiZhiUrlInput,
+                        }).then((msg) => {
+                            showActionAfterModal(msg);
+                            if (msg.success) {
+                                handleManualRefresh();
+                            }
+                        });
+                    },
+                },
+            ]
+        );
+    });
 }

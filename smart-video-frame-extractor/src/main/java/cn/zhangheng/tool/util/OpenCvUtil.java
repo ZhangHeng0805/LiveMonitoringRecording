@@ -8,6 +8,7 @@ import org.bytedeco.opencv.global.opencv_imgcodecs;
 import org.bytedeco.opencv.global.opencv_imgproc;
 import org.bytedeco.opencv.opencv_core.*;
 
+import org.bytedeco.opencv.opencv_imgproc.CLAHE;
 import org.bytedeco.opencv.opencv_objdetect.CascadeClassifier;
 import org.opencv.imgproc.Imgproc;
 
@@ -18,7 +19,6 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Objects;
 
 import static cn.hutool.core.util.ClassLoaderUtil.getClassLoader;
 import static org.opencv.core.CvType.CV_64F;
@@ -36,14 +36,16 @@ public class OpenCvUtil {
     private static CascadeClassifier eyeDetector;
 
     static {
-        faceDetector = new CascadeClassifier();
-        eyeDetector = new CascadeClassifier();
-        boolean faceLoad = loadClassifierFromResource(faceDetector, "bin/open_cv/lbpcascade_frontalface_improved.xml");
-        if (!faceLoad) faceDetector = null;
-        boolean eyeLoad = loadClassifierFromResource(eyeDetector, "bin/open_cv/haarcascade_eye_tree_eyeglasses.xml");
-        if (!eyeLoad) eyeDetector = null;
-        System.out.println("OpenCV人脸模型加载：" + (faceLoad ? "成功" : "失败"));
-        System.out.println("OpenCV眼睛模型加载：" + (eyeLoad ? "成功" : "失败"));
+//        faceDetector = new CascadeClassifier();
+//        eyeDetector = new CascadeClassifier();
+//        boolean faceLoad = loadClassifierFromResource(faceDetector, "bin/open_cv/lbpcascade_frontalface_improved.xml");
+//        boolean faceLoad = loadClassifierFromResource(faceDetector, "bin/open_cv/lbpcascade_frontalface.xml");
+//        boolean faceLoad = loadClassifierFromResource(faceDetector, "bin/open_cv/haarcascade_frontalface_default.xml");
+//        if (!faceLoad) faceDetector = null;
+//        boolean eyeLoad = loadClassifierFromResource(eyeDetector, "bin/open_cv/haarcascade_eye_tree_eyeglasses.xml");
+//        if (!eyeLoad) eyeDetector = null;
+//        System.out.println("OpenCV人脸模型加载：" + (faceLoad ? "成功" : "失败"));
+//        System.out.println("OpenCV眼睛模型加载：" + (eyeLoad ? "成功" : "失败"));
     }
 
 
@@ -54,7 +56,7 @@ public class OpenCvUtil {
      * @param resName    resources内文件名
      * @return 是否加载成功
      */
-    private static boolean loadClassifierFromResource(CascadeClassifier classifier, String resName) {
+    public static boolean loadClassifierFromResource(CascadeClassifier classifier, String resName) {
         Path path = Paths.get(resName);
         if (Files.exists(path)) {
             return classifier.load(path.toAbsolutePath().toString());
@@ -264,17 +266,17 @@ public class OpenCvUtil {
         try {
             opencv_imgproc.cvtColor(src, gray, opencv_imgproc.COLOR_BGR2GRAY);
             // CLAHE均衡
-//            CLAHE clahe = opencv_imgproc.createCLAHE(2.0, new Size(8, 8));
-//            clahe.apply(gray, procImg);
+            CLAHE clahe = opencv_imgproc.createCLAHE(2.0, new Size(8, 8));
+            clahe.apply(gray, procImg);
             // 轻微高斯降噪
-//            opencv_imgproc.GaussianBlur(procImg, gray, new Size(3, 3), 0);
-//            gray.convertTo(gray, -1, 1.5, 0);// alpha对比度，beta亮度偏移
+            opencv_imgproc.GaussianBlur(procImg, gray, new Size(3, 3), 0);
+            gray.convertTo(gray, -1, 1.5, 0);// alpha对比度，beta亮度偏移
             RectVector faces = new RectVector();
             faceDetector.detectMultiScale(
                     gray,
                     faces,
                     1.1,
-                    3,
+                    5,
                     0,
                     new Size(50, 50),
                     new Size(3000, 3000)
@@ -394,22 +396,23 @@ public class OpenCvUtil {
     public static Mat drawPreview(Mat src, Rect... eyeList) {
         Mat drawImg = src.clone();
         String text = "" + eyeList.length;
-        Scalar color = new Scalar(0, 255, 0, 0); // BGR 绿色
+        Scalar greenColor = new Scalar(0, 255, 0, 0); // BGR 绿色
+        Scalar redColor = new Scalar(0, 0, 255, 0); // BGR 红色
         for (Rect rect : eyeList) {
             // 1、画方框：直接传入Rect，匹配截图里 rectangle(Mat, Rect, Scalar, int)
-            opencv_imgproc.rectangle(drawImg, rect, color, 3, opencv_imgproc.LINE_AA, 0);
+            opencv_imgproc.rectangle(drawImg, rect, greenColor, 3, opencv_imgproc.LINE_AA, 0);
 
         }
         // 2、绘制文字：匹配 putText(Mat, String, Point, int, double, Scalar, int)
-        Point textPos = new Point(10, 50);
+        Point textPos = new Point(50, 150);
         opencv_imgproc.putText(
                 drawImg,
                 text,
                 textPos,
                 opencv_imgproc.FONT_HERSHEY_SIMPLEX,
-                1.5,
-                color,
-                3,
+                5,
+                redColor,
+                5,
                 opencv_imgproc.LINE_AA,
                 false
         );
@@ -567,20 +570,8 @@ public class OpenCvUtil {
     }
 
     public static void main(String[] args) throws IOException {
-        String parent = "D:\\直播录屏\\live-monitor-record\\【星曦向荣】直播监听工具\\抖音\\[小兰花]\\2025-06-07\\video_frames";
 
-        File dir = new File(parent);
-        for (File file : Objects.requireNonNull(dir.listFiles())) {
-            if (file.isDirectory()) continue;
-            try (AutoMat autoMat = pathToMat(file.toPath())) {
-                Mat src = autoMat.get();
-                RectVector face = getFace(src);
-                Mat mat = drawPreview(src, face.get());
-                String previewPath = Paths.get("img", file.getName()).toString();
-                opencv_imgcodecs.imwrite(previewPath, mat);
-                mat.close();
-            }
-        }
+
 //        Path p1 = Paths.get(parent, "sushe2.jpg");
 //        Path p2 = Paths.get(parent, "img-3565420dbc824e7aeb33dff66312b5e8.jpg");
 //        Path p3 = Paths.get(parent, "微信图片_20250821224802_11912.jpg");

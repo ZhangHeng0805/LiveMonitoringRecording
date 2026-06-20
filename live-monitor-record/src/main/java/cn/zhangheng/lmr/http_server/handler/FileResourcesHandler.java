@@ -1,4 +1,4 @@
-package cn.zhangheng.lmr.fileModeApi;
+package cn.zhangheng.lmr.http_server.handler;
 
 import cn.hutool.core.io.IoUtil;
 import cn.hutool.core.util.StrUtil;
@@ -36,7 +36,7 @@ import java.util.stream.Stream;
 @Slf4j
 public class FileResourcesHandler extends JSONHandler {
 
-    protected FileResourcesHandler(String prefix) {
+    public FileResourcesHandler(String prefix) {
         super(prefix);
     }
 
@@ -221,7 +221,7 @@ public class FileResourcesHandler extends JSONHandler {
                     size = Files.size(path);
                 } catch (IOException ignored) {
                 }
-                result.setSize(FileUtil.fileSizeStr(size));
+                result.setSize(size);
             }
             return result;
         } catch (Exception e) {
@@ -243,6 +243,6 @@ public class FileResourcesHandler extends JSONHandler {
         private String name;
         private String path;
         private String type;
-        private String size;
+        private long size;
     }
 }

@@ -1,4 +1,5 @@
-server.flvPlayer.port=8000
+#监控平台服务端口 占用自动累加
+server.monitor.port=8005
 #微信客户端通用对象
 #notice.weChat.target=文件传输助手
 #息知通知地址

@@ -12,7 +12,7 @@ import cn.zhangheng.common.bean.Setting;
 import cn.zhangheng.common.bean.enums.RunMode;
 import cn.zhangheng.common.util.TrayIconUtil;
 import cn.zhangheng.douyin.browser.DouYinBrowserFactory;
-import cn.zhangheng.lmr.fileModeApi.LocalServerApi;
+import cn.zhangheng.lmr.http_server.LocalMonitorServer;
 import com.zhangheng.file.FileUtil;
 import com.zhangheng.util.ThrowableUtil;
 import com.zhangheng.util.TimeUtil;
@@ -53,7 +53,7 @@ public class FileModeMain {
     private static final ConcurrentHashMap<Path, RoomFileModel> roomFileMap = new ConcurrentHashMap<>();
     @Getter
     private static final ConcurrentHashMap<Room.Platform, Integer> platformMap = new ConcurrentHashMap<>();
-    private static LocalServerApi serverApi;
+    private static LocalMonitorServer serverApi;
     private static final AtomicInteger runCount = new AtomicInteger(0);
 
     public static void main(String[] args) throws Exception {
@@ -62,15 +62,6 @@ public class FileModeMain {
                 basePath = args[0];
             }
             List<Path> paths = retrieveFile(basePath, fileSuffix);
-//            if (paths.isEmpty()) {
-//                TrayIconUtil iconUtil = TrayIconUtil.getInstance(Constant.Application);
-//                String message = StrUtil.format("{} 路径下没有获取到监听的直播间文件[{}]", path, fileSuffix);
-//                iconUtil.notifyMessage(message, TrayIcon.MessageType.WARNING);
-//                log.warn(message);
-//                TimeUnit.SECONDS.sleep(3);
-//                iconUtil.shutdown();
-//                return;
-//            }
             Setting setting = new Setting();
             try {
                 ActivationUtil.verifyActivationCodeFile(Constant.deviceUniqueId, setting.getActivateVoucherPath());
@@ -91,7 +82,7 @@ public class FileModeMain {
                 iconUtil.shutdown();
             }
 
-            serverApi = new LocalServerApi(Constant.monitorServerPort);
+            serverApi = new LocalMonitorServer(setting.getMonitorServerPort());
             serverApi.start();
             int coreSize = setting.getMaxMonitorThreads();
             ThreadPool = new ThreadPoolExecutor(coreSize, coreSize, 0, TimeUnit.SECONDS, new ArrayBlockingQueue<>(coreSize * 2));
@@ -109,7 +100,7 @@ public class FileModeMain {
             log.error(e.getMessage(), e);
         } finally {
             if (ThreadPool != null) {
-                ThreadPool.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
+                ThreadPool.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
             }
             if (serverApi != null) {
                 serverApi.stop();

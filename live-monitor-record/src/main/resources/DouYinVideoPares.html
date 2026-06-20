@@ -70,6 +70,7 @@
     </style>
     <script src="js/index.js"></script>
     <script src="js/client-info.js"></script>
+    <script src="js/util.js"></script>
 </head>
 <body class="bg-neutral-100 font-sans text-neutral-800 min-h-screen py-8 px-4 md:px-8">
     <div class="max-w-4xl mx-auto">
@@ -284,11 +285,6 @@
         
         // 存储当前解析的视频数据
         let currentVideoData = null;
-
-        // 格式化文件大小（字节转MB）
-        function formatFileSize(bytes) {
-            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
-        }
 
         // 从标题中提取标签
         function extractTags(title) {

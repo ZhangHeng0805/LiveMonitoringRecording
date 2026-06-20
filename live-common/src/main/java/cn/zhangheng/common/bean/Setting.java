@@ -34,10 +34,10 @@ public class Setting {
     @PropertyValue("server.runMode")
     private RunMode runMode = RunMode.COMMAND;
     /**
-     * FLV播放器服务-端口号
+     * 默认监听平台服务端口
      */
-    @PropertyValue("server.flvPlayer.port")
-    private int flvPlayerPort = 8000;
+    @PropertyValue("server.monitor.port")
+    private int monitorServerPort = 8005;
     /**
      * 微信客户端通用对象
      */
@@ -75,12 +75,12 @@ public class Setting {
      * 是否循环监听直播（直播结束后，重新监听）
      */
     @PropertyValue("record.isLoop")
-    private volatile boolean isLoop;
+    private boolean isLoop;
     /**
      * 是否开启弹幕记录
      */
     @PropertyValue("record.openSubtitle")
-    private volatile boolean openSubtitle;
+    private boolean openSubtitle;
 
     /**
      * 是否隐藏监听浏览器，默认隐藏
@@ -102,12 +102,12 @@ public class Setting {
      * 监听间隔延时（秒）
      */
     @PropertyValue("monitor.delayIntervalSec")
-    private volatile int delayIntervalSec = Constant.delayIntervalSec;
+    private int delayIntervalSec = Constant.minDelayIntervalSec;
 
     public void setDelayIntervalSec(int delayIntervalSec) {
         //不能小于系统默认值
-        if (delayIntervalSec < Constant.delayIntervalSec) {
-            this.delayIntervalSec = Constant.delayIntervalSec;
+        if (delayIntervalSec < Constant.minDelayIntervalSec) {
+            this.delayIntervalSec = Constant.minDelayIntervalSec;
         } else {
             this.delayIntervalSec = delayIntervalSec;
         }
@@ -115,8 +115,8 @@ public class Setting {
 
     public int getDelayIntervalSec() {
         //不能小于系统默认值
-        if (delayIntervalSec < Constant.delayIntervalSec) {
-            delayIntervalSec = Constant.delayIntervalSec;
+        if (delayIntervalSec < Constant.minDelayIntervalSec) {
+            delayIntervalSec = Constant.minDelayIntervalSec;
         }
         return delayIntervalSec;
     }
