@@ -110,14 +110,14 @@ async function renderContent(boxDom, path, isAppend = false) {
     }
   });
 
-  // ==========核心修复1：先移除旧按钮，再插入列表内容，避免内容插在按钮后面==========
+  // ==========先移除旧按钮，再插入列表内容，避免内容插在按钮后面==========
   const oldBtn = boxDom.querySelector(".load-more-btn");
   if(oldBtn) oldBtn.remove();
 
   // 追加当前页列表HTML
   boxDom.insertAdjacentHTML("beforeend", htmlStr);
 
-  // ==========核心修复2：有下一页则重新创建按钮，追加到容器最末尾==========
+  // ==========有下一页则重新创建按钮，追加到容器最末尾==========
   if (currentPage < totalPage) {
     const moreBtn = document.createElement("div");
     moreBtn.className = "load-more-btn text-center py-2 text-blue-500 text-sm cursor-pointer hover:underline";

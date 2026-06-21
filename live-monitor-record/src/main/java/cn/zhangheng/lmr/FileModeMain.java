@@ -248,6 +248,20 @@ public class FileModeMain {
         submitRoomFileModel(model.getFilePath());
     }
 
+    public static void recoverRoomFile(String fileName) throws Exception {
+        String suffix = fileSuffix + ".del";
+        if (fileName == null || !fileName.endsWith(suffix))
+            throw new WarnException("恢复的监听文件名后缀不符合标准!");
+        Path delPath = Paths.get(getBasePath(), fileName);
+        String read = FileUtil.readString(delPath.toFile(), StandardCharsets.UTF_8);
+        JSONObject jsonObject = JSONUtil.parseObj(read).set("isEnable", true);
+        Files.deleteIfExists(delPath);
+        Path newPath = Paths.get(getBasePath(), fileName.substring(0, fileName.indexOf(suffix)) + fileSuffix);
+        FileUtil.writeString(jsonObject.toStringPretty(), newPath.toFile(), StandardCharsets.UTF_8);
+        submitRoomFileModel(newPath);
+        log.info("恢复直播监听文件{}成功!", newPath);
+    }
+
     public static RoomFileModel getModelById(String id) {
         return roomFileMap.values().stream().filter(m -> m.getId().equals(id)).findFirst().orElse(null);
     }

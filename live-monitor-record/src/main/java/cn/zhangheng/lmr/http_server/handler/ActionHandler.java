@@ -20,6 +20,8 @@ import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import com.zhangheng.bean.Message;
 import com.zhangheng.util.ThrowableUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -35,6 +37,8 @@ import java.util.concurrent.ThreadPoolExecutor;
  * @description:
  */
 public class ActionHandler extends JSONHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(ActionHandler.class);
 
     public ActionHandler(String prefix) {
         super(prefix);
@@ -147,8 +151,9 @@ public class ActionHandler extends JSONHandler {
         } catch (Throwable throwable) {
             msg.setCode(1);
             msg.setTitle("接口异常！");
-            msg.setMessage(ThrowableUtil.getAllCauseMessage(throwable));
-            throwable.printStackTrace();
+            String errMsg = ThrowableUtil.getAllCauseMessage(throwable);
+            msg.setMessage(errMsg);
+            log.error(prefix + indexPath + "接口异常:{}", errMsg);
         }
 //        System.out.println(msg);
         responseJson(httpExchange, msg);

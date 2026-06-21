@@ -126,6 +126,7 @@
     <script src="js/BiliBiliModel.js"></script>
     <script src="js/FileResourceSelect.js"></script>
     <script src="js/client-info.js"></script>
+    <script src="js/RoomRecycle.js"></script>
 </head>
 <body class="bg-gray-50 font-inter text-dark">
 <div class="container mx-auto px-4 py-8 max-w-7xl">
@@ -139,11 +140,7 @@
                 </h1>
                 <p class="text-gray-500 mt-1">实时监控各平台直播状态与录制信息</p>
             </div>
-            <!-- 新增监听 -->
-            <button onclick="addRoom()"
-                    class="inline-flex items-center px-6 py-2.5 bg-green-500 border border-green-300 text-white text-xl rounded-xl hover:bg-green-800 transition-colors">
-                <span class="text-white"> <i class="fa fa-plus mr-1"></i>新增直播监听</span>
-            </button>
+
             <!-- 数据更新时间、刷新状态和手动刷新按钮 -->
             <div class="bg-white rounded-lg px-4 py-2 card-shadow flex items-center">
                 <i class="fa fa-clock-o text-primary mr-2"></i>
@@ -211,6 +208,19 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <div class="flex mt-5 flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <!-- 新增监听 -->
+            <button onclick="addRoom()"
+                    class="inline-flex items-center px-3 py-2.5 bg-green-500 border border-green-300 text-white text-xl rounded-xl hover:bg-green-800 transition-colors">
+                <span class="text-white"> <i class="fa fa-plus mr-1"></i>新增直播监听</span>
+            </button>
+            <!-- 监听回收站 -->
+            <button onclick="roomRecycle()"
+                    class="inline-flex items-center px-3 py-2.5 bg-yellow-500 border border-yellow-100 text-white text-xl rounded-xl hover:bg-yellow-300 transition-colors">
+                <span class="text-white"> <i class="fa fa-recycle mr-1"></i>监听回收站</span>
+            </button>
         </div>
     </header>
 

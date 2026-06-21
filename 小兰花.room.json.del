@@ -1,0 +1,13 @@
+{
+    "isRecord": false,
+    "id": "622216334529",
+    "platform": "DouYin",
+    "setting": {
+        "runMode": "FILE",
+        "xiZhiUrl": "",
+        "delayIntervalSec": 30,
+        "openSubtitle": true
+    },
+    "isEnable": false,
+    "name": "小兰花"
+}

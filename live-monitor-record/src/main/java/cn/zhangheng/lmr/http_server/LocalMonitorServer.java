@@ -3,10 +3,7 @@ package cn.zhangheng.lmr.http_server;
 import cn.zhangheng.common.httpServer.handle.ProxyHandler;
 import cn.zhangheng.common.httpServer.handle.StreamFileHandler;
 import cn.zhangheng.common.httpServer.handle.TextFileHandler;
-import cn.zhangheng.lmr.http_server.handler.ActionHandler;
-import cn.zhangheng.lmr.http_server.handler.ApiHandler;
-import cn.zhangheng.lmr.http_server.handler.ClientHandler;
-import cn.zhangheng.lmr.http_server.handler.FileResourcesHandler;
+import cn.zhangheng.lmr.http_server.handler.*;
 import com.sun.net.httpserver.HttpServer;
 import com.zhangheng.util.NetworkUtil;
 import com.zhangheng.util.ThrowableUtil;
@@ -53,6 +50,7 @@ public class LocalMonitorServer {
                 server.createContext("/proxy", new ProxyHandler());
                 server.createContext("/fileRes", new FileResourcesHandler("/fileRes/"));
                 server.createContext("/client-info", new ClientHandler());
+                server.createContext("/room-recycle", new RoomRecycleHandler("/room-recycle/"));
             } catch (Exception e) {
                 log.error("本地API服务创建失败！{}", ThrowableUtil.getAllCauseMessage(e));
             }
