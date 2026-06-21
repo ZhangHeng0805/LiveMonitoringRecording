@@ -164,6 +164,8 @@ function recoverRoom(path) {
             if (msg.success) {
                 rootDom.dataset.currentPage = "1";
                 renderRoomRecycleContent(rootDom, null, false);
+            }else {
+                alert(msg.message);
             }
         })
 }
@@ -176,6 +178,8 @@ function deleteRoom(path) {
             if (msg.success) {
                 rootDom.dataset.currentPage = "1";
                 renderRoomRecycleContent(rootDom, null, false);
+            }else {
+                alert(msg.message);
             }
         })
 }
