@@ -9,6 +9,6 @@ package cn.zhangheng.common.bean.enums;
  */
 public enum RunMode {
     COMMAND,//通过命令交互的方式,只能监听单个直播间
-    FILE,//通过读取文件的形式获取监听信息，可以同事监听多个直播间
+    FILE,//通过读取文件的形式获取监听信息，可以同时监听多个直播间
     ;
 }

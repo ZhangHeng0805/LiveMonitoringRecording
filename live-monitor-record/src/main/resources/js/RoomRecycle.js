@@ -131,23 +131,47 @@ async function renderRoomRecycleContent(rootDom, data, isAppend = false) {
                 if (wrapDom.innerHTML === "") {
                     const res = await getRequest("room-recycle/getDetails", {path: path, actionKey: key});
                     let html;
+                    const room = res.data;
                     try {
-                        const room = JSON.parse(res.message);
                         html = `
-                        <p><i class="fa fa-id-card mr-1"></i>ID: ${room.id}</p>
-                        <p><i class="fa fa-user mr-1"></i>名称: ${room.name || ""}</p>
-                        <p><i class="fa fa-tag mr-1"></i>平台: ${platformName[room.platform]}</p>
-                        <p><i class="fa fa-hourglass mr-1"></i>频率: ${room.setting.delayIntervalSec}秒</p>
-                        <p class="pt-2">
-                        <button class="ml-6 text-green-500" onclick="recoverRoom('${path}')"><i class="fa fa-repeat mr-1"></i>恢复监听</button>
-                        <button class="ml-6 text-red-500" onclick="deleteRoom('${path}')"><i class="fa fa-times mr-1"></i>彻底删除</button>
-                        </p>
+                        <div class="flex flex-wrap items-center justify-between gap-2 px-2">
+                        <span><i class="fa fa-id-card mr-1"></i>ID: ${room.id}</span>
+                        <span><i class="fa fa-user mr-1"></i>名称: ${room.name || ""}</span>
+                        <span><i class="fa fa-tag mr-1"></i>平台: ${platformName[room.platform]}</span>
+                        <span><i class="fa fa-hourglass mr-1"></i>频率: <input type="number" class="w-12 delayIntervalSec" value="${room.setting.delayIntervalSec}">秒</span>
+                        <span><i class="fa fa-hourglass mr-1"></i>是否自动录制: <input type="checkbox" class="isAutoRecord" ${room.isAutoRecord ? "checked" : ""}></span>
+                        <span><i class="fa fa-check-square mr-1"></i>开启弹幕记录: <input type="checkbox" class="openSubtitle" ${room.setting.openSubtitle ? "checked" : ""}></span>
+                        <span><i class="fa fa-check-square mr-1"></i>是否循环监听: <input type="checkbox" class="isLoop" ${room.setting.isLoop ? "checked" : ""}></span>
+                        <span><i class="fa fa-edit mr-1"></i>息知通知: <input type="text" class="xiZhiUrl" placeholder="${room.setting.xiZhiUrl || ""}"></span>
+                        <span><i class="fa fa-edit mr-1"></i>Cookie设置: <input type="text" class="cookie" placeholder="${room.setting.cookie || ""}"></span>
+                        </div>
+                        
+                        <div class="pt-2 flex flex-wrap items-center justify-between gap-2 px-2">
+                            <button class="ml-6 text-green-500 recoverRoom-btn"><i class="fa fa-repeat mr-1"></i>恢复监听</button>
+                            <button class="ml-6 text-red-500" onclick="deleteRoom('${path}')"><i class="fa fa-times mr-1"></i>彻底删除</button>
+                        </div>
                         `;
                     } catch (e) {
                         html = `<p class="text-red-600">错误: ${res.message}</p>`
                     }
 
                     wrapDom.innerHTML = html;
+                    wrapDom.querySelector("button.recoverRoom-btn").addEventListener("click", async function () {
+                        const delayIntervalSec = wrapDom.querySelector("input.delayIntervalSec").value;
+                        if ((delayIntervalSec && (isNaN(delayIntervalSec) || Number(delayIntervalSec) < 10))) {
+                            alert("刷新频率必须是大于等于10的数字");
+                            return;
+                        }
+                        room.setting.delayIntervalSec = delayIntervalSec
+                        room.setting.openSubtitle = wrapDom.querySelector("input.openSubtitle").checked;
+                        room.setting.isLoop = wrapDom.querySelector("input.isLoop").checked;
+                        room.isAutoRecord = wrapDom.querySelector("input.isAutoRecord").checked;
+                        const xiZhiUrl = wrapDom.querySelector("input.xiZhiUrl").value.trim();
+                        room.setting.xiZhiUrl = xiZhiUrl.length > 0 ? xiZhiUrl : null;
+                        const cookie = wrapDom.querySelector("input.cookie").value.trim();
+                        room.setting.cookie = cookie.length > 0 ? cookie : null;
+                        recoverRoom(path, room);
+                    })
                 }
             } else {
                 wrapDom.classList.add("hidden");
@@ -156,15 +180,15 @@ async function renderRoomRecycleContent(rootDom, data, isAppend = false) {
     });
 }
 
-function recoverRoom(path) {
+function recoverRoom(path, data) {
     const rootDom = document.getElementById("roomRecycleList");
     const key = rootDom.dataset.key;
-    getRequest("room-recycle/recover", {actionKey: key, path: path})
+    postRequest(`room-recycle/recover?actionKey=${key}&path=${path}`, data)
         .then(msg => {
             if (msg.success) {
                 rootDom.dataset.currentPage = "1";
                 renderRoomRecycleContent(rootDom, null, false);
-            }else {
+            } else {
                 alert(msg.message);
             }
         })
@@ -178,7 +202,7 @@ function deleteRoom(path) {
             if (msg.success) {
                 rootDom.dataset.currentPage = "1";
                 renderRoomRecycleContent(rootDom, null, false);
-            }else {
+            } else {
                 alert(msg.message);
             }
         })

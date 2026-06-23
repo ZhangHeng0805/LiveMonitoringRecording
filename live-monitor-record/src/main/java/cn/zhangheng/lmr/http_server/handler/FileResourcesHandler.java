@@ -6,7 +6,7 @@ import cn.zhangheng.common.bean.Constant;
 import cn.zhangheng.common.bean.Room;
 import cn.zhangheng.common.httpServer.handle.JSONHandler;
 import cn.zhangheng.lmr.FileModeMain;
-import cn.zhangheng.lmr.RoomFileModel;
+import cn.zhangheng.lmr.bean.RoomFileModel;
 import cn.zhangheng.lmr.util.FilePageUtils;
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
@@ -14,7 +14,6 @@ import com.zhangheng.bean.Message;
 import com.zhangheng.file.FileUtil;
 import com.zhangheng.file.FiletypeUtil;
 import com.zhangheng.util.ThrowableUtil;
-import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.*;
@@ -24,8 +23,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * @author: ZhangHeng

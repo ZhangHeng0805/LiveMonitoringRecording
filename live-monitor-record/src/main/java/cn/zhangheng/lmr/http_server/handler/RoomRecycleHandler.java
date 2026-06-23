@@ -6,6 +6,7 @@ import cn.hutool.json.JSONUtil;
 import cn.zhangheng.common.bean.Constant;
 import cn.zhangheng.common.httpServer.handle.JSONHandler;
 import cn.zhangheng.lmr.FileModeMain;
+import cn.zhangheng.lmr.bean.RoomJson;
 import cn.zhangheng.lmr.util.FilePageUtils;
 import com.sun.net.httpserver.HttpExchange;
 import com.zhangheng.bean.Message;
@@ -15,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.CopyOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -63,7 +65,7 @@ public class RoomRecycleHandler extends JSONHandler {
                 } else if (indexPath.startsWith("getDetails")) {
                     getDetails(query, msg);
                 } else if (indexPath.startsWith("recover")) {
-                    recover(query, msg);
+                    recover(httpExchange, query, msg);
                 } else if (indexPath.startsWith("delete")) {
                     delete(query, msg);
                 } else {
@@ -83,7 +85,7 @@ public class RoomRecycleHandler extends JSONHandler {
         responseJson(httpExchange, msg);
     }
 
-    private void recover(Map<String, String> query, Message<Object> msg) {
+    private void recover(HttpExchange httpExchange, Map<String, String> query, Message<Object> msg) {
         String fileName = query.getOrDefault("path", null);
         if (fileName == null) {
             msg.setCode(1);
@@ -91,7 +93,12 @@ public class RoomRecycleHandler extends JSONHandler {
             return;
         }
         try {
-            FileModeMain.recoverRoomFile(fileName);
+            String bodyStr = parseRequestBodyStr(httpExchange);
+            RoomJson roomJson = null;
+            if (JSONUtil.isTypeJSON(bodyStr)) {
+                roomJson = JSONUtil.toBean(bodyStr, RoomJson.class);
+            }
+            FileModeMain.recoverRoomFile(fileName, roomJson);
         } catch (Exception e) {
             msg.setCode(1);
             msg.setMessage("异常:" + e.getMessage());
@@ -147,7 +154,9 @@ public class RoomRecycleHandler extends JSONHandler {
         Path path = Paths.get(FileModeMain.getBasePath(), fileName);
         if (Files.exists(path)) {
             String read = FileUtil.readString(path.toFile(), StandardCharsets.UTF_8);
-            msg.setMessage(read);
+            RoomJson bean = JSONUtil.toBean(read, RoomJson.class);
+            bean.desensitize();
+            msg.setData(bean);
         } else {
             msg.setCode(1);
             msg.setMessage(fileName + "文件不存在");

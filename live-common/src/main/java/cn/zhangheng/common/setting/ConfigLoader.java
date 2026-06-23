@@ -8,6 +8,7 @@ package cn.zhangheng.common.setting;
  * @description: 加载配置
  */
 
+import cn.hutool.core.util.StrUtil;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.*;
@@ -87,10 +88,7 @@ public class ConfigLoader {
                     if (is == null) {
                         throw new FileNotFoundException("配置文件不存在: " + configPath);
                     }
-                    try (Reader reader = new InputStreamReader(
-                            is,
-                            charset
-                    )) {
+                    try (Reader reader = new InputStreamReader(is, charset)) {
                         properties.load(reader);
                     }
                 }
@@ -101,10 +99,20 @@ public class ConfigLoader {
                 if (propertyValue == null) {
                     continue; // 无注解则跳过
                 }
+
+
                 String propertyKey = propertyValue.value();
                 String propertyValueStr = properties.getProperty(propertyKey);
                 if (propertyValueStr == null || propertyValueStr.trim().isEmpty()) {
+                    if (propertyValue.required()) {
+                        throw new IllegalArgumentException(StrUtil.format("{} 中字段 {}[{}] 为必填项!", clazz.getName(), field.getName(), propertyKey));
+                    }
                     continue; // 配置值为空则跳过
+                }
+                // 验证正则
+                String regex = propertyValue.regex();
+                if (!regex.isEmpty() && !propertyValueStr.matches(regex)) {
+                    throw new IllegalArgumentException(StrUtil.format("{} 中字段 {}[{}] 的值不符合规则: {} {}", clazz.getName(), field.getName(), propertyKey, regex, propertyValue.regexMessage()));
                 }
 
                 try {
@@ -114,7 +122,7 @@ public class ConfigLoader {
                     field.set(obj, convertedValue);
                 } catch (Exception e) {
                     // 包装异常信息，方便定位问题
-                    log.error(
+                    throw new RuntimeException(
                             String.format("配置注入属性失败：字段[%s]，配置键[%s]，值[%s]",
                                     field.getName(), propertyKey, propertyValueStr),
                             e
@@ -122,7 +130,7 @@ public class ConfigLoader {
                 }
             }
         } catch (IOException e) {
-            log.error("配置文件" + configPath + "解析失败:" + e.getMessage(), e);
+            throw new RuntimeException("配置文件" + configPath + "解析失败:" + e.getMessage(), e);
         }
     }
 

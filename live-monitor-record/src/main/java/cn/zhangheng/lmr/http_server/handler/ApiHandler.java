@@ -8,7 +8,7 @@ import cn.zhangheng.common.httpServer.handle.JSONHandler;
 import cn.zhangheng.common.record.Recorder;
 import cn.zhangheng.lmr.FileModeMain;
 import cn.zhangheng.lmr.Main;
-import cn.zhangheng.lmr.RoomFileModel;
+import cn.zhangheng.lmr.bean.RoomFileModel;
 import com.sun.net.httpserver.HttpExchange;
 import com.zhangheng.bean.Message;
 import com.zhangheng.util.ThrowableUtil;
@@ -91,22 +91,29 @@ public class ApiHandler extends JSONHandler {
             entries.remove("cookie");
             entries.append("statistics", main.getMonitorMain().statistics(null, room));
             JSONObject setting = entries.getJSONObject("setting");
+            String cookie = setting.getStr("cookie" + room.getPlatform().name(), "");
+            if (!cookie.isEmpty()) {
+                setting.set("cookie", cookie.length() > 100 ? cookie.substring(0, 100) + "......" : cookie);
+            }
             setting.remove("cookieDouYin");
             setting.remove("cookieBili");
             setting.remove("cookieKuaiShou");
             setting.remove("ffmpegPath");
             setting.remove("activateVoucherPath");
             setting.remove("recordType");
-            setting.remove("flvPlayerPort");
+            setting.remove("monitorServerPort");
             setting.remove("browserIsPageClear");
             setting.remove("browserHeadless");
             setting.remove("maxMonitorThreads");
-            if (StrUtil.isBlank(setting.getStr("xiZhiUrl"))) {
+            setting.set("isAutoRecord", main.getMonitorMain().isAutoRecord());
+            String xiZhiUrl = setting.getStr("xiZhiUrl");
+            if (StrUtil.isBlank(xiZhiUrl)) {
                 setting.putOnce("isNotice", Boolean.FALSE);
             } else {
                 setting.putOnce("isNotice", Boolean.TRUE);
+                setting.set("xiZhiUrl", StrUtil.replace(xiZhiUrl,25,50,"***"));
+
             }
-            setting.remove("xiZhiUrl");
             map.put("room", entries);
             Recorder recorder = main.getMonitorMain().getRecorder();
             if (recorder != null) {

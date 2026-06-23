@@ -16,6 +16,7 @@ import com.zhangheng.file.FileUtil;
 import com.zhangheng.util.EncryptUtil;
 import com.zhangheng.util.ThrowableUtil;
 import lombok.Getter;
+import lombok.Setter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,6 +50,8 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
     protected volatile MonitorStatus status = MonitorStatus.READY;
     @Getter
     private M roomMonitor;
+    @Setter @Getter
+    private boolean isAutoRecord;
 
     protected RecorderTask recorderTask;
     protected AtomicBoolean isRunning = new AtomicBoolean(true);
@@ -103,7 +106,8 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                 i++;
             }
             Thread.currentThread().setName(room.getNickname() + "-main-" + room.getPlatform().name());
-            RoomMonitor.RoomListener<R> listener = getRoomListener(room, isRecord);
+            isAutoRecord = isRecord;
+            RoomMonitor.RoomListener<R> listener = getRoomListener(room);
             trayIconUtil.setClickListener(getClickListener());
             roomMonitor.setListener(listener);
             do {
@@ -134,7 +138,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
     private LogUtil logUtil = null;
     private boolean isFliestStart;
 
-    private M.RoomListener<R> getRoomListener(R room, boolean isRecord) {
+    private M.RoomListener<R> getRoomListener(R room) {
         NotificationUtil notificationUtil = new NotificationUtil(setting);
         String owner = room.getPlatform().getName() + "直播间: " + room.getNickname() + " [" + room.getId() + "]";
         isFliestStart = true;
@@ -186,7 +190,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                         } catch (InterruptedException ignored) {
                         }
                     }
-                    if (isRecord) {
+                    if (isAutoRecord) {
                         recorderTask = getRecorderTask();
                         recorderTask.run(room);
                     }
@@ -205,7 +209,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                         logUtil.log(msg);
                         logUtil.init(room);
                     }
-                    if (isRecord) {
+                    if (isAutoRecord) {
                         trayIconUtil.setStartRecordStatue(true);
                         while (getIsRunning() && recorder == null) {
                             try {

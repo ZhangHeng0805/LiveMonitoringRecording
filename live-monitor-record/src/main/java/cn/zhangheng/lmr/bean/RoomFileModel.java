@@ -1,5 +1,6 @@
-package cn.zhangheng.lmr;
+package cn.zhangheng.lmr.bean;
 
+import cn.zhangheng.lmr.Main;
 import lombok.Data;
 
 import java.nio.file.Path;

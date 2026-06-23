@@ -451,6 +451,8 @@ async function sendClient() {
     try {
         ip = getClientIP().data;
     } catch (e) {
+        if (e.name === "TypeError")
+            return;
         console.error(e);
     }
     try {

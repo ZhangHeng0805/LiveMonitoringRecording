@@ -15,7 +15,8 @@ import cn.zhangheng.douyin.browser.DouYinBrowserFactory;
 import cn.zhangheng.douyin.browser.DouYinVideoParse;
 import cn.zhangheng.lmr.FileModeMain;
 import cn.zhangheng.lmr.Main;
-import cn.zhangheng.lmr.RoomFileModel;
+import cn.zhangheng.lmr.bean.RoomFileModel;
+import cn.zhangheng.lmr.bean.RoomJson;
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import com.zhangheng.bean.Message;
@@ -70,7 +71,7 @@ public class ActionHandler extends JSONHandler {
         try {
             if (indexPath.startsWith("monitor")) {
                 Map<String, String> query = parseQuery(httpExchange);
-                if ("127.0.0.1".equals(getClientIP(httpExchange))) query.put("actionKey", Constant.deviceUniqueId);
+//                if ("127.0.0.1".equals(getClientIP(httpExchange))) query.put("actionKey", Constant.deviceUniqueId);
                 if (checkActionKey(query, msg) && checkRoomKey(query, msg)) {
                     actionMonitor(msg, query);
                 } else {
@@ -78,7 +79,7 @@ public class ActionHandler extends JSONHandler {
                 }
             } else if (indexPath.startsWith("record")) {
                 Map<String, String> query = parseQuery(httpExchange);
-                if ("127.0.0.1".equals(getClientIP(httpExchange))) query.put("actionKey", Constant.deviceUniqueId);
+//                if ("127.0.0.1".equals(getClientIP(httpExchange))) query.put("actionKey", Constant.deviceUniqueId);
                 if (checkActionKey(query, msg) && checkRoomKey(query, msg)) {
                     actionRecord(msg, query);
                 } else {
@@ -86,7 +87,7 @@ public class ActionHandler extends JSONHandler {
                 }
             } else if (indexPath.startsWith("addRoom")) {
                 Map<String, String> query = parseQuery(httpExchange);
-                if ("127.0.0.1".equals(getClientIP(httpExchange))) query.put("actionKey", Constant.deviceUniqueId);
+//                if ("127.0.0.1".equals(getClientIP(httpExchange))) query.put("actionKey", Constant.deviceUniqueId);
                 if (checkActionKey(query, msg)) {
                     addMonitor(msg, httpExchange);
                 } else {
@@ -94,7 +95,7 @@ public class ActionHandler extends JSONHandler {
                 }
             } else if (indexPath.startsWith("delRoom")) {
                 Map<String, String> query = parseQuery(httpExchange);
-                if ("127.0.0.1".equals(getClientIP(httpExchange))) query.put("actionKey", Constant.deviceUniqueId);
+//                if ("127.0.0.1".equals(getClientIP(httpExchange))) query.put("actionKey", Constant.deviceUniqueId);
                 if (checkActionKey(query, msg) && checkRoomKey(query, msg)) {
                     delMonitor(msg, query);
                 } else {
@@ -102,7 +103,7 @@ public class ActionHandler extends JSONHandler {
                 }
             } else if (indexPath.startsWith("setting")) {
                 Map<String, String> query = parseQuery(httpExchange);
-                if ("127.0.0.1".equals(getClientIP(httpExchange))) query.put("actionKey", Constant.deviceUniqueId);
+//                if ("127.0.0.1".equals(getClientIP(httpExchange))) query.put("actionKey", Constant.deviceUniqueId);
                 if (checkActionKey(query, msg) && checkRoomKey(query, msg)) {
                     actionSetting(msg, httpExchange, query);
                 } else {
@@ -173,7 +174,7 @@ public class ActionHandler extends JSONHandler {
     private synchronized void addMonitor(Message msg, HttpExchange httpExchange) throws IOException {
         String bodyStr = parseRequestBodyStr(httpExchange);
         try {
-            FileModeMain.addMain(JSONUtil.parseObj(bodyStr));
+            FileModeMain.addMain(JSONUtil.toBean(bodyStr, RoomJson.class));
             msg.setMessage("直播监听新增成功");
         } catch (Exception e) {
             msg.setCode(1);
@@ -256,6 +257,7 @@ public class ActionHandler extends JSONHandler {
         if (monitorMain.getStatus() != MonitorStatus.RUNNING) {
             msg.setCode(1);
             msg.setMessage("该直播间没有启动监听!");
+            return;
         }
         try {
             monitorMain.getRoomMonitor().nowRefresh();
@@ -278,43 +280,12 @@ public class ActionHandler extends JSONHandler {
         try {
             MonitorMain<Room, ?> monitorMain = main.getMonitorMain();
             String bodyStr = parseRequestBodyStr(httpExchange);
-            JSONObject setting = JSONUtil.parseObj(bodyStr);
-            if (setting.containsKey("delayIntervalSec")) {
-                int delayIntervalSec = setting.getInt("delayIntervalSec");
-                monitorMain.getRoom().getSetting().setDelayIntervalSec(delayIntervalSec);
-            }
-            if (setting.containsKey("convertFlvToMp4")) {
-                boolean convertFlvToMp4 = setting.getBool("convertFlvToMp4");
-                monitorMain.getRoom().getSetting().setConvertFlvToMp4(convertFlvToMp4);
-            }
-            if (setting.containsKey("openSubtitle")) {
-                boolean openSubtitle = setting.getBool("openSubtitle");
-                monitorMain.getRoom().getSetting().setOpenSubtitle(openSubtitle);
-            }
-            if (setting.containsKey("isLoop")) {
-                boolean isLoop = setting.getBool("isLoop");
-                monitorMain.getRoom().getSetting().setLoop(isLoop);
-            }
-            if (setting.containsKey("cookie")) {
-                String cookie = setting.getStr("cookie");
-                if (StrUtil.isNotBlank(cookie)) {
-                    if (cookie.equalsIgnoreCase("null")) {
-                        monitorMain.getRoom().setCookie(null);
-                    } else {
-                        monitorMain.getRoom().setCookie(Setting.parseCookie(cookie));
-                    }
-                }
-            }
-            if (setting.containsKey("xiZhiUrl")) {
-                String xiZhiUrl = setting.getStr("xiZhiUrl");
-                if (StrUtil.isNotBlank(xiZhiUrl)) {
-                    if (xiZhiUrl.equalsIgnoreCase("null")) {
-                        monitorMain.getRoom().getSetting().setXiZhiUrl(null);
-                    } else {
-                        monitorMain.getRoom().getSetting().setXiZhiUrl(xiZhiUrl);
-                    }
-                }
-            }
+            RoomJson bean = JSONUtil.toBean(bodyStr, RoomJson.class);
+            Room room = monitorMain.getRoom();
+            Setting setting = room.getSetting();
+            bean.convert(setting);
+            monitorMain.setAutoRecord(bean.isAutoRecord());
+            room.initSetting(setting);
             msg.setMessage("设置成功!");
         } catch (Exception e) {
             msg.setCode(1);

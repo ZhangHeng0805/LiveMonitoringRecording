@@ -2,6 +2,7 @@ package cn.zhangheng.common.record;
 
 import cn.zhangheng.common.bean.Room;
 import cn.zhangheng.common.bean.Setting;
+import cn.zhangheng.common.bean.enums.RecordType;
 import cn.zhangheng.common.task.AsyncTaskQueue;
 import cn.zhangheng.common.task.TaskCallback;
 import cn.zhangheng.common.util.LogUtil;
@@ -78,7 +79,7 @@ public class RecorderTask {
         String fileName = "【" + FileUtil.filterFileName(room.getNickname()) + "】" + room.getPlatform().getName() + "直播录制" + TimeUtil.toTime(new Date(), "yyyy-MM-dd HH-mm-ss") + "[" + FileUtil.filterFileName(room.getTitle()) + "].flv";
         String path = Paths.get(LogUtil.getBasePathStr(room), fileName).toFile().getPath();
         Recorder streamRecorder;
-        if (setting.getRecordType() == 1) {
+        if (setting.getRecordType().equals(RecordType.FFMPEG)) {
             try {
                 String ffmpegPath = setting.getFfmpegPath();
                 streamRecorder = new FFmpegFlvRecorder(flvUrl, path, definition, ffmpegPath);

@@ -1,5 +1,7 @@
 package cn.zhangheng.lmr;
 
+import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
@@ -12,6 +14,8 @@ import cn.zhangheng.common.bean.Setting;
 import cn.zhangheng.common.bean.enums.RunMode;
 import cn.zhangheng.common.util.TrayIconUtil;
 import cn.zhangheng.douyin.browser.DouYinBrowserFactory;
+import cn.zhangheng.lmr.bean.RoomFileModel;
+import cn.zhangheng.lmr.bean.RoomJson;
 import cn.zhangheng.lmr.http_server.LocalMonitorServer;
 import com.zhangheng.file.FileUtil;
 import com.zhangheng.util.ThrowableUtil;
@@ -55,6 +59,7 @@ public class FileModeMain {
     private static final ConcurrentHashMap<Room.Platform, Integer> platformMap = new ConcurrentHashMap<>();
     private static LocalMonitorServer serverApi;
     private static final AtomicInteger runCount = new AtomicInteger(0);
+    private static final Setting setting = new Setting();
 
     public static void main(String[] args) throws Exception {
         try {
@@ -62,7 +67,6 @@ public class FileModeMain {
                 basePath = args[0];
             }
             List<Path> paths = retrieveFile(basePath, fileSuffix);
-            Setting setting = new Setting();
             try {
                 ActivationUtil.verifyActivationCodeFile(Constant.deviceUniqueId, setting.getActivateVoucherPath());
             } catch (ErrorException errorException) {
@@ -125,17 +129,16 @@ public class FileModeMain {
         try {
             //解析文件
             String s = String.join("", Files.readAllLines(file));
-            JSONObject json = JSONUtil.parseObj(s);
-            Boolean isEnable = json.getBool("isEnable", true);
+            RoomJson bean = JSONUtil.toBean(s, RoomJson.class);
+            boolean isEnable = bean.isEnable();
             if (!isEnable) return;//判断使用启用
-            Boolean isRecord = json.getBool("isRecord", false);
-            String id = json.getStr("id");
-            Room.Platform platform = json.get("platform", Room.Platform.class);
-            Setting setting = json.get("setting", Setting.class);
-            if (setting != null) {
-                setting.setRunMode(RunMode.FILE);
-            } else {
-                log.warn("{}监听文件没有setting", file);
+            boolean autoRecord = bean.isAutoRecord();
+            String id = bean.getId();
+            if (StrUtil.isBlank(id)) throw new IllegalArgumentException(file + "中直播ID不能为空!");
+            Room.Platform platform = bean.getPlatform();
+            Setting set = bean.convert(BeanUtil.copyProperties(setting, Setting.class));
+            if (!RunMode.FILE.equals(set.getRunMode())) {
+                set.setRunMode(RunMode.FILE);
             }
             //直播间标识
             key = platform.name() + "-" + id;
@@ -143,7 +146,6 @@ public class FileModeMain {
             model = new RoomFileModel();
             model.setId(key);
             model.setFilePath(file);
-//            executeFileMap.put(key, file);
             roomFileMap.put(file, model);
             Main main = new Main();
             model.setMain(main);
@@ -151,7 +153,7 @@ public class FileModeMain {
             platformMap.compute(platform, (k, v) -> v == null ? 1 : v + 1);
             log.debug("{} 监听文件开始运行!", file);
             model.setStartTime();
-            main.start(setting, id, platform, isRecord);
+            main.start(set, id, platform, autoRecord);
             log.debug("{} 监听文件结束运行!", file);
         } catch (Throwable e) {
             log.error(file + " 监听发生异常:" + e.getMessage(), e);
@@ -176,48 +178,6 @@ public class FileModeMain {
             ThreadPool.shutdownNow();
             System.exit(0);
         }
-//        executeFileMap.remove(model.getId());
-    }
-
-    public static void delMain(String key) throws WarnException, IOException {
-        RoomFileModel model = getModelById(key);
-        if (model == null) throw new WarnException(key + "直播监听不存在！");
-        if (model.isRunning()) throw new WarnException(key + "直播监听已开启！请先停止后删除");
-        Path filePath = model.getFilePath();
-        List<String> strings = Files.readAllLines(filePath, StandardCharsets.UTF_8);
-        String name = model.getMain().getMonitorMain().getRoom().getNickname();
-        JSONObject json = JSONUtil.parseObj(String.join("", strings)).set("isEnable", false);
-        if (StrUtil.isNotBlank(name)) {
-            json.set("name", name);
-        }
-        File file = FileUtil.writeString(json.toStringPretty(), filePath.toFile(), StandardCharsets.UTF_8);//修改重写
-        Path rename = FileUtil.rename(filePath, file.getName() + ".del", true);
-        roomFileMap.remove(filePath);
-        log.info("{}直播监听已删除,监听文件重命名:{}", key, rename.toString());
-    }
-
-    public static void addMain(JSONObject object) throws WarnException {
-        Room.Platform platform = object.get("platform", Room.Platform.class);
-        String roomID = object.getStr("id");
-        String key = platform.name() + "-" + roomID;
-        object.set("isEnable", true);
-        RoomFileModel model = getModelById(key);
-        if (model != null) throw new WarnException(key + "直播监听已存在！");
-        JSONObject setting = object.getJSONObject("setting");
-        String cookie = setting.getStr("cookie");
-        if (StrUtil.isNotBlank(cookie)) {
-            setting.set("cookie" + platform.name(), cookie);
-        }
-        setting.remove("cookie");
-        if (StrUtil.isBlank(setting.getStr("xiZhiUrl"))) {
-            setting.remove("xiZhiUrl");
-        }
-        setting.set("runMode", RunMode.FILE.name());
-        Path path = Paths.get(getBasePath(), key + fileSuffix);
-        FileUtil.mkdir(getBasePath());//若目录不存在直接新建
-        File file = FileUtil.writeString(object.toStringPretty(), path.toFile(), StandardCharsets.UTF_8);
-        log.info("新增直播监听文件{}创建成功", file.getPath());
-        submitRoomFileModel(file.toPath());
     }
 
     private static void submitRoomFileModel(Path path) {
@@ -248,18 +208,60 @@ public class FileModeMain {
         submitRoomFileModel(model.getFilePath());
     }
 
-    public static void recoverRoomFile(String fileName) throws Exception {
+
+    public static void delMain(String key) throws WarnException, IOException {
+        RoomFileModel model = getModelById(key);
+        if (model == null) throw new WarnException(key + "直播监听不存在！");
+        if (model.isRunning()) throw new WarnException(key + "直播监听已开启！请先停止后删除");
+        Path filePath = model.getFilePath();
+        String read = FileUtil.readString(filePath.toFile(), StandardCharsets.UTF_8);
+        String name = model.getMain().getMonitorMain().getRoom().getNickname();
+        RoomJson bean = JSONUtil.toBean(read, RoomJson.class);
+        bean.setEnable(false);
+        if (StrUtil.isNotBlank(name)) {
+            bean.setName(name);
+        }
+        File file = FileUtil.writeString(JSONUtil.toJsonPrettyStr(bean), filePath.toFile(), StandardCharsets.UTF_8);//修改重写
+        Path rename = FileUtil.rename(file.toPath(), bean.getName() + "-" + bean.getPlatform().name() + "-" + bean.getId() + fileSuffix + ".del", true);
+        roomFileMap.remove(filePath);
+        log.info("{}直播监听已删除,监听文件重命名:{}", key, rename.toString());
+    }
+
+    public static void addMain(RoomJson object) throws WarnException {
+        if (StrUtil.isBlank(object.getId())) throw new WarnException("直播间ID不能为空!");
+        String key = object.getPlatform().name() + "-" + object.getId();
+        object.setEnable(true);
+        object.check();
+        RoomFileModel model = getModelById(key);
+        if (model != null) throw new WarnException(key + "直播监听已存在！");
+        Path path = Paths.get(getBasePath(), key + fileSuffix);
+        FileUtil.mkdir(getBasePath());//若目录不存在直接新建
+        File file = FileUtil.writeString(JSONUtil.toJsonPrettyStr(object), path.toFile(), StandardCharsets.UTF_8);
+        log.info("新增直播监听文件{}创建成功", file.getPath());
+        submitRoomFileModel(file.toPath());
+    }
+
+
+    public static void recoverRoomFile(String fileName, RoomJson roomJson) throws Exception {
         String suffix = fileSuffix + ".del";
         if (fileName == null || !fileName.endsWith(suffix))
             throw new WarnException("恢复的监听文件名后缀不符合标准!");
         Path delPath = Paths.get(getBasePath(), fileName);
         String read = FileUtil.readString(delPath.toFile(), StandardCharsets.UTF_8);
-        JSONObject jsonObject = JSONUtil.parseObj(read).set("isEnable", true);
+        RoomJson bean = JSONUtil.toBean(read, RoomJson.class);
+        BeanUtil.copyProperties(roomJson.getSetting(), bean.getSetting(), CopyOptions.create().setIgnoreNullValue(true).setIgnoreError(true));
+        bean.setEnable(true);
+        bean.setAutoRecord(roomJson.isAutoRecord());
+        bean.check();
         Files.deleteIfExists(delPath);
-        Path newPath = Paths.get(getBasePath(), fileName.substring(0, fileName.indexOf(suffix)) + fileSuffix);
-        FileUtil.writeString(jsonObject.toStringPretty(), newPath.toFile(), StandardCharsets.UTF_8);
-        submitRoomFileModel(newPath);
-        log.info("恢复直播监听文件{}成功!", newPath);
+        FileUtil.writeString(JSONUtil.toJsonPrettyStr(bean), delPath.toFile(), StandardCharsets.UTF_8);//先修改
+        Path rename = FileUtil.rename(delPath, bean.getName() + "-" + bean.getPlatform().name() + "-" + bean.getId() + fileSuffix, true);
+        if (getModelById(bean.getPlatform() + "-" + bean.getId()) == null) {
+            submitRoomFileModel(rename);
+            log.info("恢复直播监听文件{}成功!", rename);
+        } else {
+            throw new RuntimeException("恢复的直播监听已在运行中!");
+        }
     }
 
     public static RoomFileModel getModelById(String id) {

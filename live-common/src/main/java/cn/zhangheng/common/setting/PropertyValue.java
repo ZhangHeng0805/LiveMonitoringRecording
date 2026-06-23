@@ -12,6 +12,7 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.util.regex.Pattern;
 
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
@@ -21,5 +22,16 @@ public @interface PropertyValue {
      *
      * @return
      */
-    String value(); //
+    String value();
+    /**
+     * 正则表达式验证规则
+     */
+    String regex() default "";
+    String regexMessage() default "";
+
+
+    /**
+     * 是否必须（配置不存在时抛出异常）
+     */
+    boolean required() default false;
 }
