@@ -37,8 +37,10 @@ public class LogUtil {
     }
 
     public static String getBasePathStr(Room room) {
-        String nowTime = TimeUtil.toTime(room.getStartTime(), "yyyy-MM-dd");
-        return Constant.Application + "/" + room.getPlatform().getName() + "/[" + FileUtil.filterFileName(room.getNickname()) + "]/" + nowTime;
+        if (room.getStartTime() == null) {
+            throw new IllegalArgumentException("room start time is null");
+        }
+        return RoomUtils.getBaseSavePathStr(room);
     }
 
     {
@@ -66,6 +68,7 @@ public class LogUtil {
 
     /**
      * 直播监听日志 非通用
+     *
      * @param room
      * @throws IOException
      */

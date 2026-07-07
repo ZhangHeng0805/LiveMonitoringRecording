@@ -1,18 +1,14 @@
 package cn.zhangheng.lmr.http_server.handler;
 
 import cn.hutool.core.util.StrUtil;
-import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
-import cn.zhangheng.common.bean.Constant;
 import cn.zhangheng.common.bean.Setting;
 import cn.zhangheng.common.httpServer.handle.JSONHandler;
 import cn.zhangheng.common.service.MonitorMain;
 import cn.zhangheng.common.bean.Room;
 import cn.zhangheng.common.bean.enums.MonitorStatus;
 import cn.zhangheng.common.record.Recorder;
-import cn.zhangheng.douyin.bean.DouYinVideo;
 import cn.zhangheng.douyin.browser.DouYinBrowserFactory;
-import cn.zhangheng.douyin.browser.DouYinVideoParse;
 import cn.zhangheng.lmr.FileModeMain;
 import cn.zhangheng.lmr.Main;
 import cn.zhangheng.lmr.bean.RoomFileModel;
@@ -25,9 +21,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ThreadPoolExecutor;
+
+import static cn.zhangheng.common.httpServer.util.HandlerUtils.parseQuery;
+import static cn.zhangheng.common.httpServer.util.HandlerUtils.parseRequestBodyStr;
+import static cn.zhangheng.lmr.http_server.util.CheckUtils.*;
 
 
 /**
@@ -48,20 +46,7 @@ public class ActionHandler extends JSONHandler {
     @Override
     protected boolean filter(HttpExchange httpExchange) throws IOException {
         super.filter(httpExchange);
-        if (httpExchange.getRequestMethod().equalsIgnoreCase("OPTIONS")) {
-            Headers responseHeaders = httpExchange.getResponseHeaders();
-            responseHeaders.set("Access-Control-Allow-Origin", "*");
-            responseHeaders.set("Access-Control-Allow-Headers", "Content-Type");
-            httpExchange.sendResponseHeaders(204, -1);
-            return false;
-        }
-//        Map<String, String> cookies = getRequestCookies(httpExchange);
-//        String session_id = cookies.get("session_id");
-//        String token = cookies.get("token");
-//        if (session_id == null || token == null) return false;
-//        if (!JWTUtil.checkToken(token)) return false;
-//        return session_id.equals(JWTUtil.getSessionID(token));
-        return true;
+        return checkCookie(httpExchange);
     }
 
     @Override
@@ -71,7 +56,6 @@ public class ActionHandler extends JSONHandler {
         try {
             if (indexPath.startsWith("monitor")) {
                 Map<String, String> query = parseQuery(httpExchange);
-//                if ("127.0.0.1".equals(getClientIP(httpExchange))) query.put("actionKey", Constant.deviceUniqueId);
                 if (checkActionKey(query, msg) && checkRoomKey(query, msg)) {
                     actionMonitor(msg, query);
                 } else {
@@ -79,7 +63,6 @@ public class ActionHandler extends JSONHandler {
                 }
             } else if (indexPath.startsWith("record")) {
                 Map<String, String> query = parseQuery(httpExchange);
-//                if ("127.0.0.1".equals(getClientIP(httpExchange))) query.put("actionKey", Constant.deviceUniqueId);
                 if (checkActionKey(query, msg) && checkRoomKey(query, msg)) {
                     actionRecord(msg, query);
                 } else {
@@ -87,7 +70,6 @@ public class ActionHandler extends JSONHandler {
                 }
             } else if (indexPath.startsWith("addRoom")) {
                 Map<String, String> query = parseQuery(httpExchange);
-//                if ("127.0.0.1".equals(getClientIP(httpExchange))) query.put("actionKey", Constant.deviceUniqueId);
                 if (checkActionKey(query, msg)) {
                     addMonitor(msg, httpExchange);
                 } else {
@@ -95,7 +77,6 @@ public class ActionHandler extends JSONHandler {
                 }
             } else if (indexPath.startsWith("delRoom")) {
                 Map<String, String> query = parseQuery(httpExchange);
-//                if ("127.0.0.1".equals(getClientIP(httpExchange))) query.put("actionKey", Constant.deviceUniqueId);
                 if (checkActionKey(query, msg) && checkRoomKey(query, msg)) {
                     delMonitor(msg, query);
                 } else {
@@ -103,7 +84,6 @@ public class ActionHandler extends JSONHandler {
                 }
             } else if (indexPath.startsWith("setting")) {
                 Map<String, String> query = parseQuery(httpExchange);
-//                if ("127.0.0.1".equals(getClientIP(httpExchange))) query.put("actionKey", Constant.deviceUniqueId);
                 if (checkActionKey(query, msg) && checkRoomKey(query, msg)) {
                     actionSetting(msg, httpExchange, query);
                 } else {
@@ -116,15 +96,6 @@ public class ActionHandler extends JSONHandler {
                 } else {
                     msg.setCode(1);
                 }
-            } else if (indexPath.startsWith("getThread")) {
-                getThread(msg);
-            } else if (indexPath.startsWith("getCount")) {
-                Map<String, Object> douYinCounter = DouYinBrowserFactory.getBrowser().getCount();
-                Map<String, Object> allCounter = FileModeMain.getCounter();
-                Map<String, Object> data = new HashMap<>();
-                data.put("DouYinCounter", douYinCounter);
-                data.put("AllCounter", allCounter);
-                msg.setData(data);
             } else if (indexPath.startsWith("clear")) {
                 Map<String, String> query = parseQuery(httpExchange);
                 if (checkActionKey(query, msg)) {
@@ -142,9 +113,6 @@ public class ActionHandler extends JSONHandler {
                 } else {
                     msg.setCode(1);
                 }
-            } else if (indexPath.startsWith("videoParsing")) {
-                Map<String, String> query = parseQuery(httpExchange);
-                videoParsing(msg, query, getRequestUserAgent(httpExchange));
             } else {
                 msg.setCode(1);
                 msg.setMessage("访问的接口路径不存在！" + prefix + indexPath);
@@ -172,7 +140,7 @@ public class ActionHandler extends JSONHandler {
     }
 
     private synchronized void addMonitor(Message msg, HttpExchange httpExchange) throws IOException {
-        String bodyStr = parseRequestBodyStr(httpExchange);
+        String bodyStr = parseRequestBodyStr(httpExchange,charset);
         try {
             FileModeMain.addMain(JSONUtil.toBean(bodyStr, RoomJson.class));
             msg.setMessage("直播监听新增成功");
@@ -279,7 +247,7 @@ public class ActionHandler extends JSONHandler {
         Main main = model.getMain();
         try {
             MonitorMain<Room, ?> monitorMain = main.getMonitorMain();
-            String bodyStr = parseRequestBodyStr(httpExchange);
+            String bodyStr = parseRequestBodyStr(httpExchange,charset);
             RoomJson bean = JSONUtil.toBean(bodyStr, RoomJson.class);
             Room room = monitorMain.getRoom();
             Setting setting = room.getSetting();
@@ -293,59 +261,7 @@ public class ActionHandler extends JSONHandler {
         }
     }
 
-    private void getThread(Message msg) {
-        ThreadPoolExecutor threadPool = FileModeMain.getThreadPool();
-        int corePoolSize = threadPool.getCorePoolSize();
-        int activeCount = threadPool.getActiveCount();
-        int remainingThreads = corePoolSize - activeCount;
-        Map<String, Integer> res = new HashMap<>();
-        res.put("corePoolSize", corePoolSize);
-        res.put("activeCount", activeCount);
-        res.put("remainingThreads", remainingThreads);
-        msg.setData(res);
-        msg.setMessage(StrUtil.format("核心线程数: {}， 正在工作的线程数: {}, 剩余可用线程数: {}", corePoolSize, activeCount, remainingThreads));
-    }
 
-    private void videoParsing(Message msg, Map<String, String> query, String userAgent) {
-        try {
-            String url = query.get("url");
-            if (url == null) {
-                throw new IllegalArgumentException("解析URl缺省！");
-            }
-            DouYinVideo parse = DouYinVideoParse.parse(url, userAgent);
-            msg.setData(parse);
-            msg.setMessage("解析成功！");
-        } catch (Exception e) {
-            msg.setCode(1);
-            msg.setMessage(e.getMessage());
-        }
-    }
 
-    private boolean checkActionKey(Map<String, String> query, Message msg) {
-        String actionKey = query.get("actionKey");
-        if (StrUtil.isBlank(actionKey)) {
-            msg.setMessage("操作秘钥不能为空！");
-            return false;
-        }
-        if (!actionKey.equals(Constant.deviceUniqueId)) {
-            msg.setMessage("操作秘钥错误！");
-            return false;
-        }
-        return true;
-    }
 
-    private boolean checkRoomKey(Map<String, String> query, Message msg) {
-        String key = query.get("key");
-        if (StrUtil.isBlank(key)) {
-            msg.setMessage("直播间标识不能为空！");
-            return false;
-        }
-        RoomFileModel model = FileModeMain.getModelById(key);
-        if (model == null) {
-            msg.setCode(1);
-            msg.setMessage("直播间标识[" + key + "]不存在！");
-            return false;
-        }
-        return true;
-    }
 }

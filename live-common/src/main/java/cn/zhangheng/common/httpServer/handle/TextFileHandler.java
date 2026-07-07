@@ -1,7 +1,8 @@
 package cn.zhangheng.common.httpServer.handle;
 
 import cn.hutool.core.io.IoUtil;
-import cn.hutool.jwt.JWT;
+import cn.hutool.core.map.MapUtil;
+import cn.zhangheng.common.httpServer.util.JWTUtil;
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import org.slf4j.Logger;
@@ -12,6 +13,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.NoSuchFileException;
 import java.util.Scanner;
+
+import static cn.zhangheng.common.httpServer.util.HandlerUtils.*;
 
 /**
  * @author: ZhangHeng
@@ -25,6 +28,7 @@ public class TextFileHandler extends MyHandler {
     private static final Logger log = LoggerFactory.getLogger(TextFileHandler.class);
     private final String file;
     private final String contextType;
+
 
     public TextFileHandler(String file) {
         this(file, "text/plain");
@@ -53,11 +57,10 @@ public class TextFileHandler extends MyHandler {
     @Override
     protected boolean filter(HttpExchange httpExchange) throws IOException {
         super.filter(httpExchange);
-
-        Headers responseHeaders = httpExchange.getResponseHeaders();
         String path = httpExchange.getRequestURI().getPath();
         if ("/favicon.ico".equals(path)) {
             try (InputStream is = getClass().getClassLoader().getResourceAsStream("img/favicon.ico")) {
+                Headers responseHeaders = httpExchange.getResponseHeaders();
                 responseHeaders.set("Content-Type", "application/octet-stream");
                 if (is == null) {
                     throw new NoSuchFileException(path);
@@ -69,18 +72,15 @@ public class TextFileHandler extends MyHandler {
                 return true;
             }
         }
-//        String session_id = getRequestCookie(httpExchange, "session_id");
-//        if (session_id == null) {
-//            session_id = getSessionID();
-//            setResponseCookie(httpExchange, "session_id", session_id);
-//            setResponseCookie(httpExchange, "token", JWTUtil.generateToken(session_id));
-//        }
+
         return true;
     }
 
+
     @Override
     public void request(HttpExchange t) throws IOException {
-        log.debug("{} 请求[{}]:{}", getClientIP(t), t.getRequestURI().getPath(), t.getRequestHeaders().getFirst("User-Agent"));
+        String clientIP = getClientIP(t);
+        log.debug("{} 请求[{}]:{}", clientIP, t.getRequestURI().getPath(), t.getRequestHeaders().getFirst("User-Agent"));
         t.getResponseHeaders().set("Content-Type", contextType + "; charset=" + charset.name());
         try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream(file);
              OutputStream outputStream = t.getResponseBody()) {
@@ -89,8 +89,6 @@ public class TextFileHandler extends MyHandler {
             }
             t.sendResponseHeaders(200, inputStream.available());
             IoUtil.copy(inputStream, outputStream);
-        } finally {
-            t.close();
         }
     }
 }

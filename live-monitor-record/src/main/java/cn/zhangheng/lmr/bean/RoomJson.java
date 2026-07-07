@@ -3,13 +3,8 @@ package cn.zhangheng.lmr.bean;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.util.StrUtil;
-import cn.hutool.json.JSONUtil;
 import cn.zhangheng.common.bean.Room;
-import com.zhangheng.file.FileUtil;
 import lombok.Data;
-
-import java.io.File;
-import java.nio.charset.StandardCharsets;
 
 /**
  * @author: ZhangHeng
@@ -26,6 +21,9 @@ public class RoomJson {
     private boolean isAutoRecord;
     private boolean isEnable = true;
     private Setting setting;
+    private String savePath;
+
+
 
     @Data
     public static class Setting {

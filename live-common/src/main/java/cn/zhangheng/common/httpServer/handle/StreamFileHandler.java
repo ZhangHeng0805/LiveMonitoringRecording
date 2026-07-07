@@ -10,6 +10,8 @@ import java.io.OutputStream;
 import java.net.URI;
 import java.util.Map;
 
+import static cn.zhangheng.common.httpServer.util.HandlerUtils.parseQuery;
+
 /**
  * @author: ZhangHeng
  * @email: zhangheng_0805@163.com
@@ -42,7 +44,7 @@ public class StreamFileHandler extends MyHandler {
             String path = requestURI.getPath();
             file = path.substring(1);
         } else {
-            Map<String, String> map = parseQuery(requestURI.getQuery());
+            Map<String, String> map = parseQuery(requestURI.getQuery(),charset);
             file = map.get("file");
             if (file == null || file.isEmpty()) {
                 sendErrorResponse(httpExchange, 400, "Missing file parameter");
@@ -60,10 +62,7 @@ public class StreamFileHandler extends MyHandler {
             try (OutputStream os = httpExchange.getResponseBody()) {
                 IoUtil.copy(is, os);
             }
-        } finally {
-            httpExchange.close();
         }
-
     }
 
     // 辅助方法：通过读取流计算长度（适用于无法直接获取Path的情况）

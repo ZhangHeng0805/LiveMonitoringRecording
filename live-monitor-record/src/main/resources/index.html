@@ -409,6 +409,7 @@
         // 绑定手动刷新按钮事件
         const refreshBtn = document.getElementById("manual-refresh-btn");
         refreshBtn.addEventListener("click", handleManualRefresh);
+        refreshClient();
         // 首次加载数据
         fetchData();
         // 设置定时刷新
@@ -456,12 +457,16 @@
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
 
-            const response = await fetch(MainUrl + "api/", {
+            const response = await fetch(MainUrl + "api/rooms", {
                 signal: controller.signal,
+                // 跨域携带凭证（Cookie）
+                credentials: "include"
             });
 
             clearTimeout(timeoutId); // 清除超时定时器
-
+            if (response.status === 403) {
+                // location.reload();
+            }
             // 检查响应状态
             if (!response.ok) {
                 throw new Error(

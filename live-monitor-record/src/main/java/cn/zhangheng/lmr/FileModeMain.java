@@ -12,6 +12,7 @@ import cn.zhangheng.common.bean.Constant;
 import cn.zhangheng.common.bean.Room;
 import cn.zhangheng.common.bean.Setting;
 import cn.zhangheng.common.bean.enums.RunMode;
+import cn.zhangheng.common.util.RoomUtils;
 import cn.zhangheng.common.util.TrayIconUtil;
 import cn.zhangheng.douyin.browser.DouYinBrowserFactory;
 import cn.zhangheng.lmr.bean.RoomFileModel;
@@ -48,7 +49,7 @@ import java.util.stream.Stream;
 @Slf4j
 public class FileModeMain {
     @Getter
-    private static String basePath = "./";
+    private static String basePath = "./room";
     @Getter
     private static final String fileSuffix = ".room.json";
     @Getter
@@ -167,12 +168,33 @@ public class FileModeMain {
         if (model == null) return;
         runCount.decrementAndGet();
         model.setEndTime();
-        Room.Platform platform = model.getMain().getRoom().getPlatform();
+        Room room = model.getMain().getRoom();
+        Room.Platform platform = room.getPlatform();
         platformMap.compute(platform, (k, v) -> v == null ? 0 : v - 1);
         if (platformMap.get(Room.Platform.DouYin) == null || platformMap.get(Room.Platform.DouYin) < 1) {
             DouYinBrowserFactory.closeBrowser();
         }
         log.info("{}个监听运行情况：{}", runCount.get(), platformMap);
+
+        if (StrUtil.isNotBlank(room.getNickname())) {
+            File file = model.getFilePath().toFile();
+            String json = FileUtil.readString(file, StandardCharsets.UTF_8);
+            RoomJson bean = JSONUtil.toBean(json, RoomJson.class);
+            String basePathStr = RoomUtils.getBasePathStr(room);
+            String savePath = bean.getSavePath();
+            if (savePath != null && !basePathStr.equals(savePath)) {
+                Path newPath = Paths.get(basePathStr);
+                Path oldPath = Paths.get(savePath);
+                try {
+                    Files.move(oldPath, newPath);
+                } catch (IOException e) {
+                    log.error("文件夹重命名失败!");
+                }
+            }
+            bean.setName(room.getNickname());
+            bean.setSavePath(basePathStr);
+            FileUtil.writeString(JSONUtil.toJsonPrettyStr(bean), file, StandardCharsets.UTF_8);//修改重写
+        }
         if (runCount.get() < 1) {
             log.debug("没有监听任务，程序结束！");
             ThreadPool.shutdownNow();
@@ -215,12 +237,8 @@ public class FileModeMain {
         if (model.isRunning()) throw new WarnException(key + "直播监听已开启！请先停止后删除");
         Path filePath = model.getFilePath();
         String read = FileUtil.readString(filePath.toFile(), StandardCharsets.UTF_8);
-        String name = model.getMain().getMonitorMain().getRoom().getNickname();
         RoomJson bean = JSONUtil.toBean(read, RoomJson.class);
         bean.setEnable(false);
-        if (StrUtil.isNotBlank(name)) {
-            bean.setName(name);
-        }
         File file = FileUtil.writeString(JSONUtil.toJsonPrettyStr(bean), filePath.toFile(), StandardCharsets.UTF_8);//修改重写
         Path rename = FileUtil.rename(file.toPath(), bean.getName() + "-" + bean.getPlatform().name() + "-" + bean.getId() + fileSuffix + ".del", true);
         roomFileMap.remove(filePath);

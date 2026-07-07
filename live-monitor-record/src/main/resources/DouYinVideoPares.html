@@ -388,14 +388,14 @@
                 
                 // 调用后端API获取视频数据
                 // 实际项目中替换为真实接口地址
-                const response = await fetch(`${rootUrl+'action/videoParsing?url='+ encodeURIComponent(link)}`);
+                const response = await fetch(`${rootUrl+'api/videoParsing?url='+ encodeURIComponent(link)}`);
                 if (!response.ok) {
-                    throw new Error('获取视频数据失败');
+                    throw new Error(`获取视频数据异常: ${response.status}  ${response.statusText}`);
                 }
                 const data = await response.json();
                 
                 if(data.code!==0){
-                    throw new Error('获取视频数据失败:'+data.message);
+                    throw new Error('获取视频数据失败: '+data.message);
                 } 
                 // 渲染数据
                 renderData(data.data,link);

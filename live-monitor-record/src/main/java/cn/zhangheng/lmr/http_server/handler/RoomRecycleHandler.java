@@ -1,13 +1,12 @@
 package cn.zhangheng.lmr.http_server.handler;
 
-import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
-import cn.zhangheng.common.bean.Constant;
 import cn.zhangheng.common.httpServer.handle.JSONHandler;
 import cn.zhangheng.lmr.FileModeMain;
 import cn.zhangheng.lmr.bean.RoomJson;
 import cn.zhangheng.lmr.util.FilePageUtils;
+import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import com.zhangheng.bean.Message;
 import com.zhangheng.file.FileUtil;
@@ -16,15 +15,18 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.CopyOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
+
+import static cn.zhangheng.common.httpServer.util.HandlerUtils.parseQuery;
+import static cn.zhangheng.common.httpServer.util.HandlerUtils.parseRequestBodyStr;
+import static cn.zhangheng.lmr.http_server.util.CheckUtils.checkActionKey;
+import static cn.zhangheng.lmr.http_server.util.CheckUtils.checkCookie;
 
 /**
  * @author: ZhangHeng
@@ -39,18 +41,10 @@ public class RoomRecycleHandler extends JSONHandler {
         super(prefix);
     }
 
-
-    private boolean checkActionKey(Map<String, String> query, Message msg) {
-        String actionKey = query.get("actionKey");
-        if (StrUtil.isBlank(actionKey)) {
-            msg.setMessage("操作秘钥不能为空！");
-            return false;
-        }
-        if (!actionKey.equals(Constant.deviceUniqueId)) {
-            msg.setMessage("操作秘钥错误！");
-            return false;
-        }
-        return true;
+    @Override
+    protected boolean filter(HttpExchange httpExchange) throws IOException {
+        super.filter(httpExchange);
+        return checkCookie(httpExchange);
     }
 
     @Override
@@ -93,7 +87,7 @@ public class RoomRecycleHandler extends JSONHandler {
             return;
         }
         try {
-            String bodyStr = parseRequestBodyStr(httpExchange);
+            String bodyStr = parseRequestBodyStr(httpExchange, charset);
             RoomJson roomJson = null;
             if (JSONUtil.isTypeJSON(bodyStr)) {
                 roomJson = JSONUtil.toBean(bodyStr, RoomJson.class);

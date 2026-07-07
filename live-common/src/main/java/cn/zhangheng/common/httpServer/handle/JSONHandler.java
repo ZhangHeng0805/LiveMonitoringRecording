@@ -23,7 +23,7 @@ import java.io.OutputStream;
 public abstract class JSONHandler extends MyHandler {
     protected final String prefix;
 
-    protected JSONHandler(String prefix) {
+    public JSONHandler(String prefix) {
         this.prefix = prefix;
     }
 
@@ -38,7 +38,6 @@ public abstract class JSONHandler extends MyHandler {
         String contentType = "application/json; charset=" + charset.name();
         Headers responseHeaders = httpExchange.getResponseHeaders();
         responseHeaders.set("Content-Type", contentType);
-        responseHeaders.set("Access-Control-Allow-Origin", "*");
         byte[] bytes = json.getBytes(charset);
         try (InputStream is = new ByteArrayInputStream(bytes);
              OutputStream os = httpExchange.getResponseBody()) {

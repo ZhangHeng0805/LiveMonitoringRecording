@@ -13,6 +13,10 @@ import lombok.extern.slf4j.Slf4j;
 import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
 import java.net.URLEncoder;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author: ZhangHeng
@@ -36,8 +40,17 @@ public class LocalMonitorServer {
             while (NetworkUtil.isPortUsed(port)) {
                 port++;
             }
+            System.setProperty("monitor.url", getMainUrl());
+            System.setProperty("monitor.port", String.valueOf(getPort()));
             try {
-                server = HttpServer.create(new InetSocketAddress(port), 0);
+                server = HttpServer.create(new InetSocketAddress("::", port), 100);
+                server.setExecutor(new ThreadPoolExecutor(
+                        30, 80,
+                        30000L, TimeUnit.MILLISECONDS, // 空闲线程30秒再销毁
+                        new LinkedBlockingQueue<>(100),
+                        Executors.defaultThreadFactory(),
+                        new ThreadPoolExecutor.CallerRunsPolicy() // 拒绝策略改为调用者线程执行，不抛异常
+                ));
                 server.createContext("/", new TextFileHandler("index.html", "text/html"));
                 server.createContext("/DouYinVideoPares.html", new TextFileHandler("DouYinVideoPares.html", "text/html"));
                 server.createContext("/FLVPlayer.html", new TextFileHandler("FLVPlayer.html", "text/html"));
@@ -49,16 +62,15 @@ public class LocalMonitorServer {
                 server.createContext("/action", new ActionHandler("/action/"));
                 server.createContext("/proxy", new ProxyHandler());
                 server.createContext("/fileRes", new FileResourcesHandler("/fileRes/"));
-                server.createContext("/client-info", new ClientHandler());
+                server.createContext("/client-info", new ClientHandler("/client-info/"));
                 server.createContext("/room-recycle", new RoomRecycleHandler("/room-recycle/"));
+                server.createContext("/info", new InfoHandler("/info/"));
             } catch (Exception e) {
                 log.error("本地API服务创建失败！{}", ThrowableUtil.getAllCauseMessage(e));
             }
             if (server != null) {
                 server.start();
                 log.info("本地API服务已启动！访问地址: {}", getMainUrl());
-                System.setProperty("monitor.url", getMainUrl());
-                System.setProperty("monitor.port", String.valueOf(getPort()));
             }
         });
         thread.setDaemon(true);

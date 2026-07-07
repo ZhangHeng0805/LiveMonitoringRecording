@@ -5,10 +5,14 @@ import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import cn.zhangheng.common.bean.Room;
 import cn.zhangheng.common.httpServer.handle.JSONHandler;
+import cn.zhangheng.common.httpServer.util.HandlerUtils;
 import cn.zhangheng.common.record.Recorder;
+import cn.zhangheng.douyin.bean.DouYinVideo;
+import cn.zhangheng.douyin.browser.DouYinVideoParse;
 import cn.zhangheng.lmr.FileModeMain;
 import cn.zhangheng.lmr.Main;
 import cn.zhangheng.lmr.bean.RoomFileModel;
+import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import com.zhangheng.bean.Message;
 import com.zhangheng.util.ThrowableUtil;
@@ -20,6 +24,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import static cn.zhangheng.common.httpServer.util.HandlerUtils.parseQuery;
+import static cn.zhangheng.lmr.http_server.util.CheckUtils.checkCookie;
 
 /**
  * @author: ZhangHeng
@@ -37,14 +44,11 @@ public class ApiHandler extends JSONHandler {
 
     @Override
     protected boolean filter(HttpExchange httpExchange) throws IOException {
-        return super.filter(httpExchange);
-//        Map<String, String> cookies = getRequestCookies(httpExchange);
-//        String session_id = cookies.get("session_id");
-//        String token = cookies.get("token");
-//        if (session_id == null || token == null) return false;
-//        if (!JWTUtil.checkToken(token)) return false;
-//        return session_id.equals(JWTUtil.getSessionID(token));
+        super.filter(httpExchange);
+        return checkCookie(httpExchange);
     }
+
+
 
     @Override
     public void request(HttpExchange httpExchange) throws IOException {
@@ -52,20 +56,19 @@ public class ApiHandler extends JSONHandler {
             String indexPath = getIndexPath(httpExchange, prefix);
             Message<Object> msg = new Message<>();
 
-            if (StrUtil.isNotBlank(indexPath)) {
-                RoomFileModel model = FileModeMain.getModelById(indexPath);
-                if (model == null) {
-                    msg.setMessage("没有找到开直播监听信息");
-                } else {
-                    msg.setData(getResponseMap(model));
-                }
-            } else {
+            if (indexPath.startsWith("rooms")) {
                 List<Map<String, Object>> collect = FileModeMain.getRoomFileMap().values().stream()
-                        .map(ApiHandler::getResponseMap)
+                        .map(ApiHandler::getRoomsMap)
                         .filter(m -> m != null && !m.isEmpty())
                         .sorted(Comparator.comparing(m -> m.get("isRunning").equals(false)))
                         .collect(Collectors.toList());
                 msg.setData(collect);
+            } else if (indexPath.startsWith("videoParsing")) {
+                Map<String, String> query = parseQuery(httpExchange);
+                videoParsing(msg, query, HandlerUtils.getRequestUserAgent(httpExchange));
+            } else {
+                msg.setCode(1);
+                msg.setMessage("访问的接口路径不存在！" + prefix + indexPath);
             }
             responseJson(httpExchange, msg);
         } catch (Exception e) {
@@ -75,8 +78,23 @@ public class ApiHandler extends JSONHandler {
         }
     }
 
+    private void videoParsing(Message msg, Map<String, String> query, String userAgent) {
+        try {
+            String url = query.get("url");
+            if (url == null) {
+                throw new IllegalArgumentException("解析URl缺省！");
+            }
+            DouYinVideo parse = DouYinVideoParse.parse(url, userAgent);
+            msg.setData(parse);
+            msg.setMessage("解析成功！");
+        } catch (Exception e) {
+            msg.setCode(1);
+            msg.setMessage(e.getMessage());
+        }
+    }
 
-    private static Map<String, Object> getResponseMap(RoomFileModel model) {
+
+    private static Map<String, Object> getRoomsMap(RoomFileModel model) {
         try {
             Map<String, Object> map = new HashMap<>();
             map.put("key", model.getId());
@@ -111,7 +129,7 @@ public class ApiHandler extends JSONHandler {
                 setting.putOnce("isNotice", Boolean.FALSE);
             } else {
                 setting.putOnce("isNotice", Boolean.TRUE);
-                setting.set("xiZhiUrl", StrUtil.replace(xiZhiUrl,25,50,"***"));
+                setting.set("xiZhiUrl", StrUtil.replace(xiZhiUrl, 25, 50, "***"));
 
             }
             map.put("room", entries);

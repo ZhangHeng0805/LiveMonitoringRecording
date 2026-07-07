@@ -239,12 +239,24 @@ const parseURL = (t) => {
     );
 };
 
-function setCookie(key, value) {
-    let host = window.location.host;
-    // let date = new Date();
-    let expiresTime = 60 * 60 * 24;
-    document.cookie =
-        key + "=" + value + ";path=/;domain=" + host + ";expires=" + expiresTime;
+function setCookie(key, value, hour = 2) {
+    // 编码防止中文、特殊符号失效
+    const k = encodeURIComponent(key);
+    const v = encodeURIComponent(value);
+    // 过期秒数：默认2小时
+    const maxAge = hour * 60 * 60;
+    document.cookie = `${k}=${v};path=/;max-age=${maxAge}`;
+}
+
+function getCookie(key) {
+    const list = document.cookie.split('; ');
+    const target = encodeURIComponent(key) + '=';
+    for (let item of list) {
+        if (item.startsWith(target)) {
+            return decodeURIComponent(item.slice(target.length));
+        }
+    }
+    return null;
 }
 
 // const setCookie = (a, b) => {
@@ -270,17 +282,17 @@ function setCookie(key, value) {
 // const getCookie = (a) => {
 //     return (a = RegExp("(^| )" + a + "=([^;]*)(;|$)").exec(document.cookie)) ? a[2] : w;
 // }
-function getCookie(cname) {
-    var name = cname + "=";
-    var ca = document.cookie.split(";");
-    for (var i = 0; i < ca.length; i++) {
-        var c = ca[i].trim();
-        if (c.indexOf(name) == 0) {
-            return c.substring(name.length, c.length);
-        }
-    }
-    return "";
-}
+// function getCookie(cname) {
+//     var name = cname + "=";
+//     var ca = document.cookie.split(";");
+//     for (var i = 0; i < ca.length; i++) {
+//         var c = ca[i].trim();
+//         if (c.indexOf(name) == 0) {
+//             return c.substring(name.length, c.length);
+//         }
+//     }
+//     return "";
+// }
 
 const getSid = () => {
     var sid = getCookie("JSESSIONID");
@@ -292,11 +304,11 @@ const getSid = () => {
 };
 
 const getCid = () => {
-    var a = "zhangheng0805_cid";
-    var cid = window.localStorage ? window.localStorage.getItem(a) : getCookie(a);
-    var b = new Date().getUTCMilliseconds();
+    let a = "_cid";
+    let cid = getCookie(a);
+    if (cid) return cid;
+    let b = new Date().getUTCMilliseconds();
     cid = (Math.round(2147483647 * Math.abs(Math.random() - 1)) * b) % 1e10;
-    window.localStorage.setItem(a, cid);
     setCookie(a, cid);
     return cid;
 };
@@ -326,17 +338,17 @@ const sendImg = (url, data) => {
     return d;
 };
 
-const sendXhr = (url, data) => {
-    var url = url + "?" + data;
-    var e = window.XMLHttpRequest;
-    if (!e) return !1;
-    var g = new e();
-    if (!("withCredentials" in g)) return !1;
-    g.open("GET", url, !0);
-    g.withCredentials = !0;
-    g.setRequestHeader("Content-Type", "text/plain");
-    g.send(null);
-    return !0;
+const sendXhr = (url, param) => {
+    const xhr = new XMLHttpRequest();
+    if (!("withCredentials" in xhr)) return false;
+    // 第三个参数 false：同步阻塞，不用回调
+    if (param) {
+        url = url + "?" + serialize(param);
+    }
+    xhr.open("GET", url, false);
+    xhr.withCredentials = true;
+    xhr.send(null);
+    return true;
 };
 
 const SendData = (json) => {
@@ -345,6 +357,7 @@ const SendData = (json) => {
         url = window.MainUrl + url;
     }
     navigator.sendBeacon && navigator.sendBeacon(url, JSON.stringify(json));
+    refreshClient()
 };
 
 /**
@@ -378,7 +391,7 @@ function debounce(func, wait, immediate) {
 
 function client_result() {
     // var sid = getSid();
-    // var cid = getCid();
+    var cid = getCid();
     var os = getOS();
     var browser = getBrowser();
     var spider = getSpider();
@@ -400,7 +413,7 @@ function client_result() {
 
     var ClientData = {
         // sid: sid,
-        // cid: cid, //Cookie ID
+        cid: cid, //Cookie ID
         dt: document.title || "", //页面title
         dl: location.href, //页面地址
         dr: ref.rurl,
@@ -444,6 +457,25 @@ function getClientIP() {
         throw new Error("获取getClientIP失败" + xhr);
     }
 }
+
+
+(function () {
+    let isRefreshClient = false;
+    function refreshClient() {
+        try {
+            if (isRefreshClient) return;
+            sendXhr(window.MainUrl + "client-info/index", {cid: getCid()});
+            isRefreshClient = true;
+
+        } catch (e) {
+            console.error(e);
+            isRefreshClient = false;
+        }
+    }
+
+    // 对外暴露方法，内部变量隔离
+    window.refreshClient = refreshClient;
+})();
 
 async function sendClient() {
     let ip = null;

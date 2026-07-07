@@ -13,6 +13,8 @@ async function getRequest(path, params) {
         const res = await fetch(url, {
             signal: controller.signal,
             method: "GET",
+            // 跨域携带凭证（Cookie）
+            credentials: "include"
         });
         if (!res.ok) {
             throw new Error(`网络响应错误: ${res.status} ${res.statusText}`);
@@ -54,6 +56,8 @@ async function postRequest(path, params) {
         const res = await fetch(url, {
             signal: controller.signal,
             method: "POST",
+            // 跨域携带凭证（Cookie）
+            credentials: "include",
             headers: {
                 //   "Content-Type": "application/json",
                 // Authorization: `Bearer ${localStorage.getItem('token')}`

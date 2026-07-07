@@ -1,17 +1,10 @@
-package cn.zhangheng.common.httpServer.handle;
+package cn.zhangheng.common.httpServer.util;
 
 import cn.hutool.core.map.MapUtil;
 import cn.hutool.jwt.JWT;
 import cn.zhangheng.common.bean.Constant;
-import com.zhangheng.util.RandomUtil;
-import com.zhangheng.util.TimeUtil;
 
-import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-
-import static java.security.KeyRep.Type.SECRET;
 
 /**
  * @author: ZhangHeng
@@ -38,12 +31,9 @@ public class JWTUtil {
                 .setPayload("exp", now + expireSec)
                 .setPayload("iat", now)
                 .setPayload("nbf", now)
+                .setPayload("iss ", "xxxr")
                 .setKey(SECRET_KEY)
                 .sign(); // 自动用 HS256
-    }
-
-    public static String generateToken(String sessionID) {
-        return generateToken(MapUtil.of("session_id", sessionID), EXPIRE);
     }
 
     //校验token

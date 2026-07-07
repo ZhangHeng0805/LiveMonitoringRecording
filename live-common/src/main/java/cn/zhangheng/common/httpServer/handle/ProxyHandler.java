@@ -11,6 +11,8 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static cn.zhangheng.common.httpServer.util.HandlerUtils.parseQuery;
+
 /**
  * 支持长连接分片文件的代理请求处理器（JDK1.8兼容，修复302重定向+字节数不匹配异常）
  */

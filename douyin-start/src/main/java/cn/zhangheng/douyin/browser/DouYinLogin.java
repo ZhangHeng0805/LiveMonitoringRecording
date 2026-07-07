@@ -65,7 +65,7 @@ public class DouYinLogin {
             String cookieStr = BrowserUtil.toCookieStr(cookies);
             System.out.println("用户登录后cookie:" + cookieStr);
             try {
-                File file = TxtOperation.creatTxtFile("cookie/douyin-" + user + ".txt");
+                File file = TxtOperation.creatTxtFile("cookie/douyin-" + user + ".room.cookie");
                 TxtOperation.writeTxtFile(cookieStr, file, "UTF-8", false);
                 System.out.println("\n用户cookie信息已保存至：" + file.getPath());
             } catch (IOException e) {
