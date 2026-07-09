@@ -27,9 +27,31 @@ import java.nio.charset.StandardCharsets;
 @Data
 @PropertiesConfig(path = Constant.Setting_Name)
 public class Setting {
-    public Setting() {
+    private static volatile Setting setting;
+
+    private Setting() {
+
+    }
+    private void loadConfig() {
         //自动加载配置
         ConfigLoader.load(this);
+    }
+
+    public static Setting getInstance() {
+        return getInstance(false);
+    }
+
+    public static synchronized Setting getInstance(boolean isRefresh) {
+        // 第一次创建实例
+        if (setting == null) {
+            setting = new Setting();
+            setting.loadConfig();
+        }
+        // 复用对象重新加载配置（不新建实例，避免多对象）
+        if (isRefresh) {
+            setting.loadConfig();
+        }
+        return setting;
     }
 
     /**
@@ -42,6 +64,12 @@ public class Setting {
      */
     @PropertyValue(value = "server.monitor.port", regex = "^(6553[0-5]|655[0-2][0-9]|65[0-4][0-9]{2}|6[0-4][0-9]{3}|[1-5][0-9]{4}|[1-9][0-9]{0,3})$", regexMessage = "端口号范围1-65535")
     private int monitorServerPort = 8005;
+
+    /**
+     * api接口会话有效期
+     */
+    @PropertyValue(value = "server.api.expireSec")
+    private long apiExpireSec = Constant.apiExpireSec;
     /**
      * 微信客户端通用对象
      */

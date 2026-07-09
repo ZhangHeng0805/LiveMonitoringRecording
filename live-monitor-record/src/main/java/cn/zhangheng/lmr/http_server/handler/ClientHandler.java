@@ -1,6 +1,7 @@
 package cn.zhangheng.lmr.http_server.handler;
 
 import cn.hutool.core.map.MapUtil;
+import cn.zhangheng.common.bean.Setting;
 import cn.zhangheng.common.httpServer.handle.MyHandler;
 import cn.zhangheng.common.httpServer.util.JWTUtil;
 import cn.zhangheng.common.util.AsyncBatchLogger;
@@ -30,7 +31,6 @@ public class ClientHandler extends MyHandler {
     private final AsyncBatchLogger logger = new AsyncBatchLogger(Paths.get("logs/client-info.log"));
 
     private final String prefix;
-    private final static long expireSec = 2 * 60 * 60;
 
     // 允许的全部前端Origin白名单，按需新增
 //    private final Set<String> ALLOW_ORIGINS = new HashSet<>();
@@ -59,19 +59,22 @@ public class ClientHandler extends MyHandler {
     @Override
     protected void request(HttpExchange exchange) throws IOException {
         String indexPath = getIndexPath(exchange, prefix);
+        Object clientIP = exchange.getAttribute("client-ip");
         if (indexPath.startsWith("index")) {
-            String cid = parseQuery(exchange).getOrDefault("cid", "cid");
+            Map<String, String> query = parseQuery(exchange);
+            String cid = query.getOrDefault("cid", "cid");
             String sid = getRequestCookie(exchange, "_sid", null);
             if (sid == null) {
                 sid = getSessionID();
-                setResponseCookie(exchange, "_sid", sid, -1);
+                setResponseCookie(exchange, "_sid", sid, Setting.getInstance().getApiExpireSec());
             }
-            setResponseCookie(exchange, "_cid", cid, expireSec);
-            String token = JWTUtil.generateToken(MapUtil.of(cid, sid), expireSec);
-            setResponseCookie(exchange, "_token", token, expireSec);
+            setResponseCookie(exchange, "_cid", cid, Setting.getInstance().getApiExpireSec());
+            String token = JWTUtil.generateToken(MapUtil.of(cid, sid), Setting.getInstance().getApiExpireSec());
+            setResponseCookie(exchange, "_token", token, Setting.getInstance().getApiExpireSec());
+            log.info("client刷新Token: {} - {}，mainURL: {}，Origin: {}",
+                    clientIP,cid,query.get("mainUrl"),exchange.getRequestHeaders().getFirst("Origin"));
         } else {
             String requestBodyStr = parseRequestBodyStr(exchange, charset);
-            Object clientIP = exchange.getAttribute("client-ip");
             Object userAgent = exchange.getAttribute("User-Agent");
             logger.highLog(TimeUtil.getNowTime() + " [" +
                     clientIP + "] - " +

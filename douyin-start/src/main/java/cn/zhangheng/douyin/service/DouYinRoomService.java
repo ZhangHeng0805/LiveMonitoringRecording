@@ -51,7 +51,7 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
 
     public static void main(String[] args) {
         long sta = System.currentTimeMillis();
-        Setting setting = new Setting();
+        Setting setting = Setting.getInstance();
         DouYinRoom info = new DouYinRoom("541976200890");
 //        DouYinRoom info = new DouYinRoom("兰小美认证信息.txt");
 //        DouYinRoom info = new DouYinRoom("870887192950-7547373102502578971");

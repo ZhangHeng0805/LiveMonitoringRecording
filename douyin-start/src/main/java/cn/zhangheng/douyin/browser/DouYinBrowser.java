@@ -260,7 +260,7 @@ public class DouYinBrowser implements Closeable {
     }
 
     private PlaywrightBrowser createBrowser() {
-        Setting setting = new Setting();
+        Setting setting = Setting.getInstance();
         boolean headless = !Objects.equals(setting.getBrowserHeadless(), Boolean.FALSE);
         PlaywrightBrowser browser = new PlaywrightBrowser(Constant.User_Agent, headless);
         browser.setIsPageClear(setting.getBrowserIsPageClear());

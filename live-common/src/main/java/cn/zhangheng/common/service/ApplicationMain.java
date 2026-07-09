@@ -59,7 +59,7 @@ public abstract class ApplicationMain<R extends Room> {
     public void start(Setting setting, String[] args) {
         System.out.println(getBanner());
         try {
-            ActivationUtil.verifyActivationCodeFile(Constant.deviceUniqueId, new Setting().getActivateVoucherPath());
+            ActivationUtil.verifyActivationCodeFile(Constant.deviceUniqueId, Setting.getInstance().getActivateVoucherPath());
         } catch (ErrorException errorException) {
             String message = ThrowableUtil.getAllCauseMessage(errorException);
             log.error(message, errorException);
@@ -172,7 +172,7 @@ public abstract class ApplicationMain<R extends Room> {
         try {
             TrayIconUtil.getThreadInstance().set(iconUtil);
             do {
-                Setting srcSetting = new Setting();
+                Setting srcSetting = Setting.getInstance(true);
                 if (setting != null) {
                     try {
                         ObjectPropertyUpdater.updateDifferentProperties(setting, srcSetting);

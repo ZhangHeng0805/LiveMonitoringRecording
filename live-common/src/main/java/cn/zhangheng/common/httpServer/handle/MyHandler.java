@@ -62,10 +62,10 @@ public abstract class MyHandler implements HttpHandler {
         // 获取当前请求的前端Origin
         String origin = reqHeaders.getFirst("Origin");
 
-        // Origin存在且在白名单内，动态放行
-        if (origin != null) {
-            respHeaders.set("Access-Control-Allow-Origin", origin);
+        // Origin存在
+        if (origin != null && origin.startsWith("http")) {
             // 开启凭证，支持跨域读写Cookie
+            respHeaders.set("Access-Control-Allow-Origin", origin);
         } else {
             respHeaders.set("Access-Control-Allow-Origin", "*");
         }

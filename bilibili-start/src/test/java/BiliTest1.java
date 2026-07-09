@@ -12,7 +12,7 @@ import cn.zhangheng.common.bean.Setting;
 public class BiliTest1 {
     public static void main(String[] args) throws Exception {
 
-        BiliMain biliMain = new BiliMain(new Setting());
+        BiliMain biliMain = new BiliMain(Setting.getInstance());
 
         //小兰花2号-1842356262
         //哔哩哔哩王者荣耀赛事-55

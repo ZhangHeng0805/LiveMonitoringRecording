@@ -60,7 +60,7 @@ public class FileModeMain {
     private static final ConcurrentHashMap<Room.Platform, Integer> platformMap = new ConcurrentHashMap<>();
     private static LocalMonitorServer serverApi;
     private static final AtomicInteger runCount = new AtomicInteger(0);
-    private static final Setting setting = new Setting();
+    private static final Setting setting = Setting.getInstance();
 
     public static void main(String[] args) throws Exception {
         try {

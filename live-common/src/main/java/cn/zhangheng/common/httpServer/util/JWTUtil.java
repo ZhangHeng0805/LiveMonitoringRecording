@@ -16,8 +16,6 @@ import java.util.Map;
 public class JWTUtil {
     // 密钥，生产环境放在配置文件，长度尽量长
     private static final byte[] SECRET_KEY = Constant.deviceUniqueId.getBytes();
-    // 过期时间：2小时 毫秒
-    public static final long EXPIRE = 2 * 60 * 60;
 
 
     // 生成token

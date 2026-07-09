@@ -465,7 +465,10 @@
 
             clearTimeout(timeoutId); // 清除超时定时器
             if (response.status === 403) {
-                // location.reload();
+                const isOk = confirm('页面会话已过期，是否刷新页面？');
+                if (isOk) {
+                    location.reload();
+                }
             }
             // 检查响应状态
             if (!response.ok) {

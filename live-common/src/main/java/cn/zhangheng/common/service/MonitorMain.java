@@ -10,6 +10,7 @@ import cn.zhangheng.common.record.Recorder;
 import cn.zhangheng.common.record.RecorderTask;
 import cn.zhangheng.common.util.LogUtil;
 import cn.zhangheng.common.util.NotificationUtil;
+import cn.zhangheng.common.util.RoomUtils;
 import cn.zhangheng.common.util.TrayIconUtil;
 import cn.zhangheng.common.video.FlvToMp4;
 import com.zhangheng.file.FileUtil;
@@ -421,7 +422,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             public void iconClick(ActionEvent e) {
                 if (recorder == null || recorder.getSaveFilePath() == null) {
                     String home = System.getProperty("user.dir");
-                    Path path = Paths.get(home, Constant.Application, room.getPlatform().getName(), "[" + room.getNickname() + "]");
+                    Path path = Paths.get(home, RoomUtils.getBasePathStr(room));
                     if (Files.exists(path)) {
                         openDirectory(path.toString());
                     } else {

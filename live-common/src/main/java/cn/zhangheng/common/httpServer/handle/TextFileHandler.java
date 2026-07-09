@@ -25,7 +25,7 @@ import static cn.zhangheng.common.httpServer.util.HandlerUtils.*;
  */
 public class TextFileHandler extends MyHandler {
 
-    private static final Logger log = LoggerFactory.getLogger(TextFileHandler.class);
+//    private static final Logger log = LoggerFactory.getLogger(TextFileHandler.class);
     private final String file;
     private final String contextType;
 
@@ -79,8 +79,8 @@ public class TextFileHandler extends MyHandler {
 
     @Override
     public void request(HttpExchange t) throws IOException {
-        String clientIP = getClientIP(t);
-        log.debug("{} 请求[{}]:{}", clientIP, t.getRequestURI().getPath(), t.getRequestHeaders().getFirst("User-Agent"));
+//        String clientIP = getClientIP(t);
+//        log.debug("{} 请求[{}]:{}", clientIP, t.getRequestURI().getPath(), t.getRequestHeaders().getFirst("User-Agent"));
         t.getResponseHeaders().set("Content-Type", contextType + "; charset=" + charset.name());
         try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream(file);
              OutputStream outputStream = t.getResponseBody()) {

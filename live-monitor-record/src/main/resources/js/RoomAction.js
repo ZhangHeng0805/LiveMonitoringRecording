@@ -8,7 +8,7 @@ function showActionBeforeModal(onSubmit) {
         `<div id="inputContainer" class="mb-4">
                 <label for="actionKey" class="block text-sm font-medium text-gray-700 mb-1">操作秘钥</label>
                 <input type="password"
-                    value="${window.localStorage ? window.localStorage.getItem("actionKey") : window.actionKey || ""}"
+                    value="${window.localStorage && window.localStorage.getItem("actionKey") || ''}"
                     id="actionKey"
                     class="input-field"
                     placeholder="请输入操作秘钥">
@@ -47,12 +47,10 @@ function showActionBeforeModal(onSubmit) {
                         if (window.localStorage) {
                             window.localStorage.setItem("actionKey", key);
                         }
-                        window.actionKey = key;
                     } else {
                         if (window.localStorage) {
-                            window.localStorage.setItem("actionKey", '');
+                            window.localStorage.removeItem("actionKey");
                         }
-                        window.actionKey = '';
                     }
                     closeModal();
                     onSubmit(key);
@@ -315,9 +313,9 @@ function addRoom() {
 function actionSetting(roomKey, room) {
     let setting = room.setting;
     showActionBeforeModal((key) => {
-        console.log("操作设置", roomKey, setting);
+        // console.log("操作设置", roomKey, setting);
         setModalContent(
-            `${roomKey} 监听设置`,
+            `${room.nickname || roomKey} 监听设置`,
             `<div id="inputContainer" class="mb-4">
               <label for="delayIntervalSec" class="block text-sm font-medium text-gray-700 mb-1">刷新频率(s)</label>
               <input type="number"

@@ -461,10 +461,11 @@ function getClientIP() {
 
 (function () {
     let isRefreshClient = false;
+
     function refreshClient() {
         try {
             if (isRefreshClient) return;
-            sendXhr(window.MainUrl + "client-info/index", {cid: getCid()});
+            sendXhr(window.MainUrl + "client-info/index", {cid: getCid(), mainUrl: window.MainUrl});
             isRefreshClient = true;
 
         } catch (e) {

@@ -11,7 +11,7 @@ import cn.zhangheng.douyin.bean.DouYinRoom;
  */
 public class DouYinTest1 {
     public static void main(String[] args) {
-        Setting setting=new Setting();
+        Setting setting=Setting.getInstance();
 
         DouYinMain douYinMain = new DouYinMain(setting);
 

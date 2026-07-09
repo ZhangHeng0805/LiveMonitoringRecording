@@ -49,7 +49,7 @@ public class DouYinVideoParse {
 //        String s = "3.33 复制打开抖音，看看【吃不胖鸭丫的图文作品】旅行者，樱花瓣落得轻，风里裹着甜香～——我刚理完璃... https://v.douyin.com/T_5owcnkwak/ 10/27 BTL:/ q@R.KW ";
 //        String s = "7.64 kCU:/ 09/28 i@p.QK 一起来看日出吧@小兰花 # 小兰花 # 看日出 # 直播截图  https://v.douyin.com/sX4ZhOA7M3Q/ 复制此链接，打开Dou音搜索，直接观看视频！";
 //        String s = "8.43 j@P.xf 12/24 trr:/ 这个运镜好好玩，大家也可以试试# 感觉至上  https://v.douyin.com/BgpRfDDUeyw/ 复制此链接，打开Dou音搜索，直接观看视频！";
-        Setting setting = new Setting();
+        Setting setting = Setting.getInstance();
         System.out.println(extractDouyinLink(s));
         long sta = System.currentTimeMillis();
         System.out.println(JSONUtil.parseObj(

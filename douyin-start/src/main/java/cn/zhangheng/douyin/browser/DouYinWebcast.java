@@ -60,7 +60,7 @@ public class DouYinWebcast {
         }
         System.out.print("请输入抖音cookie(选填): ");
         String cookie = scanner.nextLine();
-        Setting setting = new Setting();
+        Setting setting = Setting.getInstance();
         if (StrUtil.isNotBlank(cookie)) {
             setting.setCookieDouYin(cookie);
         }

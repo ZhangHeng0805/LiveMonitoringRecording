@@ -30,6 +30,7 @@ async function getRequest(path, params) {
             errorMessage = error.message;
         }
         console.error(errorMessage, error);
+        alert("请求失败 - "+errorMessage);
         throw error; // 抛出给调用方处理
     } finally {
         // 无论成功失败，都清除定时器，防止内存残留
@@ -80,6 +81,7 @@ async function postRequest(path, params) {
             errorMessage = error.message;
         }
         console.error(errorMessage, error);
+        alert("请求失败 - "+errorMessage);
         throw error; // 抛出给调用方处理
     } finally {
         // 无论成功失败，都清除定时器，防止内存残留
