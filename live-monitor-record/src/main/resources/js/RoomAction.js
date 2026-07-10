@@ -61,36 +61,42 @@ function showActionBeforeModal(onSubmit) {
 }
 
 //操作结果弹窗
-function showActionAfterModal(msg) {
+function showActionAfterModal(msg, callback) {
     setModalContent(
         msg.title || "操作结果",
-        `<p class="
-            ${msg.success ? "text-green-600" : "text-red-600"} text-center">${
-            msg.message
-        }</p>`,
+        `<p class="${msg.success ? "text-green-600" : "text-red-600"} text-center">${msg.message}</p>`,
         [
             {
                 text: "知道了",
                 className:
                     "bg-primary text-white hover:bg-primary/90 focus:ring-primary",
-                onClick: closeModal,
+                onClick: () => {
+                    closeModal();
+                    // 延迟300ms执行回调，匹配弹窗关闭动画时长
+                    if (typeof callback === "function") {
+                        setTimeout(callback, 500);
+                    }
+                },
             },
         ]
     );
 }
 
+
 //房间刷新
 function actionRefresh(key) {
-    actionRequest("refresh", {
-        key: key,
-    }).then((data) => {
-        data.title = "刷新操作结果";
-        showActionAfterModal(data);
-        if (data.success) {
-            handleManualRefresh();
-        }
-    });
+    refreshDebounce(key);
 }
+const refreshDebounce = debounce(function (key) {
+    actionRequest("refresh", { key: key }).then((data) => {
+        data.title = "刷新操作结果";
+        showActionAfterModal(data, () => {
+            if (data.success) {
+                handleManualRefresh();
+            }
+        });
+    });
+}, 500, true);
 
 async function actionRequest(path, params) {
     return getRequest(`action/${path}`, params);
@@ -106,10 +112,14 @@ function actionMonitor(roomKey, isOpen) {
             actionKey: key,
         }).then((data) => {
             data.title = "监听操作结果";
-            showActionAfterModal(data);
-            if (data.success) {
-                handleManualRefresh();
-            }
+            showActionAfterModal(data, () => {
+                if (data.success) {
+                    setTimeout(() => {
+                        handleManualRefresh();
+                    }, 1000);
+                }
+            });
+
         });
     });
 }
@@ -124,10 +134,11 @@ function actionRecord(roomKey, isRecord) {
             actionKey: key,
         }).then((data) => {
             data.title = "录制操作结果";
-            showActionAfterModal(data);
-            if (data.success) {
-                handleManualRefresh();
-            }
+            showActionAfterModal(data, () => {
+                if (data.success) {
+                    handleManualRefresh();
+                }
+            });
         });
     });
 }
@@ -139,10 +150,11 @@ function delRoom(roomKey) {
             actionKey: key,
         }).then((data) => {
             data.title = "操作结果";
-            showActionAfterModal(data);
-            if (data.success) {
-                handleManualRefresh();
-            }
+            showActionAfterModal(data, () => {
+                if (data.success) {
+                    handleManualRefresh();
+                }
+            });
         });
     });
 }
@@ -290,10 +302,11 @@ function addRoom() {
                                 xiZhiUrl: xiZhiUrlInput.length > 0 ? xiZhiUrlInput : null,
                             },
                         }).then((msg) => {
-                            showActionAfterModal(msg);
-                            if (msg.success) {
-                                handleManualRefresh();
-                            }
+                            showActionAfterModal(msg, () => {
+                                if (msg.success) {
+                                    handleManualRefresh();
+                                }
+                            });
                         });
                     },
                 },
@@ -430,10 +443,11 @@ function actionSetting(roomKey, room) {
                                 xiZhiUrl: xiZhiUrlInput.length > 0 ? xiZhiUrlInput : null,
                             }
                         }).then((msg) => {
-                            showActionAfterModal(msg);
-                            if (msg.success) {
-                                handleManualRefresh();
-                            }
+                            showActionAfterModal(msg, () => {
+                                if (msg.success) {
+                                    handleManualRefresh();
+                                }
+                            });
                         });
                     },
                 },

@@ -632,7 +632,7 @@
         const button = document.createElement("button");
         button.textContent = text;
         button.className = `btn ${className}`;
-        button.addEventListener("click", onClick);
+        button.addEventListener("click", debounce(onClick, 300, true));
         modalFooter.appendChild(button);
         return button;
     }

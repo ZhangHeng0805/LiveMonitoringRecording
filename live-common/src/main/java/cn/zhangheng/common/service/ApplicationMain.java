@@ -172,16 +172,15 @@ public abstract class ApplicationMain<R extends Room> {
         try {
             TrayIconUtil.getThreadInstance().set(iconUtil);
             do {
-                Setting srcSetting = Setting.getInstance(true);
-                if (setting != null) {
+                if (setting == null) {
                     try {
-                        ObjectPropertyUpdater.updateDifferentProperties(setting, srcSetting);
+                        setting = Setting.getInstance(true);
                     } catch (Exception e) {
                         log.warn("读取配置文件异常：" + ThrowableUtil.getAllCauseMessage(e));
                     }
                 }
                 room.reset();//重置直播间
-                room.setSetting(srcSetting);
+                room.setSetting(setting);
                 monitorMain = getMonitorMain(room);
                 monitorMain.start(room, isRecord);
                 isLoop = !monitorMain.getIsForceStop() && room.getSetting().isLoop();

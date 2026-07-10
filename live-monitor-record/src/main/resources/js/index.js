@@ -6,21 +6,21 @@ function createRoomHeadElement(item) {
                 <div class="bg-primary/5 p-4 border-b border-gray-100">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center">
-                            ${room.avatar ? `<img src="${room.avatar}" alt="${room.nickname || "未知主播"}" class="w-10 h-10 rounded-full object-cover mr-3">` : `<div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 mr-3"><i class="fa fa-user"></i></div>`}
+                            ${room.avatar ? `<img src="${room.avatar}" alt="${room.nickname || "未知主播"}" class="w-12 h-12 rounded-full object-cover mr-3">` : `<div class="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 mr-3"><i class="fa fa-user"></i></div>`}
                                <div>
                                     <h3 class="font-bold">${room.nickname || "未知主播"}</h3>
-                                    <div class="flex items-center text-xs text-gray-500 mt-0.5">
-                                        <span class="bg-primary/10 text-primary px-2 py-0.5 rounded mr-2">
+                                    <div class="flex items-center text-xs text-gray-500 mt-1">
+                                        <span class="bg-primary/10 text-primary rounded text-center p-1 mx-2">
                                             ${platformName[room.platform] || "未知平台"}
                                         </span>
-                                        <span>房间ID: ${room.id || "未知"}</span>
-                                        <span class="${living ? "bg-primary/10 text-gray-600" : "bg-gray-100 text-gray-600"} px-2 py-0.5 rounded ml-1">
+                                        <span class="text-center">房间ID: ${room.id || "未知"}</span>
+                                        <span class="${living ? "bg-primary/10 text-gray-600" : "bg-gray-100 text-gray-600"} rounded text-center p-1 mx-2">
                                             更新于${formatDate(new Date(room.updateTime))} | 频率: ${room.setting.delayIntervalSec + "s" || "未知"}
                                         </span>
                                     </div>
                                 </div>
                         </div>
-                        <span class="status-badge ${living ? "bg-success/20 text-success" : "bg-gray-200 text-gray-600"}">
+                        <span class="status-badge ${living ? "bg-success/20 text-success" : "bg-gray-200 text-gray-600"} text-center py-2">
                             <i class="fa fa-circle text-xs mr-1 animate-pulse"></i>${living ? "直播中" : "未直播"}
                             <button onClick="actionRefresh('${item.key}')"  class="ml-2"><i class="fa fa-refresh"></i></button>
                         </span>
