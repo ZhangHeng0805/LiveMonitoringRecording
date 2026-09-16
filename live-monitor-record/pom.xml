@@ -43,6 +43,11 @@
             <version>${xxxr.version}</version>
             <scope>compile</scope>
         </dependency>
+        <dependency>
+            <groupId>cn.zhangheng.record</groupId>
+            <artifactId>cpolar-tool</artifactId>
+            <version>${xxxr.version}</version>
+        </dependency>
     </dependencies>
 
     <build>

@@ -12,6 +12,11 @@
     <groupId>cn.zhangheng.common</groupId>
     <artifactId>live-common</artifactId>
     <dependencies>
+        <dependency>
+            <groupId>cn.zhangheng.common</groupId>
+            <artifactId>common-libs</artifactId>
+            <version>${xxxr.version}</version>
+        </dependency>
 <!--        <dependency>-->
 <!--            <groupId>org.seleniumhq.selenium</groupId>-->
 <!--            <artifactId>selenium-java</artifactId>-->

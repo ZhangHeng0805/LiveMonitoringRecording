@@ -1,8 +1,8 @@
 package cn.zhangheng.bilibili.bean;
 
 import cn.hutool.core.util.StrUtil;
-import cn.zhangheng.common.bean.Room;
-import cn.zhangheng.common.bean.Setting;
+import cn.zhangheng.record.bean.Room;
+import cn.zhangheng.record.bean.Setting;
 import lombok.Getter;
 import lombok.Setter;
 

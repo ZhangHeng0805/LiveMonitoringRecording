@@ -1,5 +1,7 @@
 package cn.zhangheng.douyin.browser;
 
+import cn.hutool.cache.CacheUtil;
+import cn.hutool.cache.impl.TimedCache;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONConfig;
@@ -8,9 +10,9 @@ import cn.hutool.json.JSONUtil;
 import cn.zhangheng.browser.BrowserAPI;
 import cn.zhangheng.browser.BrowserUtil;
 import cn.zhangheng.browser.PlaywrightBrowser;
-import cn.zhangheng.common.bean.Constant;
-import cn.zhangheng.common.bean.Setting;
-import cn.zhangheng.common.util.RequestUtils;
+import cn.zhangheng.record.bean.Constant;
+import cn.zhangheng.record.bean.Setting;
+import cn.zhangheng.record.util.RequestUtils;
 import cn.zhangheng.douyin.bean.DouYinVideo;
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.WaitForSelectorState;
@@ -40,8 +42,8 @@ import java.util.regex.Pattern;
 @Slf4j
 public class DouYinVideoParse {
 
-    private static final BrowserAPI browserApi = new BrowserAPI("https://www.douyin.com/aweme/v1/web/aweme/detail/");
-
+    private static final String urlPrefix = "https://www.douyin.com/aweme/v1/web/aweme/detail/";
+    private static final TimedCache<String, BrowserAPI> timedCache = CacheUtil.newTimedCache(1000 * 60 * 10);
 
     public static void main(String[] args) {
 //        String s = "1.76 复制打开抖音，看看【小兰花的作品】自我救赎的路上本就光怪陆离# 感觉至上  https://v.douyin.com/jvzZf1jio5w/ 10/01 t@R.xS hBT:/ ";
@@ -54,7 +56,7 @@ public class DouYinVideoParse {
         long sta = System.currentTimeMillis();
         System.out.println(JSONUtil.parseObj(
                 parse(s, setting, UserAgentUtil.getRandomUser_Agent())).toStringPretty());
-        System.out.println("耗时:"+(System.currentTimeMillis()-sta));
+        System.out.println("耗时:" + (System.currentTimeMillis() - sta));
     }
 
     public static DouYinVideo parse(String shareUrl, String userAgent) {
@@ -69,6 +71,14 @@ public class DouYinVideoParse {
         }
         if (userAgent == null) {
             userAgent = UserAgentUtil.getRandomUser_Agent();
+        }
+
+        BrowserAPI browserApi = timedCache.get(link);
+        if (browserApi == null) {
+            browserApi = new BrowserAPI(urlPrefix);
+        } else {
+//            String request = request(browserApi);
+            return handleData(browserApi.getResponseBody());
         }
         Page page = null;
         boolean headless = setting == null || !Objects.equals(setting.getBrowserHeadless(), Boolean.FALSE);
@@ -87,8 +97,11 @@ public class DouYinVideoParse {
                 page.reload(new Page.ReloadOptions().setTimeout(10_000).setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
                 response = BrowserUtil.waitForTargetResponse(page, browserApi.getUrlPrefix(), 15_000);
             }
+            browserApi.setDataUrl(response.url());
+            browserApi.setHeaders(response.request().headers());
             browserApi.setResponseBody(response.text());
             success = true;
+            timedCache.put(link, browserApi);
         } catch (Exception e) {
             log.error("获取抖音视频信息失败！{}", e.getMessage());
         }
@@ -101,62 +114,77 @@ public class DouYinVideoParse {
     }
 
 
-    public static DouYinVideo parse1(String shareUrl, Setting setting) {
-        boolean success = false;
-        String link = extractDouyinLink(shareUrl);
-        if (link == null) {
-            return null;
-        }
-        PlaywrightBrowser browser = null;
+    public static String request(BrowserAPI browserAPI) {
+        HttpURLConnection connection = null;
         try {
-            browser = new PlaywrightBrowser(Constant.User_Agent);
-            Page page = browser.newPage();
-            //设置cookie
-            if (setting != null) {
-                BrowserContext context = page.context();
-                String cookie = Setting.parseCookie(setting.getCookieDouYin());
-                if (StrUtil.isNotBlank(cookie) && context.cookies(link).isEmpty()) {
-                    String host = null;
-                    try {
-                        host = new URL(link).getHost();
-                    } catch (MalformedURLException ignored) {
-                    }
-                    if (host != null) {
-                        context.addCookies(BrowserUtil.parseCookieString(host, cookie));
-                        log.debug("设置cookie成功！");
-                    }
-                }
-            }
-            page.onResponse(response -> {
-                String url = response.url();
-                if (url.startsWith(browserApi.getUrlPrefix())) {
-                    browserApi.setResponseBody(response.text());
-                }
-            });
-
-            browser.navigatePage(link, page);
-
-            checkVideoSelectors(page);
-
-//            success = browser.waitForTargetRequest(page, api.getUrlPrefix(), 10_000);
-//            success = browser.waitForTargetResponse(page, api.getUrlPrefix(), 10_000);
-            success = StrUtil.isNotBlank(browserApi.getResponseBody());
-        } catch (Throwable e) {
-            log.error(ThrowableUtil.getAllCauseMessage(e));
+            connection = RequestUtils.getRequest(browserAPI.getDataUrl(), browserAPI.getHeaders());
+            return RequestUtils.responseAsString(connection);
+        } catch (Exception e) {
+            log.error("请求失败！{}", ThrowableUtil.getAllCauseMessage(e));
         } finally {
-            if (browser != null) {
-                browser.close();
+            if (connection != null) {
+                connection.disconnect();
             }
         }
-        if (success) {
-//            String data = getData(api);
-            String data = browserApi.getResponseBody();
-            return handleData(data);
-        } else {
-            throw new RuntimeException("未解析到视频信息");
-        }
-
+        return "";
     }
+
+//    public static DouYinVideo parse1(String shareUrl, Setting setting) {
+//        boolean success = false;
+//        String link = extractDouyinLink(shareUrl);
+//        if (link == null) {
+//            return null;
+//        }
+//        PlaywrightBrowser browser = null;
+//        try {
+//            browser = new PlaywrightBrowser(Constant.User_Agent);
+//            Page page = browser.newPage();
+//            //设置cookie
+//            if (setting != null) {
+//                BrowserContext context = page.context();
+//                String cookie = Setting.parseCookie(setting.getCookieDouYin());
+//                if (StrUtil.isNotBlank(cookie) && context.cookies(link).isEmpty()) {
+//                    String host = null;
+//                    try {
+//                        host = new URL(link).getHost();
+//                    } catch (MalformedURLException ignored) {
+//                    }
+//                    if (host != null) {
+//                        context.addCookies(BrowserUtil.parseCookieString(host, cookie));
+//                        log.debug("设置cookie成功！");
+//                    }
+//                }
+//            }
+//            page.onResponse(response -> {
+//                String url = response.url();
+//                if (url.startsWith(browserApi.getUrlPrefix())) {
+//                    browserApi.setResponseBody(response.text());
+//                }
+//            });
+//
+//            browser.navigatePage(link, page);
+//
+//            checkVideoSelectors(page);
+//
+////            success = browser.waitForTargetRequest(page, api.getUrlPrefix(), 10_000);
+////            success = browser.waitForTargetResponse(page, api.getUrlPrefix(), 10_000);
+//            success = StrUtil.isNotBlank(browserApi.getResponseBody());
+//        } catch (Throwable e) {
+//            log.error(ThrowableUtil.getAllCauseMessage(e));
+//        } finally {
+//            if (browser != null) {
+//                browser.close();
+//            }
+//        }
+//        if (success) {
+////            String data = getData(api);
+//            String data = browserApi.getResponseBody();
+//            return handleData(data);
+//        } else {
+//            throw new RuntimeException("未解析到视频信息");
+//        }
+//
+//    }
 
     private static void checkVideoSelectors(Page page) {
         // 抖音直播间核心元素（优先级从高到低，可根据实际情况调整）

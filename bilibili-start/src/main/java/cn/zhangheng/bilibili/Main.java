@@ -1,9 +1,9 @@
 package cn.zhangheng.bilibili;
 
 import cn.zhangheng.bilibili.bean.BiliRoom;
-import cn.zhangheng.common.service.ApplicationMain;
-import cn.zhangheng.common.service.MonitorMain;
-import cn.zhangheng.common.bean.Room;
+import cn.zhangheng.record.service.ApplicationMain;
+import cn.zhangheng.record.service.MonitorMain;
+import cn.zhangheng.record.bean.Room;
 
 public class Main extends ApplicationMain<BiliRoom> {
 

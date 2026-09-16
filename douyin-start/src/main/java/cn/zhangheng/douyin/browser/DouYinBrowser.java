@@ -1,8 +1,8 @@
 package cn.zhangheng.douyin.browser;
 
 import cn.zhangheng.browser.*;
-import cn.zhangheng.common.bean.Constant;
-import cn.zhangheng.common.bean.Setting;
+import cn.zhangheng.record.bean.Constant;
+import cn.zhangheng.record.bean.Setting;
 import cn.zhangheng.douyin.bean.DouYinRoom;
 import cn.zhangheng.douyin.util.DouYinUtils;
 import com.microsoft.playwright.*;

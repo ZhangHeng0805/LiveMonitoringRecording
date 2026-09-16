@@ -1,6 +1,6 @@
 import cn.zhangheng.bilibili.BiliMain;
 import cn.zhangheng.bilibili.bean.BiliRoom;
-import cn.zhangheng.common.bean.Setting;
+import cn.zhangheng.record.bean.Setting;
 
 /**
  * @author: ZhangHeng

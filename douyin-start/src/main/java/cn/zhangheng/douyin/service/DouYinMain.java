@@ -1,8 +1,8 @@
 package cn.zhangheng.douyin.service;
 
-import cn.zhangheng.common.service.MonitorMain;
-import cn.zhangheng.common.bean.Setting;
-import cn.zhangheng.common.util.LogUtil;
+import cn.zhangheng.record.service.MonitorMain;
+import cn.zhangheng.record.bean.Setting;
+import cn.zhangheng.record.util.LogUtil;
 import cn.zhangheng.douyin.bean.DouYinRoom;
 import com.zhangheng.util.ThrowableUtil;
 

@@ -1,7 +1,7 @@
 package cn.zhangheng.lmr.http_server.handler;
 
 import cn.hutool.core.util.StrUtil;
-import cn.zhangheng.common.httpServer.handle.JSONHandler;
+import cn.zhangheng.record.httpServer.handle.JSONHandler;
 import cn.zhangheng.douyin.browser.DouYinBrowserFactory;
 import cn.zhangheng.lmr.FileModeMain;
 import com.sun.net.httpserver.HttpExchange;

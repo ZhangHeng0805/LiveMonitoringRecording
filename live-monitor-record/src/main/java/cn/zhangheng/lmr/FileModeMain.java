@@ -3,17 +3,19 @@ package cn.zhangheng.lmr;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.util.StrUtil;
-import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
-import cn.zhangheng.common.activation.ActivationUtil;
-import cn.zhangheng.common.activation.ErrorException;
-import cn.zhangheng.common.activation.WarnException;
-import cn.zhangheng.common.bean.Constant;
-import cn.zhangheng.common.bean.Room;
-import cn.zhangheng.common.bean.Setting;
-import cn.zhangheng.common.bean.enums.RunMode;
-import cn.zhangheng.common.util.RoomUtils;
-import cn.zhangheng.common.util.TrayIconUtil;
+import cn.zhangheng.lmr.service.CpolarToolStarter;
+import cn.zhangheng.lmr.service.LocalHttpServerStarter;
+import cn.zhangheng.lmr.service.ServerStarterManager;
+import cn.zhangheng.record.activation.ActivationUtil;
+import cn.zhangheng.record.activation.ErrorException;
+import cn.zhangheng.record.activation.WarnException;
+import cn.zhangheng.record.bean.Constant;
+import cn.zhangheng.record.bean.Room;
+import cn.zhangheng.record.bean.Setting;
+import cn.zhangheng.record.bean.enums.RunMode;
+import cn.zhangheng.record.util.RoomUtils;
+import cn.zhangheng.record.util.TrayIconUtil;
 import cn.zhangheng.douyin.browser.DouYinBrowserFactory;
 import cn.zhangheng.lmr.bean.RoomFileModel;
 import cn.zhangheng.lmr.bean.RoomJson;
@@ -58,7 +60,7 @@ public class FileModeMain {
     private static final ConcurrentHashMap<Path, RoomFileModel> roomFileMap = new ConcurrentHashMap<>();
     @Getter
     private static final ConcurrentHashMap<Room.Platform, Integer> platformMap = new ConcurrentHashMap<>();
-    private static LocalMonitorServer serverApi;
+    private static final ServerStarterManager starterManager = new ServerStarterManager();
     private static final AtomicInteger runCount = new AtomicInteger(0);
     private static final Setting setting = Setting.getInstance();
 
@@ -86,9 +88,10 @@ public class FileModeMain {
                 TimeUnit.SECONDS.sleep(3);
                 iconUtil.shutdown();
             }
+            starterManager.addStarter(new LocalHttpServerStarter());
+            starterManager.addStarter(new CpolarToolStarter());
 
-            serverApi = new LocalMonitorServer(setting.getMonitorServerPort());
-            serverApi.start();
+            starterManager.startAllServer();
             int coreSize = setting.getMaxMonitorThreads();
             ThreadPool = new ThreadPoolExecutor(coreSize, coreSize, 0, TimeUnit.SECONDS, new ArrayBlockingQueue<>(coreSize * 2));
             log.info("启动监听线程数：{}个", coreSize);
@@ -107,9 +110,7 @@ public class FileModeMain {
             if (ThreadPool != null) {
                 ThreadPool.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
             }
-            if (serverApi != null) {
-                serverApi.stop();
-            }
+            starterManager.stopAllServer();
         }
 
 

@@ -21,6 +21,7 @@
         <module>douyin-fetcher</module>
         <module>cpolar-tool</module>
         <module>smart-video-frame-extractor</module>
+        <module>common-libs</module>
     </modules>
 
     <properties>

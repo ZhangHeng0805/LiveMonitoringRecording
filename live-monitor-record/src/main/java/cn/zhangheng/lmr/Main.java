@@ -2,13 +2,14 @@ package cn.zhangheng.lmr;
 
 import cn.zhangheng.bilibili.BiliMain;
 import cn.zhangheng.bilibili.bean.BiliRoom;
-import cn.zhangheng.common.bean.*;
-import cn.zhangheng.common.service.ApplicationMain;
-import cn.zhangheng.common.service.MonitorMain;
+import cn.zhangheng.record.service.ApplicationMain;
+import cn.zhangheng.record.service.MonitorMain;
 import cn.zhangheng.douyin.service.DouYinMain;
 import cn.zhangheng.douyin.bean.DouYinRoom;
 import cn.zhangheng.kuaishou.bean.KuaiShouRoom;
 import cn.zhangheng.kuaishou.service.KuaiShouMain;
+import cn.zhangheng.record.bean.Room;
+import cn.zhangheng.record.bean.Setting;
 
 public class Main extends ApplicationMain<Room> {
     public static void main(String[] args) {

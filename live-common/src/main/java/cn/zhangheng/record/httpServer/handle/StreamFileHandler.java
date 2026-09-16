@@ -1,0 +1,83 @@
+package cn.zhangheng.record.httpServer.handle;
+
+import cn.hutool.core.io.IoUtil;
+import cn.hutool.core.map.MapUtil;
+import cn.zhangheng.record.httpServer.util.HandlerUtils;
+import com.sun.net.httpserver.HttpExchange;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.URI;
+import java.util.Map;
+
+import static cn.zhangheng.record.httpServer.util.HandlerUtils.parseQuery;
+
+/**
+ * @author: ZhangHeng
+ * @email: zhangheng_0805@163.com
+ * @date: 2025/06/06 星期五 06:35
+ * @version: 1.0
+ * @description:
+ */
+public class StreamFileHandler extends MyHandler {
+    private String type = "application/octet-stream";
+    private final String prefix;
+
+    public StreamFileHandler(String prefix, String type) {
+        this.type = type;
+        this.prefix = prefix;
+    }
+
+    public StreamFileHandler(String prefix) {
+        this.prefix = prefix;
+    }
+
+    public StreamFileHandler() {
+        this.prefix = null;
+    }
+
+    @Override
+    public void request(HttpExchange httpExchange) throws IOException {
+        URI requestURI = httpExchange.getRequestURI();
+        String file;
+        if (prefix != null) {
+            String path = requestURI.getPath();
+            file = path.substring(1);
+        } else {
+            Map<String, String> map = HandlerUtils.parseQuery(requestURI.getQuery(),charset);
+            file = map.get("file");
+            if (file == null || file.isEmpty()) {
+                sendErrorResponse(httpExchange, 400, "Missing file parameter");
+                return;
+            }
+            type = MapUtil.getStr(map, "type", type);
+        }
+        try (InputStream is = getClass().getClassLoader().getResourceAsStream(file)) {
+            if (is == null) {
+                sendErrorResponse(httpExchange, 404, file + ": File not found");
+                return;
+            }
+            httpExchange.getResponseHeaders().set("Content-Type", type);
+            httpExchange.sendResponseHeaders(200, is.available());
+            try (OutputStream os = httpExchange.getResponseBody()) {
+                IoUtil.copy(is, os);
+            }
+        }
+    }
+
+    // 辅助方法：通过读取流计算长度（适用于无法直接获取Path的情况）
+    private long calculateStreamLength(InputStream inputStream) throws IOException {
+        long length = 0;
+        byte[] buffer = new byte[8192];
+        int bytesRead;
+        while ((bytesRead = inputStream.read(buffer)) != -1) {
+            length += bytesRead;
+        }
+        // 重置流以便后续读取（需流支持mark/reset）
+        if (inputStream.markSupported()) {
+            inputStream.reset();
+        }
+        return length;
+    }
+}

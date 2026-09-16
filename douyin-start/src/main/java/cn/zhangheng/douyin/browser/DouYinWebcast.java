@@ -2,8 +2,8 @@ package cn.zhangheng.douyin.browser;
 
 import cn.hutool.core.util.StrUtil;
 import cn.zhangheng.browser.BrowserUtil;
-import cn.zhangheng.common.bean.Setting;
-import cn.zhangheng.common.util.LogUtil;
+import cn.zhangheng.record.bean.Setting;
+import cn.zhangheng.record.util.LogUtil;
 import cn.zhangheng.douyin.bean.DouYinCounter;
 import cn.zhangheng.douyin.bean.DouYinRoom;
 import cn.zhangheng.record.*;

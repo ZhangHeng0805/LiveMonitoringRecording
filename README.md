@@ -111,21 +111,21 @@
 
 - **集成模块**：
   ```bash
-  java -cp live-monitor-record-x.x.jar cn.zhangheng.common.activation.ActivationUtil
+  java -cp live-monitor-record-x.x.jar cn.zhangheng.record.activation.ActivationUtil
   ```
   示例：
   ```bash
-  java -cp live-monitor-record-3.5.jar cn.zhangheng.common.activation.ActivationUtil
+  java -cp live-monitor-record-3.5.jar cn.zhangheng.record.activation.ActivationUtil
   pause
   ```
 
 - **平台专用模块**：
   ```bash
-  java -cp 平台-start-x.x.jar cn.zhangheng.common.activation.ActivationUtil
+  java -cp 平台-start-x.x.jar cn.zhangheng.record.activation.ActivationUtil
   ```
   示例：
   ```bash
-  java -cp douyin-start--3.5.jar cn.zhangheng.common.activation.ActivationUtil
+  java -cp douyin-start--3.5.jar cn.zhangheng.record.activation.ActivationUtil
   pause
   ```
 

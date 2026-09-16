@@ -1,8 +1,8 @@
 package cn.zhangheng.tool.ffmpeg;
 
-import cn.zhangheng.common.bean.Constant;
-import cn.zhangheng.common.util.DateTimeUtil;
-import cn.zhangheng.common.video.ffmpeg.FFmpegService;
+import cn.zhangheng.record.bean.Constant;
+import cn.zhangheng.record.util.DateTimeUtil;
+import cn.zhangheng.record.video.ffmpeg.FFmpegService;
 import cn.zhangheng.tool.bean.MediaInfo;
 
 import java.io.IOException;

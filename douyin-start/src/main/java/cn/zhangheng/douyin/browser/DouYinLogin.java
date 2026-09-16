@@ -1,7 +1,7 @@
 package cn.zhangheng.douyin.browser;
 
 import cn.zhangheng.browser.BrowserUtil;
-import cn.zhangheng.common.bean.Constant;
+import cn.zhangheng.record.bean.Constant;
 import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.Page;

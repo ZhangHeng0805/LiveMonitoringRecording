@@ -1,4 +1,4 @@
-import cn.zhangheng.common.bean.Setting;
+import cn.zhangheng.record.bean.Setting;
 import cn.zhangheng.douyin.service.DouYinMain;
 import cn.zhangheng.douyin.bean.DouYinRoom;
 

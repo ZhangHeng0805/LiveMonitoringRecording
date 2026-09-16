@@ -1,8 +1,8 @@
 package cn.zhangheng.tool.ffmpeg;
 
-import cn.zhangheng.common.bean.Constant;
-import cn.zhangheng.common.video.ffmpeg.FFmpegProgress;
-import cn.zhangheng.common.video.ffmpeg.FFmpegService;
+import cn.zhangheng.record.bean.Constant;
+import cn.zhangheng.record.video.ffmpeg.FFmpegProgress;
+import cn.zhangheng.record.video.ffmpeg.FFmpegService;
 import cn.zhangheng.tool.bean.MediaInfo;
 import com.zhangheng.util.TimeUtil;
 import lombok.Setter;

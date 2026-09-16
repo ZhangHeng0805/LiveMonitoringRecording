@@ -1,7 +1,7 @@
 package cn.zhangheng.douyin.bean;
 
 import cn.hutool.core.util.StrUtil;
-import cn.zhangheng.common.bean.Video;
+import cn.zhangheng.record.bean.Video;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 

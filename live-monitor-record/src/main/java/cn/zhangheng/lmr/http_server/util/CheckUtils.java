@@ -1,8 +1,8 @@
 package cn.zhangheng.lmr.http_server.util;
 
 import cn.hutool.core.util.StrUtil;
-import cn.zhangheng.common.bean.Constant;
-import cn.zhangheng.common.httpServer.util.JWTUtil;
+import cn.zhangheng.record.bean.Constant;
+import cn.zhangheng.record.httpServer.util.JWTUtil;
 import cn.zhangheng.lmr.FileModeMain;
 import cn.zhangheng.lmr.bean.RoomFileModel;
 import com.sun.net.httpserver.HttpExchange;
@@ -10,8 +10,8 @@ import com.zhangheng.bean.Message;
 
 import java.util.Map;
 
-import static cn.zhangheng.common.httpServer.util.HandlerUtils.getRequestCookie;
-import static cn.zhangheng.common.httpServer.util.HandlerUtils.getRequestCookies;
+import static cn.zhangheng.record.httpServer.util.HandlerUtils.getRequestCookie;
+import static cn.zhangheng.record.httpServer.util.HandlerUtils.getRequestCookies;
 
 /**
  * @author: ZhangHeng

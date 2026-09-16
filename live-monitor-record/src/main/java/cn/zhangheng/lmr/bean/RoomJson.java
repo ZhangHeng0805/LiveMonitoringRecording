@@ -3,7 +3,7 @@ package cn.zhangheng.lmr.bean;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.util.StrUtil;
-import cn.zhangheng.common.bean.Room;
+import cn.zhangheng.record.bean.Room;
 import lombok.Data;
 
 /**
@@ -55,7 +55,7 @@ public class RoomJson {
         }
     }
 
-    public cn.zhangheng.common.bean.Setting convert(cn.zhangheng.common.bean.Setting setting) {
+    public cn.zhangheng.record.bean.Setting convert(cn.zhangheng.record.bean.Setting setting) {
         // 核心配置：忽略源对象中的 null 值
         CopyOptions options = CopyOptions.create()
                 .setIgnoreNullValue(true) // 源对象为 null 的属性不进行拷贝

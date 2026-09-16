@@ -1,0 +1,10 @@
+#可以利用GitHub Page功能将端口映射的公网地址自动更新至git仓库中，然后访问该文件即可实时获取最新的公网映射地址
+
+#端口映射程序路径
+execute program.path=./bin/cpolar.exe
+
+#git仓库目录
+git.repository.dir=F:/Git Project/LiveMonitoringRecordingPage
+
+#需要更新的git文件相对路径
+git.file.relative.path=redirect/json/config.json
