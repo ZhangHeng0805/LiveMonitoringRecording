@@ -10,6 +10,7 @@ import cn.hutool.json.JSONUtil;
 import cn.zhangheng.browser.BrowserAPI;
 import cn.zhangheng.browser.BrowserUtil;
 import cn.zhangheng.browser.PlaywrightBrowser;
+import cn.zhangheng.douyin.util.DouYinUtil;
 import cn.zhangheng.record.bean.Constant;
 import cn.zhangheng.record.bean.Setting;
 import cn.zhangheng.record.util.RequestUtils;
@@ -52,7 +53,7 @@ public class DouYinVideoParse {
 //        String s = "7.64 kCU:/ 09/28 i@p.QK 一起来看日出吧@小兰花 # 小兰花 # 看日出 # 直播截图  https://v.douyin.com/sX4ZhOA7M3Q/ 复制此链接，打开Dou音搜索，直接观看视频！";
 //        String s = "8.43 j@P.xf 12/24 trr:/ 这个运镜好好玩，大家也可以试试# 感觉至上  https://v.douyin.com/BgpRfDDUeyw/ 复制此链接，打开Dou音搜索，直接观看视频！";
         Setting setting = Setting.getInstance();
-        System.out.println(extractDouyinLink(s));
+        System.out.println(DouYinUtil.extractDouyinLink(s));
         long sta = System.currentTimeMillis();
         System.out.println(JSONUtil.parseObj(
                 parse(s, setting, UserAgentUtil.getRandomUser_Agent())).toStringPretty());
@@ -65,7 +66,7 @@ public class DouYinVideoParse {
 
     public static DouYinVideo parse(String shareUrl, Setting setting, String userAgent) {
         boolean success = false;
-        String link = extractDouyinLink(shareUrl);
+        String link = DouYinUtil.extractDouyinLink(shareUrl);
         if (link == null) {
             return null;
         }
@@ -273,27 +274,5 @@ public class DouYinVideoParse {
         return video;
     }
 
-    /**
-     * 从字符串中提取抖音链接
-     *
-     * @param input 包含抖音链接的字符串
-     * @return 提取到的抖音链接，若未找到则返回null
-     */
-    public static String extractDouyinLink(String input) {
-        // 正则表达式：匹配以https://v.douyin.com/开头，后面跟非空白字符的链接
-//        String regex = "https://v\\.douyin\\.com/[\\w\\-]+/?";
-        String regex = "https://[\\w\\.]+douyin\\.com/[\\w\\-/?&=]+";
 
-        // 编译正则表达式
-        Pattern pattern = Pattern.compile(regex);
-        Matcher matcher = pattern.matcher(input);
-
-        // 查找匹配的链接
-        if (matcher.find()) {
-            return matcher.group();
-        }
-
-        // 未找到匹配的链接
-        return null;
-    }
 }

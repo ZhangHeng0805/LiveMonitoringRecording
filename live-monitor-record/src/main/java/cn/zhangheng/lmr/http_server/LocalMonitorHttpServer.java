@@ -26,12 +26,12 @@ import java.util.concurrent.TimeUnit;
  * @description: 直播监听API
  */
 @Slf4j
-public class LocalMonitorServer {
+public class LocalMonitorHttpServer {
     private HttpServer server;
     @Getter
     private int port;
 
-    public LocalMonitorServer(int port) {
+    public LocalMonitorHttpServer(int port) {
         this.port = port;
     }
 
@@ -45,7 +45,7 @@ public class LocalMonitorServer {
             try {
                 server = HttpServer.create(new InetSocketAddress("::", port), 100);
                 server.setExecutor(new ThreadPoolExecutor(
-                        30, 80,
+                        10, 80,
                         30000L, TimeUnit.MILLISECONDS, // 空闲线程30秒再销毁
                         new LinkedBlockingQueue<>(100),
                         Executors.defaultThreadFactory(),
@@ -74,7 +74,7 @@ public class LocalMonitorServer {
             }
         });
         thread.setDaemon(true);
-        thread.setName("LocalServerApi-" + port);
+        thread.setName("LocalHttpServerApi-" + port);
         thread.start();
     }
 

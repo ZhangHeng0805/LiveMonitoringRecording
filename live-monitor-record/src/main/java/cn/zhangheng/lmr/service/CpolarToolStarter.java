@@ -17,7 +17,8 @@ public class CpolarToolStarter implements Starter {
 
     @Override
     public void start() {
-        int port = Setting.getInstance().getMonitorServerPort();
+//        int port = Setting.getInstance().getMonitorServerPort();
+        int port= Integer.parseInt(System.getProperty("monitor.port"));
         Thread thread = new Thread(() -> {
             try {
                 cn.zhangheng.cpolar.Starter.start(port);

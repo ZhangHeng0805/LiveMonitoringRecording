@@ -1,6 +1,6 @@
 package cn.zhangheng.lmr.service;
 
-import cn.zhangheng.lmr.http_server.LocalMonitorServer;
+import cn.zhangheng.lmr.http_server.LocalMonitorHttpServer;
 import cn.zhangheng.record.bean.Setting;
 
 /**
@@ -11,10 +11,10 @@ import cn.zhangheng.record.bean.Setting;
  * @description:
  */
 public class LocalHttpServerStarter implements Starter{
-    private static LocalMonitorServer localMonitorServer;
+    private static LocalMonitorHttpServer localMonitorServer;
     @Override
     public void start() {
-        localMonitorServer = new LocalMonitorServer(Setting.getInstance().getMonitorServerPort());
+        localMonitorServer = new LocalMonitorHttpServer(Setting.getInstance().getMonitorServerPort());
         localMonitorServer.start();
     }
 

@@ -77,22 +77,6 @@ public class ApiHandler extends JSONHandler {
         }
     }
 
-    private void videoParsing(Message msg, Map<String, String> query, String userAgent) {
-        try {
-            String url = query.get("url");
-            if (url == null) {
-                throw new IllegalArgumentException("解析URl缺省！");
-            }
-            DouYinVideo parse = DouYinVideoParse.parse(url, userAgent);
-            msg.setData(parse);
-            msg.setMessage("解析成功！");
-        } catch (Exception e) {
-            msg.setCode(1);
-            msg.setMessage(e.getMessage());
-        }
-    }
-
-
     private static Map<String, Object> getRoomsMap(RoomFileModel model) {
         try {
             Map<String, Object> map = new HashMap<>();
@@ -150,5 +134,19 @@ public class ApiHandler extends JSONHandler {
         return null;
     }
 
+    private void videoParsing(Message msg, Map<String, String> query, String userAgent) {
+        try {
+            String url = query.get("url");
+            if (url == null) {
+                throw new IllegalArgumentException("解析URl缺省！");
+            }
+            DouYinVideo parse = DouYinVideoParse.parse(url, userAgent);
+            msg.setData(parse);
+            msg.setMessage("解析成功！");
+        } catch (Exception e) {
+            msg.setCode(1);
+            msg.setMessage(e.getMessage());
+        }
+    }
 
 }

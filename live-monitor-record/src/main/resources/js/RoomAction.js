@@ -87,8 +87,9 @@ function showActionAfterModal(msg, callback) {
 function actionRefresh(key) {
     refreshDebounce(key);
 }
+
 const refreshDebounce = debounce(function (key) {
-    actionRequest("refresh", { key: key }).then((data) => {
+    actionRequest("refresh", {key: key}).then((data) => {
         data.title = "刷新操作结果";
         showActionAfterModal(data, () => {
             if (data.success) {
@@ -143,6 +144,7 @@ function actionRecord(roomKey, isRecord) {
     });
 }
 
+//删除
 function delRoom(roomKey) {
     showActionBeforeModal((key) => {
         actionRequest("delRoom", {
@@ -159,7 +161,7 @@ function delRoom(roomKey) {
     });
 }
 
-//直播间设置操作
+//直播间新增操作
 function addRoom() {
     showActionBeforeModal((key) => {
         setModalContent(
@@ -170,7 +172,12 @@ function addRoom() {
                 <input type="text"
                     id="roomID"
                     class="input-field"
-                    placeholder="请输入直播间ID">
+                    placeholder="请输入直播间ID，抖音支持分享链接">
+               
+                    <!-- 刷新按钮，默认隐藏 -->
+                    <button id="roomID_refreshBtn" type="button" class="hidden p-1 mt-1 rounded text-black hover:bg-blue-200">
+                        <i class="fa fa-refresh"></i>
+                    </button>
             </div>
             <div id="roomNameContainer" class="mb-4">
                 <label for="roomName" class="block text-sm font-medium text-gray-700 mb-1">直播间名称</label>
@@ -318,6 +325,56 @@ function addRoom() {
             option.value = key;
             option.textContent = text;
             document.getElementById("platform").appendChild(option);
+        });
+        const refreshBtn = document.getElementById("roomID_refreshBtn");
+        const roomIDInput = document.getElementById("roomID");
+        roomIDInput.addEventListener("input", debounce((e) => {
+            let val = e.target.value.trim();
+            console.log(val);
+            if (val.length > 0) {
+                if (val.indexOf("douyin") > 0) {
+                    if (val.startsWith("https://live.douyin.com/")) {
+                        const reg = /live\.douyin\.com\/(\d+)/;
+                        const match = val.match(reg);
+                        let id = "";
+                        if (match) {
+                            id = match[1];
+                        }
+                        e.target.value = id;
+                        roomIDInput.dispatchEvent(new Event('input'));
+                    } else {
+                        //分享链接解析
+                        refreshBtn.classList.remove("hidden");
+                    }
+                } else {
+                    refreshBtn.classList.add("hidden");
+                }
+            }
+        }, 300, false));
+        refreshBtn.addEventListener("click", async function () {
+            if (refreshBtn.disabled) return;
+            const icon = refreshBtn.getElementsByTagName("i")[0];
+            icon.classList.add("fa-spin");
+            refreshBtn.disabled = true;
+            try {
+                let link = roomIDInput.value.trim();
+                if (link.indexOf("douyin") > 0) {
+                    await actionRequest("parseDouYinLink", {
+                        shareLink: link,
+                    }).then((data) => {
+                        if (data.success) {
+                            roomIDInput.value = data.data;
+                            if (data.data.length>0){
+                                roomIDInput.dispatchEvent(new Event('input'));
+                            }
+                        }
+                    });
+                }
+            } finally {
+                refreshBtn.classList.add("hidden");
+                icon.classList.remove("fa-spin");
+                refreshBtn.disabled = false;
+            }
         });
     });
 }

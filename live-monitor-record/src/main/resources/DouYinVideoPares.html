@@ -388,7 +388,11 @@
                 
                 // 调用后端API获取视频数据
                 // 实际项目中替换为真实接口地址
-                const response = await fetch(`${rootUrl+'api/videoParsing?url='+ encodeURIComponent(link)}`);
+                const response = await fetch(`${rootUrl+'api/videoParsing?url='+ encodeURIComponent(link)}`,{
+                    method: "GET",
+                    // 跨域携带凭证（Cookie）
+                    credentials: "include"
+                });
                 if (!response.ok) {
                     throw new Error(`获取视频数据异常: ${response.status}  ${response.statusText}`);
                 }

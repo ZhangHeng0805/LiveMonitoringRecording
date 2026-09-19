@@ -4,7 +4,7 @@ import cn.zhangheng.browser.*;
 import cn.zhangheng.record.bean.Constant;
 import cn.zhangheng.record.bean.Setting;
 import cn.zhangheng.douyin.bean.DouYinRoom;
-import cn.zhangheng.douyin.util.DouYinUtils;
+import cn.zhangheng.douyin.util.DouYinAPITools;
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.WaitForSelectorState;
 import com.microsoft.playwright.options.WaitUntilState;
@@ -41,7 +41,7 @@ public class DouYinBrowser implements Closeable {
     private static final Logger log = LoggerFactory.getLogger(DouYinBrowser.class);
 
     private static final Map<String, BrowserCounter> counters = new ConcurrentHashMap<>();
-    private static final Map<String, DouYinUtils> apis = new ConcurrentHashMap<>();
+    private static final Map<String, DouYinAPITools> apis = new ConcurrentHashMap<>();
     private static final AtomicInteger totalCount = new AtomicInteger(0);
 
     // 线程安全的浏览器实例（volatile确保多线程可见性）
@@ -91,7 +91,7 @@ public class DouYinBrowser implements Closeable {
         }
         try {
             if (isFetch) {
-                DouYinUtils api = apis.getOrDefault(roomUrl, new DouYinUtils());
+                DouYinAPITools api = apis.getOrDefault(roomUrl, new DouYinAPITools());
                 if (!apis.containsKey(roomUrl)) {
                     apis.put(roomUrl, api);
                 }

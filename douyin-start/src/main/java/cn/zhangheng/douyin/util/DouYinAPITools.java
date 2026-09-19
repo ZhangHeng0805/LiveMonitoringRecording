@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @description:
  */
 @Slf4j
-public class DouYinUtils {
+public class DouYinAPITools {
     @Getter
     private String cookie, userAgent;
     private final AtomicInteger count = new AtomicInteger(0);
@@ -35,7 +35,7 @@ public class DouYinUtils {
         return count.get();
     }
 
-    public DouYinUtils() {
+    public DouYinAPITools() {
         headers.put("Accept", "application/json,text/html,*/*");
         headers.put("Accept-Language", "zh-CN,zh;q=0.9");
         headers.put("sec-fetch-site", "same-origin");
@@ -48,7 +48,7 @@ public class DouYinUtils {
 //        String roomID = "622216334529";
 //        String roomID = "208823316033";
         String roomID = "381351302222";
-        DouYinUtils utils = new DouYinUtils();
+        DouYinAPITools utils = new DouYinAPITools();
         System.out.println(utils.getCookie());
         String x = utils.fetchRoomPageBody(roomID);
 //        System.out.println(x);

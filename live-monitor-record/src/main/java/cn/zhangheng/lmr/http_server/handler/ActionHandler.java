@@ -2,6 +2,7 @@ package cn.zhangheng.lmr.http_server.handler;
 
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
+import cn.zhangheng.douyin.browser.DouYinUrlParse;
 import cn.zhangheng.record.bean.Setting;
 import cn.zhangheng.record.httpServer.handle.JSONHandler;
 import cn.zhangheng.record.service.MonitorMain;
@@ -16,6 +17,7 @@ import cn.zhangheng.lmr.bean.RoomJson;
 import com.sun.net.httpserver.HttpExchange;
 import com.zhangheng.bean.Message;
 import com.zhangheng.util.ThrowableUtil;
+import com.zhangheng.util.UserAgentUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -88,6 +90,10 @@ public class ActionHandler extends JSONHandler {
                 } else {
                     msg.setCode(1);
                 }
+            } else if (indexPath.startsWith("parseDouYinLink")) {
+                Map<String, String> query = parseQuery(httpExchange);
+                String link = DouYinUrlParse.parseDouyinShareLink(query.get("shareLink"), UserAgentUtil.getRandomUser_Agent());
+                msg.setData(link);
             } else if (indexPath.startsWith("refresh")) {
                 Map<String, String> query = parseQuery(httpExchange);
                 if (checkRoomKey(query, msg)) {
