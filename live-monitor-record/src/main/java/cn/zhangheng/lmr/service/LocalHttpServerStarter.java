@@ -10,7 +10,7 @@ import cn.zhangheng.record.bean.Setting;
  * @version: 1.0
  * @description:
  */
-public class LocalHttpServerStarter implements Starter{
+public class LocalHttpServerStarter extends Starter{
     private static LocalMonitorHttpServer localMonitorServer;
     @Override
     public void start() {

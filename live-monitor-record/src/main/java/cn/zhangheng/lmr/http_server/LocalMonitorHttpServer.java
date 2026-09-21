@@ -40,8 +40,8 @@ public class LocalMonitorHttpServer {
             while (NetworkUtil.isPortUsed(port)) {
                 port++;
             }
-            System.setProperty("monitor.url", getMainUrl());
             System.setProperty("monitor.port", String.valueOf(getPort()));
+            System.setProperty("monitor.url", getMainUrl());
             try {
                 server = HttpServer.create(new InetSocketAddress("::", port), 100);
                 server.setExecutor(new ThreadPoolExecutor(

@@ -88,7 +88,9 @@ public class FileModeMain {
                 iconUtil.shutdown();
             }
             starterManager.addStarter(new LocalHttpServerStarter());
-            starterManager.addStarter(new CpolarToolStarter());
+            CpolarToolStarter cpolarToolStarter = new CpolarToolStarter();
+            cpolarToolStarter.setDelayedSec(2);
+            starterManager.addStarter(cpolarToolStarter);
 
             starterManager.startAllServer();
             int coreSize = setting.getMaxMonitorThreads();

@@ -38,10 +38,11 @@ public class BiliLogin {
             Page page = context.newPage();
             System.out.println("正在打开Bilibili网页版...");
             System.out.println("请使用手机扫码登录,登录完成后将鼠标移动至账号头像处");
-            boolean isLoginSuccess = BrowserUtil.goToBySelector(url1, page, "div.bili-avatar", 120);
+            boolean isLoginSuccess = BrowserUtil.goToBySelector(url1, page, "div.bili-avatar", BrowserLogin.maxWaitTimeSec);
 
             if (!isLoginSuccess) {
                 System.err.println("登录超时，未检测到登录状态，浏览器关闭！");
+                context.close();
                 browser.close();
                 return;
             }
@@ -69,7 +70,7 @@ public class BiliLogin {
             String cookieStr = BrowserUtil.toCookieStr(cookies);
             System.out.println("用户登录后cookie:" + cookieStr);
             try {
-                File file = TxtOperation.creatTxtFile("cookie/Bili-" + user + ".room.cookie");
+                File file = TxtOperation.creatTxtFile("cookie/Bili-" + user + BrowserLogin.FileSuffix);
                 TxtOperation.writeTxtFile(cookieStr, file, "UTF-8", false);
                 System.out.println("\n用户cookie信息已保存至：" + file.getPath());
             } catch (IOException e) {

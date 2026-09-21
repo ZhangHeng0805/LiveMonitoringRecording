@@ -1,10 +1,10 @@
-#可以利用GitHub Page功能将端口映射的公网地址自动更新至git仓库中，然后访问该文件即可实时获取最新的公网映射地址
+#\u53EF\u4EE5\u5229\u7528GitHub Page\u529F\u80FD\u5C06\u7AEF\u53E3\u6620\u5C04\u7684\u516C\u7F51\u5730\u5740\u81EA\u52A8\u66F4\u65B0\u81F3git\u4ED3\u5E93\u4E2D\uFF0C\u7136\u540E\u8BBF\u95EE\u8BE5\u6587\u4EF6\u5373\u53EF\u5B9E\u65F6\u83B7\u53D6\u6700\u65B0\u7684\u516C\u7F51\u6620\u5C04\u5730\u5740
 
-#端口映射程序路径
+#\u7AEF\u53E3\u6620\u5C04\u7A0B\u5E8F\u8DEF\u5F84
 execute program.path=./bin/cpolar.exe
 
-#git仓库目录
-git.repository.dir=F:/Git Project/LiveMonitoringRecordingPage
+#git\u4ED3\u5E93\u76EE\u5F55
+#git.repository.dir=F:/Git Project/LiveMonitoringRecordingPage
 
-#需要更新的git文件相对路径
-git.file.relative.path=redirect/json/config.json
+#\u9700\u8981\u66F4\u65B0\u7684git\u6587\u4EF6\u76F8\u5BF9\u8DEF\u5F84
+#git.file.relative.path=redirect/json/config.json

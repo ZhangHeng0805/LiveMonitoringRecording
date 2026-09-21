@@ -1,6 +1,7 @@
 package cn.zhangheng.douyin.browser;
 
 import cn.zhangheng.browser.BrowserUtil;
+import cn.zhangheng.browser.login.BrowserLogin;
 import cn.zhangheng.record.bean.Constant;
 import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.BrowserContext;
@@ -39,10 +40,11 @@ public class DouYinLogin {
             Page page = context.newPage();
             System.out.println("正在打开抖音网页版...");
             System.out.println("请使用手机扫码登录");
-            boolean isLoginSuccess = BrowserUtil.goToBySelector(url1, page, "span[data-e2e='live-avatar']", 120);
+            boolean isLoginSuccess = BrowserUtil.goToBySelector(url1, page, "span[data-e2e='live-avatar']", BrowserLogin.maxWaitTimeSec);
 
             if (!isLoginSuccess) {
                 System.err.println("登录超时，未检测到登录状态，浏览器关闭！");
+                context.close();;
                 browser.close();
                 return;
             }
@@ -65,7 +67,7 @@ public class DouYinLogin {
             String cookieStr = BrowserUtil.toCookieStr(cookies);
             System.out.println("用户登录后cookie:" + cookieStr);
             try {
-                File file = TxtOperation.creatTxtFile("cookie/douyin-" + user + ".room.cookie");
+                File file = TxtOperation.creatTxtFile("cookie/DouYin-" + user + BrowserLogin.FileSuffix);
                 TxtOperation.writeTxtFile(cookieStr, file, "UTF-8", false);
                 System.out.println("\n用户cookie信息已保存至：" + file.getPath());
             } catch (IOException e) {

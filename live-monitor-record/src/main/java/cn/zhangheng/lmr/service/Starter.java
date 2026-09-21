@@ -1,5 +1,7 @@
 package cn.zhangheng.lmr.service;
 
+import lombok.Setter;
+
 /**
  * @author: ZhangHeng
  * @email: zhangheng_0805@163.com
@@ -7,7 +9,13 @@ package cn.zhangheng.lmr.service;
  * @version: 1.0
  * @description:
  */
-public interface Starter {
-    void start();
-    void stop();
+public abstract class Starter {
+    @Setter
+    protected int delayedSec = 0;
+
+    public abstract void start();
+
+    public abstract void stop();
+
+
 }
