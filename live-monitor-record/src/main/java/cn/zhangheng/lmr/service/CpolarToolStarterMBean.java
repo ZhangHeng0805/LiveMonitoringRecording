@@ -9,12 +9,20 @@ package cn.zhangheng.lmr.service;
  */
 public interface CpolarToolStarterMBean {
     void startServer();
+
     void stopServer();
-    void updateGitURLFile() throws Exception;
+
+    void updateGitURLFile();
+
     boolean getIsRunning();
+
     String getStartTime();
+
     String getUpdateGitTime();
+
     String getPublicUrl();
+
     String getLocalCommand();
+
     String getSetting();
 }

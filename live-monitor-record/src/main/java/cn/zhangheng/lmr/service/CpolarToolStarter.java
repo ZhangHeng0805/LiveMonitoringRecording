@@ -118,8 +118,12 @@ public class CpolarToolStarter extends Starter implements CpolarToolStarterMBean
     }
 
     @Override
-    public void updateGitURLFile() throws Exception {
-        CpolarStarter.updateGitURLFile();
+    public void updateGitURLFile() {
+        try {
+            CpolarStarter.updateGitURLFile();
+        } catch (Exception e) {
+            log.warn("updateGitURLFile失败: {}", ThrowableUtil.getAllCauseMessage(e));
+        }
     }
 
     @Override
