@@ -54,6 +54,10 @@
   start "middle" javaw -cp live-monitor-record-3.5.jar cn.zhangheng.lmr.FileModeMain ./room
   ```
   ![Windows启动脚本命令](image/Snipaste_2026-01-05_17-46-59.png)
+- Windows启动脚本(个人使用完整命令)
+```bash
+start "live-monitor-record" javaw -Xms256m -Xmx512m -Dsun.java2d.d3d=false -Dsun.java2d.noddraw=true -Dsun.awt.disablegrab=true -Dsun.awt.noerasebackground=true -Dsun.awt.enableExtraMouseInfo=false -Djava.awt.suppressSwingDropSupport=true -Dfile.encoding=utf-8 -Dcom.sun.management.jmxremote -cp live-monitor-record-3.6.jar cn.zhangheng.lmr.FileModeMain ./room
+```
 
 ### 使用说明
 - 程序启动成功后，每个直播间都会在系统托盘（任务栏）位置生成对应的图标
