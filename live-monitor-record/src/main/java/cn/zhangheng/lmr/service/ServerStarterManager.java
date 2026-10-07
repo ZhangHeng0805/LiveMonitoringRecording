@@ -39,7 +39,7 @@ public class ServerStarterManager {
             if (starter == null) continue;
             String name = starter.getClass().getName();
             try {
-                starter.stop();
+                starter.destroy();
                 log.info("{}服务已停止！", name);
             } catch (Exception e) {
                 log.info("{}服务停止失败！", name);

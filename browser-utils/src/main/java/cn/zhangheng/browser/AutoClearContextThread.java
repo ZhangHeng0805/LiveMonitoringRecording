@@ -62,6 +62,7 @@ public class AutoClearContextThread {
             }
         });
         thread.setDaemon(true);
+        thread.setName("AutoClearContextThread-" + intervalSec);
         thread.start();
     }
 

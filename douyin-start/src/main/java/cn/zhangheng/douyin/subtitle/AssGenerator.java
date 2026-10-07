@@ -19,8 +19,8 @@ public class AssGenerator extends SubtitleGenerator {
 
 
     public static void main(String[] args) throws IOException {
-        String log = "D:\\直播录屏\\live-monitor-record\\【星曦向荣】直播监听工具\\抖音\\[兰小美]\\2026-05-29\\2026-05-29 23-41-02聊天弹幕.log";
-        AssGenerator generator = new AssGenerator(10, log, "2026-05-29 23-41-06");
+        String log = "D:\\直播录屏\\live-monitor-record\\【星曦向荣】直播监听工具\\抖音\\兰小美[541976200890]\\2026-10-05\\2026-10-05 22-13-07聊天弹幕.log";
+        AssGenerator generator = new AssGenerator(10, log, "2026-10-05 22-13-14");
 //        AssGenerator generator = new AssGenerator(10, log);
 //        generator.setXY(1920,1080);
         generator.generate();

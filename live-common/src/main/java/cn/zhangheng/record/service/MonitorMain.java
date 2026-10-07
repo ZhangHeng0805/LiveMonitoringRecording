@@ -51,7 +51,8 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
     protected volatile MonitorStatus status = MonitorStatus.READY;
     @Getter
     private M roomMonitor;
-    @Setter @Getter
+    @Setter
+    @Getter
     private boolean isAutoRecord;
 
     protected RecorderTask recorderTask;
@@ -111,6 +112,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             RoomMonitor.RoomListener<R> listener = getRoomListener(room);
             trayIconUtil.setClickListener(getClickListener());
             roomMonitor.setListener(listener);
+            roomMonitor.registerMBean();
             do {
                 try {
                     status = MonitorStatus.RUNNING;
@@ -130,6 +132,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         } finally {
             isRunning.set(false);
             status = MonitorStatus.END;
+            roomMonitor.unregisterMBean();
             if (logUtil != null) {
                 logUtil.close();
             }

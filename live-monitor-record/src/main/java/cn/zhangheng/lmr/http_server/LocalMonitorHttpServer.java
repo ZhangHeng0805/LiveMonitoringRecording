@@ -13,10 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
 import java.net.URLEncoder;
-import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 /**
  * @author: ZhangHeng
@@ -28,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class LocalMonitorHttpServer {
     private HttpServer server;
+    private ThreadPoolExecutor poolExecutor;
     @Getter
     private int port;
 
@@ -44,13 +42,22 @@ public class LocalMonitorHttpServer {
             System.setProperty("monitor.url", getMainUrl());
             try {
                 server = HttpServer.create(new InetSocketAddress("::", port), 100);
-                server.setExecutor(new ThreadPoolExecutor(
-                        10, 80,
-                        30000L, TimeUnit.MILLISECONDS, // 空闲线程30秒再销毁
-                        new LinkedBlockingQueue<>(100),
-                        Executors.defaultThreadFactory(),
+                poolExecutor = new ThreadPoolExecutor(
+                        1, 80,
+                        30L, TimeUnit.SECONDS, // 空闲线程30秒再销毁
+                        new SynchronousQueue<>(),
+                        new ThreadFactory() {
+                            private int cnt = 0;
+                            @Override
+                            public Thread newThread(Runnable r) {
+                                Thread t = new Thread(r, "http-handler-" + cnt++);
+                                t.setDaemon(false);
+                                return t;
+                            }
+                        },
                         new ThreadPoolExecutor.CallerRunsPolicy() // 拒绝策略改为调用者线程执行，不抛异常
-                ));
+                );
+                server.setExecutor(poolExecutor);
                 server.createContext("/", new TextFileHandler("index.html", "text/html"));
                 server.createContext("/DouYinVideoPares.html", new TextFileHandler("DouYinVideoPares.html", "text/html"));
                 server.createContext("/FLVPlayer.html", new TextFileHandler("FLVPlayer.html", "text/html"));

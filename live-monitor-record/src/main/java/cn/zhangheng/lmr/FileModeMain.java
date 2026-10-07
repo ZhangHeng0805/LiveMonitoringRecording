@@ -65,40 +65,33 @@ public class FileModeMain {
 
     public static void main(String[] args) throws Exception {
         try {
+            if (verifyActivation()) return;
             if (args.length > 0) {
                 basePath = args[0];
             }
-            List<Path> paths = retrieveFile(basePath, fileSuffix);
-            try {
-                ActivationUtil.verifyActivationCodeFile(Constant.deviceUniqueId, setting.getActivateVoucherPath());
-            } catch (ErrorException errorException) {
-                String message = ThrowableUtil.getAllCauseMessage(errorException);
-                TrayIconUtil iconUtil = TrayIconUtil.getInstance(Constant.Application);
-                iconUtil.notifyMessage(errorException.getMessage(), TrayIcon.MessageType.ERROR);
-                log.error("启动失败！{}", message);
-                TimeUnit.SECONDS.sleep(3);
-                iconUtil.shutdown();
-                return;
-            } catch (WarnException warnException) {
-                TrayIconUtil iconUtil = TrayIconUtil.getInstance(Constant.Application);
-                String message = warnException.getMessage();
-                log.warn(message);
-                iconUtil.notifyMessage(message, TrayIcon.MessageType.WARNING);
-                TimeUnit.SECONDS.sleep(3);
-                iconUtil.shutdown();
-            }
+            List<Path> paths = retrieveFile(basePath);
+            //添加相关服务
             starterManager.addStarter(new LocalHttpServerStarter());
             CpolarToolStarter cpolarToolStarter = new CpolarToolStarter();
             cpolarToolStarter.setDelayedSec(2);
             starterManager.addStarter(cpolarToolStarter);
+            starterManager.startAllServer();//启动服务
 
-            starterManager.startAllServer();
-            int coreSize = setting.getMaxMonitorThreads();
-            ThreadPool = new ThreadPoolExecutor(coreSize, coreSize, 0, TimeUnit.SECONDS, new ArrayBlockingQueue<>(coreSize * 2));
-            log.info("启动监听线程数：{}个", coreSize);
+            int maxMonitorThreads = setting.getMaxMonitorThreads();
+            ThreadPool = new ThreadPoolExecutor(
+                    1,
+                    maxMonitorThreads,
+                    30, TimeUnit.SECONDS,
+                    new SynchronousQueue<>()// 关键：不存排队任务，没有空闲线程就新建线程直到max
+                    );
+            log.info("启动监听线程数：{}个", paths.size());
             for (int i = 0; i < paths.size(); i++) {
                 Path file = paths.get(i);
-                submitRoomFileModel(file);
+                try {
+                    submitRoomFileModel(file);
+                } catch (RuntimeException e) {
+                    log.error("启动失败: {}", ThrowableUtil.getAllCauseMessage(e));
+                }
                 try {
                     //延时启动
                     TimeUnit.SECONDS.sleep(i + 1);
@@ -117,10 +110,32 @@ public class FileModeMain {
 
     }
 
+    private static boolean verifyActivation() throws InterruptedException {
+        try {
+            ActivationUtil.verifyActivationCodeFile(Constant.deviceUniqueId, setting.getActivateVoucherPath());
+        } catch (ErrorException errorException) {
+            String message = ThrowableUtil.getAllCauseMessage(errorException);
+            TrayIconUtil iconUtil = TrayIconUtil.getInstance(Constant.Application);
+            iconUtil.notifyMessage(errorException.getMessage(), TrayIcon.MessageType.ERROR);
+            log.error("启动失败！{}", message);
+            TimeUnit.SECONDS.sleep(3);
+            iconUtil.shutdown();
+            return true;
+        } catch (WarnException warnException) {
+            TrayIconUtil iconUtil = TrayIconUtil.getInstance(Constant.Application);
+            String message = warnException.getMessage();
+            log.warn(message);
+            iconUtil.notifyMessage(message, TrayIcon.MessageType.WARNING);
+            TimeUnit.SECONDS.sleep(3);
+            iconUtil.shutdown();
+        }
+        return false;
+    }
 
-    private static List<Path> retrieveFile(String basePath, String fileSuffix) {
+
+    private static List<Path> retrieveFile(String basePath) {
         try (Stream<Path> list = Files.list(Paths.get(basePath))) {
-            return list.filter(f -> f.getFileName().toString().endsWith(fileSuffix)).collect(Collectors.toList());
+            return list.filter(f -> f.getFileName().toString().endsWith(FileModeMain.fileSuffix)).collect(Collectors.toList());
         } catch (IOException e) {
             throw new RuntimeException("遍历文件出现异常", e);
         }
@@ -159,7 +174,7 @@ public class FileModeMain {
             main.start(set, id, platform, autoRecord);
             log.debug("{} 监听文件结束运行!", file);
         } catch (Throwable e) {
-            log.error(file + " 监听发生异常:" + e.getMessage(), e);
+            log.error("{} 监听发生异常:{}", file, e.getMessage(), e);
         } finally {
             endMonitor(model);
             Thread.currentThread().interrupt();
@@ -206,22 +221,22 @@ public class FileModeMain {
 
     private static void submitRoomFileModel(Path path) {
         try {
+            if (path == null) {
+                log.warn("监听文件path为null，无法重新启动监听");
+                return;
+            }
             ThreadPool.execute(() -> {
-                if (path == null) {
-                    log.warn("监听文件path为null，无法重新启动监听");
-                    return;
-                }
                 startMonitor(path);
             });
         } catch (RejectedExecutionException e) {
             // 处理任务被拒绝的情况（如线程池关闭、队列满等）
-            String s = "监听任务提交失败，线程池可能已关闭或任务队列已满：" + ThrowableUtil.getAllCauseMessage(e);
+            String s = path + " 监听任务提交失败，线程池可能已关闭或任务队列已满: " + e.getMessage();
             log.warn(s);
-            throw new RuntimeException(s);
+            throw new RuntimeException(s, e);
         } catch (Exception e) {
-            String s = "提交监听任务发生异常" + ThrowableUtil.getAllCauseMessage(e);
+            String s = path + " 提交监听任务发生异常: " + e.getMessage();
             log.error("提交任务发生异常: {}", s);
-            throw new RuntimeException(s);
+            throw new RuntimeException(s, e);
         }
     }
 
@@ -300,7 +315,7 @@ public class FileModeMain {
             counter.put("living", room.isLiving());
             counter.put("running", model.isRunning());
             counter.put("intervalSec", room.getSetting().getDelayIntervalSec());
-            int count = model.getMain().getMonitorMain().getRoomMonitor().getCount();
+            int count = model.getMain().getMonitorMain().getRoomMonitor().getRefreshCount();
             total += count;
             counter.put("count", count);
             counter.put("updateTime", TimeUtil.toTime(room.getUpdateTime()));

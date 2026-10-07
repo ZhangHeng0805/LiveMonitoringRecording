@@ -1,6 +1,9 @@
 package cn.zhangheng.lmr.service;
 
+import lombok.Getter;
 import lombok.Setter;
+
+import javax.management.ObjectName;
 
 /**
  * @author: ZhangHeng
@@ -10,12 +13,23 @@ import lombok.Setter;
  * @description:
  */
 public abstract class Starter {
+    @Getter
+    private boolean isRunning = false;
+
+    public void setRunning(boolean running) {
+        isRunning = running;
+        updateTime = System.currentTimeMillis();
+    }
+
     @Setter
     protected int delayedSec = 0;
+    protected long updateTime = 0;
 
     public abstract void start();
 
     public abstract void stop();
+
+    public abstract void destroy();
 
 
 }

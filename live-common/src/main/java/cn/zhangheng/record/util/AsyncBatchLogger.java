@@ -29,7 +29,7 @@ public class AsyncBatchLogger {
 
     // 异步任务执行器（单线程足够，避免过多线程竞争磁盘IO）
     private final ExecutorService executor = Executors.newSingleThreadExecutor(runnable -> {
-        Thread thread = new Thread(runnable, "async-log-writer");
+        Thread thread = new Thread(runnable, "async-log-writer-"+Thread.currentThread().getId());
         thread.setDaemon(true); // 守护线程，避免阻塞程序退出
         return thread;
     });

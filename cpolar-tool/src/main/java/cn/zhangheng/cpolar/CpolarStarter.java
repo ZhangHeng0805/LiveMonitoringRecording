@@ -27,17 +27,23 @@ import java.nio.file.Paths;
  * 并将映射的外网URL自动更新至git上，
  * 实现实时获取最新的映射外网URL地址
  */
-public class Starter {
+public class CpolarStarter {
     private static Process process = null;
-    private static final AsyncBatchLogger logger = new AsyncBatchLogger(Paths.get("./logs/cpolar-run.log"));;
-    private static Setting setting = null;
+    private static final AsyncBatchLogger logger = new AsyncBatchLogger(Paths.get("./logs/cpolar-run.log"));
+    ;
+    private static CpolarSetting setting = null;
     private static final Debouncer debouncer = new Debouncer(1000);
     //    private static final String gitRepoDir = "F:\\Git Project\\LiveMonitoringRecordingPage";
 //    private static final String gitFileRelativePath = "redirect/json/config.json";
 //    private static final String exePath = "./bin/cpolar.exe";
+    @Getter
     private static final String[] localCommand = {"http", "8005"};
     @Getter
     private static volatile boolean isRunning;
+    @Getter
+    private static volatile String publicUrl;
+    @Getter
+    private static volatile long updateGitTime;
 
     static {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -59,7 +65,7 @@ public class Starter {
 
     public static void start(int port) throws RuntimeException {
         try {
-            setting = Setting.getInstance();
+            setting = CpolarSetting.getInstance(true);
             localCommand[1] = String.valueOf(port);
             System.out.println("=====启动HTTP端口映射 " + port + "=====");
             highLog("运行命令: " + String.join(" ", localCommand), "info");
@@ -77,16 +83,20 @@ public class Starter {
             pb.redirectErrorStream(true);// 合并错误流
             process = pb.start();
             // 单独线程读取字节流，手动处理\r \n
-            new Thread(() -> processResult(process)).start();
+            Thread thread = new Thread(() -> processResult(process));
+            thread.start();
             int i = process.waitFor();
             highLog("程序退出码:" + i, "info");
+            publicUrl = null;
         } catch (Exception e) {
             highLog("启动运行异常:" + ThrowableUtil.getAllCauseMessage(e), "error");
             throw new RuntimeException("cpolar工具启动异常", e);
+        } finally {
+            isRunning = false;
         }
     }
 
-    public static void stop(boolean force){
+    public static void stop(boolean force) {
         isRunning = false;
         if (process != null && process.isAlive()) {
             if (force) {
@@ -126,14 +136,10 @@ public class Starter {
             if (msg.contains("Tunnel established at")) {
                 highLog(log.toString());
                 debouncer.debounce(() -> {
-                    String url = msg.substring(msg.lastIndexOf("at ") + 3);
+                    publicUrl = msg.substring(msg.lastIndexOf("at ") + 3);
                     try {
-                        JSONObject jsonObject = JSONUtil.createObj().set("redirectUrl", url)
-                                .set("localCommand", String.join(" ", localCommand))
-                                .set("ip", JSONUtil.createObj().set("ticket", getIPTicket()))
-                                .set("updateTime", TimeUtil.getNowTime());
-                        updateGitURLFile(jsonObject);
-                        highLog("获取URl更新: " + url, "info");
+                        updateGitURLFile();
+                        highLog("获取URl更新: " + publicUrl, "info");
                     } catch (Exception e) {
                         highLog("更新GitURL文件失败:" + ThrowableUtil.getAllCauseMessage(e), "error");
                     }
@@ -160,12 +166,18 @@ public class Starter {
         return null;
     }
 
-    private static void updateGitURLFile(JSONObject jsonObject) throws Exception {
+    public static void updateGitURLFile() throws Exception {
+        if (publicUrl == null || !isRunning()) return;
+        JSONObject jsonObject = JSONUtil.createObj().set("redirectUrl", publicUrl)
+                .set("localCommand", String.join(" ", localCommand))
+                .set("ip", JSONUtil.createObj().set("ticket", getIPTicket()))
+                .set("updateTime", TimeUtil.getNowTime());
         Path file = Paths.get(setting.getGitRepoDir(), setting.getGitFileRelativePath());
         highLog(jsonObject.toString(), "info");
         String json = jsonObject.toStringPretty();
         TxtOperation.writeTxtFile(json, file.toFile(), "UTF-8", false);
         GitUtil.gitUploadFile(setting.getGitRepoDir(), setting.getGitFileRelativePath(), "自动提交");
+        updateGitTime = System.currentTimeMillis();
     }
 
     private static void highLog(String msg, String level) {

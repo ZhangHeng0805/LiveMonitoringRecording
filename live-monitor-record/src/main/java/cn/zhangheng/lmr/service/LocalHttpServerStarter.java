@@ -10,18 +10,28 @@ import cn.zhangheng.record.bean.Setting;
  * @version: 1.0
  * @description:
  */
-public class LocalHttpServerStarter extends Starter{
+public class LocalHttpServerStarter extends Starter {
     private static LocalMonitorHttpServer localMonitorServer;
+
     @Override
     public void start() {
+        if (localMonitorServer != null && isRunning()) return;
         localMonitorServer = new LocalMonitorHttpServer(Setting.getInstance().getMonitorServerPort());
         localMonitorServer.start();
+        setRunning(true);
     }
 
     @Override
     public void stop() {
         if (localMonitorServer != null) {
             localMonitorServer.stop();
+            localMonitorServer = null;
+            setRunning(false);
         }
+    }
+
+    @Override
+    public void destroy() {
+        stop();
     }
 }

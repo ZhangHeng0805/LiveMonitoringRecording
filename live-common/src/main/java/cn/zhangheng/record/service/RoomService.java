@@ -17,10 +17,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 public abstract class RoomService<T extends Room> {
     protected final Logger log = LoggerFactory.getLogger(getClass());
     protected final T room;
-    protected final AtomicInteger counter = new AtomicInteger(0);
+    protected final AtomicInteger refreshCounter = new AtomicInteger(0);
 
-    public int getCount() {
-        return counter.get();
+    public int getRefreshCount() {
+        return refreshCounter.get();
     }
 
     protected RoomService(T room) {
@@ -32,7 +32,7 @@ public abstract class RoomService<T extends Room> {
         if (refresh(forceRefresh)) {
             room.setUpdateTime(new Date());
         }
-        counter.incrementAndGet();
+        refreshCounter.incrementAndGet();
     }
 
     /**
@@ -52,5 +52,10 @@ public abstract class RoomService<T extends Room> {
      */
     public abstract void stopSubtitle();
 
+    /**
+     * 是否开启直播弹幕
+     * @return
+     */
+    public abstract boolean isOpenSubtitle();
 
 }

@@ -77,7 +77,7 @@ public class KuaiShouService extends RoomService<KuaiShouRoom> {
             log.error("快手refresh错误，{}", ThrowableUtil.getAllCauseMessage(e));
             throw new RuntimeException(e);
         } finally {
-            if (counter.get() % 10 == 0) {
+            if (refreshCounter.get() % 10 == 0) {
                 header.put("User-Agent", ua.get());
                 if (room.getCookie() != null) {
                     header.put("Cookie", room.getCookie());
@@ -100,6 +100,11 @@ public class KuaiShouService extends RoomService<KuaiShouRoom> {
     @Override
     public void stopSubtitle() {
 
+    }
+
+    @Override
+    public boolean isOpenSubtitle() {
+        return false;
     }
 
     private String getCookie() {

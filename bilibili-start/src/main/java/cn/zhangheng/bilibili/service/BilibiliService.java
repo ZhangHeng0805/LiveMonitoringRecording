@@ -69,7 +69,7 @@ public class BilibiliService extends RoomService<BiliRoom> {
             room_info();
             if (force || room.getStreams() == null || room.getStreams().isEmpty()) room_stream();
         }
-        if (counter.get() % 100 == 0) {
+        if (refreshCounter.get() % 100 == 0) {
             header.put("User-Agent", ua.get());
             if (room.getCookie() != null) {
                 header.put("Cookie", room.getCookie());
@@ -86,6 +86,11 @@ public class BilibiliService extends RoomService<BiliRoom> {
     @Override
     public void stopSubtitle() {
 
+    }
+
+    @Override
+    public boolean isOpenSubtitle() {
+        return false;
     }
 
 

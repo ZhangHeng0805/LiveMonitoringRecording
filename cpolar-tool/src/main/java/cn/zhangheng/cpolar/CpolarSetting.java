@@ -14,10 +14,10 @@ import lombok.Data;
  */
 @Data
 @PropertiesConfig(path = "cpolar.setting")
-public class Setting {
-    private static volatile Setting setting;
+public class CpolarSetting {
+    private static volatile CpolarSetting setting;
 
-    private Setting() {
+    private CpolarSetting() {
 
     }
 
@@ -26,14 +26,14 @@ public class Setting {
         ConfigLoader.load(this);
     }
 
-    public static Setting getInstance() {
+    public static CpolarSetting getInstance() {
         return getInstance(false);
     }
 
-    public static synchronized Setting getInstance(boolean isRefresh) {
+    public static synchronized CpolarSetting getInstance(boolean isRefresh) {
         // 第一次创建实例
         if (setting == null) {
-            setting = new Setting();
+            setting = new CpolarSetting();
             setting.loadConfig();
         }
         // 复用对象重新加载配置（不新建实例，避免多对象）
