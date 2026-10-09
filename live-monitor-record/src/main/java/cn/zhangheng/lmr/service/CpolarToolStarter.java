@@ -33,7 +33,7 @@ public class CpolarToolStarter extends Starter implements CpolarToolStarterMBean
 
     @Override
     public void start() {
-        if (thread != null && isRunning()) return;
+        if (thread != null && isRunning()) throw new RuntimeException("cpolar已运行！");
         thread = new Thread(() -> {
             try {
                 if (delayedSec > 0) {
@@ -58,7 +58,7 @@ public class CpolarToolStarter extends Starter implements CpolarToolStarterMBean
 
     @Override
     public void stop() {
-        if (thread == null && !isRunning()) return;
+        if (thread == null && !isRunning()) throw new RuntimeException("cpolar未运行！");
         try {
             CpolarStarter.stop(false);
             thread.interrupt();
@@ -122,7 +122,7 @@ public class CpolarToolStarter extends Starter implements CpolarToolStarterMBean
         try {
             CpolarStarter.updateGitURLFile();
         } catch (Exception e) {
-            log.warn("updateGitURLFile失败: {}", ThrowableUtil.getAllCauseMessage(e));
+            throw new RuntimeException(ThrowableUtil.getAllCauseMessage(e));
         }
     }
 

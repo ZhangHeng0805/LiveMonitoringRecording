@@ -167,7 +167,7 @@ public class CpolarStarter {
     }
 
     public static void updateGitURLFile() throws Exception {
-        if (publicUrl == null || !isRunning()) return;
+        if (publicUrl == null || !isRunning()) throw new RuntimeException("cpolar未运行或未获取公网地址，无法更新Git文件");
         JSONObject jsonObject = JSONUtil.createObj().set("redirectUrl", publicUrl)
                 .set("localCommand", String.join(" ", localCommand))
                 .set("ip", JSONUtil.createObj().set("ticket", getIPTicket()))
