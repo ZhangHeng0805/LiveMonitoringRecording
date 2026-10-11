@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class DouYinAPITools {
     @Getter
     private String cookie, userAgent;
+    private final String domain;
     private final AtomicInteger count = new AtomicInteger(0);
     private static final UserAgentUtil userAgentUtil = new UserAgentUtil();
     private final Map<String, String> headers = new HashMap<>();
@@ -35,33 +36,21 @@ public class DouYinAPITools {
         return count.get();
     }
 
-    public DouYinAPITools() {
-        headers.put("Accept", "application/json,text/html,*/*");
+    public DouYinAPITools(String domain) {
+        this.domain = domain;
+        headers.put("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*");
         headers.put("Accept-Language", "zh-CN,zh;q=0.9");
-        headers.put("sec-fetch-site", "same-origin");
-        headers.put("sec-fetch-mode", "cors");
-        headers.put("Referer", "https://live.douyin.com");
+        headers.put("accept-encoding", "gzip, deflate");
+        headers.put("cache-control", "max-age=0");
+        headers.put("Referer", domain);
         refresh();
-    }
-
-    public static void main(String[] args) {
-//        String roomID = "622216334529";
-//        String roomID = "208823316033";
-        String roomID = "381351302222";
-        DouYinAPITools utils = new DouYinAPITools();
-        System.out.println(utils.getCookie());
-        String x = utils.fetchRoomPageBody(roomID);
-//        System.out.println(x);
-        System.out.println(extractRoomJson(x).toStringPretty());
-        utils.refresh();
-        System.out.println(utils.getCookie());
-
     }
 
     public String fetchCookie() {
         HttpURLConnection connection = null;
         try {
-            connection = RequestUtils.getRequest("https://live.douyin.com/", headers);
+            headers.remove("Cookie");
+            connection = RequestUtils.getRequest(domain, headers);
             return HttpURLConnectionUtil.parseCookie(connection.getHeaderFields());
         } catch (Exception e) {
             log.error("刷新cookie错误:{}", ThrowableUtil.getAllCauseMessage(e));
@@ -73,19 +62,17 @@ public class DouYinAPITools {
         return null;
     }
 
-    public String fetchRoomPageBody(String liveId) {
-        String domain = "https://live.douyin.com/";
-        String url = domain + liveId;
-        String cookie = getCookie() + "; __ac_nonce=0123407cc00a9e438deb4; msToken=" + msToken() ;
+    public String fetchBody(String url) {
+        String cookie = getCookie() + "; __ac_nonce=0123407cc00a9e438deb4; msToken=" + msToken();
         headers.put("Cookie", cookie);
         HttpURLConnection connection = null;
         try {
             connection = RequestUtils.getRequest(url, headers);
-            count.incrementAndGet();
             return RequestUtils.responseAsString(connection);
         } catch (Exception e) {
             log.error("请求失败！{}", ThrowableUtil.getAllCauseMessage(e));
         } finally {
+            count.incrementAndGet();
             if (connection != null) {
                 connection.disconnect();
             }
@@ -117,5 +104,23 @@ public class DouYinAPITools {
 
     private static String msToken() {
         return RandomUtil.randomString("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_", 182);
+    }
+
+    public static void main(String[] args) {
+//        String roomID = "622216334529";
+//        String roomID = "208823316033";
+//        String domain = "https://live.douyin.com/";
+        String domain = "https://www.douyin.com/";
+        String url = "https://www.douyin.com/note/7694202898867991537";
+//        String url = "https://live.douyin.com/381351302222";
+        DouYinAPITools utils = new DouYinAPITools(domain);
+        System.out.println(utils.getCookie());
+//        System.out.println(utils.headers);
+        String x = utils.fetchBody(url);
+        System.out.println(x);
+//        System.out.println(extractRoomJson(x).toStringPretty());
+//        utils.refresh();
+//        System.out.println(utils.getCookie());
+
     }
 }

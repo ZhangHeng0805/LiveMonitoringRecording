@@ -2,6 +2,7 @@ package cn.zhangheng.douyin.browser;
 
 import cn.zhangheng.browser.*;
 import cn.zhangheng.record.bean.Constant;
+import cn.zhangheng.record.bean.Room;
 import cn.zhangheng.record.bean.Setting;
 import cn.zhangheng.douyin.bean.DouYinRoom;
 import cn.zhangheng.douyin.util.DouYinAPITools;
@@ -91,11 +92,11 @@ public class DouYinBrowser implements Closeable {
         }
         try {
             if (isFetch) {
-                DouYinAPITools api = apis.getOrDefault(roomUrl, new DouYinAPITools());
+                DouYinAPITools api = apis.getOrDefault(roomUrl, new DouYinAPITools(Room.Platform.DouYin.getMainUrl()));
                 if (!apis.containsKey(roomUrl)) {
                     apis.put(roomUrl, api);
                 }
-                String pageBody = api.fetchRoomPageBody(room.getId());
+                String pageBody = api.fetchBody(room.getRoomUrl());
                 Boolean is = extractRoomInfo(room, pageBody);
                 if (Boolean.FALSE.equals(is)) return false;
                 if (is != null && !room.isLiving()) return true;

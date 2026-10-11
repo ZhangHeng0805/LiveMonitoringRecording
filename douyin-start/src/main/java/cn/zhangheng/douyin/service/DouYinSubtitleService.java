@@ -1,6 +1,6 @@
 package cn.zhangheng.douyin.service;
 
-import cn.zhangheng.douyin.bean.DouYinCounter;
+import cn.zhangheng.douyin.bean.DouYinRoomCounter;
 import cn.zhangheng.douyin.bean.DouYinRoom;
 import cn.zhangheng.douyin.browser.DouYinWebcast;
 import cn.zhangheng.douyin.subtitle.AssGenerator;
@@ -38,7 +38,7 @@ public class DouYinSubtitleService {
         if (webcast != null && webcast.isRunning()) return;
         if (room.getSetting().isOpenSubtitle()) {
             if (room.getCounter() == null) {
-                room.setCounter(new DouYinCounter());
+                room.setCounter(new DouYinRoomCounter());
             }
             webcast = new DouYinWebcast(room);
         }

@@ -43,7 +43,7 @@ public class DouYinRoom extends Room {
     private List<String> coverList;
     //弹幕是否运行
     private volatile boolean isSubtitleRunning;
-    private DouYinCounter counter;
+    private DouYinRoomCounter counter;
 
 
     public DouYinRoom(String id) {

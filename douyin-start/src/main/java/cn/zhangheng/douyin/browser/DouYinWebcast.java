@@ -4,7 +4,7 @@ import cn.hutool.core.util.StrUtil;
 import cn.zhangheng.browser.BrowserUtil;
 import cn.zhangheng.record.bean.Setting;
 import cn.zhangheng.record.util.LogUtil;
-import cn.zhangheng.douyin.bean.DouYinCounter;
+import cn.zhangheng.douyin.bean.DouYinRoomCounter;
 import cn.zhangheng.douyin.bean.DouYinRoom;
 import cn.zhangheng.record.*;
 import com.microsoft.playwright.*;
@@ -66,7 +66,7 @@ public class DouYinWebcast {
         }
         DouYinRoom room = new DouYinRoom(id);
         room.setSetting(setting);
-        room.setCounter(new DouYinCounter());
+        room.setCounter(new DouYinRoomCounter());
         DouYinWebcast webcast = new DouYinWebcast(room);
         webcast.setSocketListener(new SocketListener() {
             @Override

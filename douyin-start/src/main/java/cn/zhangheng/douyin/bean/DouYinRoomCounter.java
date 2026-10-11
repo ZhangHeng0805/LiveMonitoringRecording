@@ -10,7 +10,7 @@ import lombok.Data;
  * @description:
  */
 @Data
-public class DouYinCounter {
+public class DouYinRoomCounter {
     //最大在线用户数
     private long maxOnlineUsers = 0;
     //总计礼物数（钻石）

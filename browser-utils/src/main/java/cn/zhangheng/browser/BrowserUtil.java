@@ -43,6 +43,7 @@ public class BrowserUtil {
 
     /**
      * 解析 Cookie 字符串为 Playwright 的 Cookie 对象
+     *
      * @param targetDomain 绑定的域名
      * @param cookieStr
      * @return
@@ -84,6 +85,7 @@ public class BrowserUtil {
 
     /**
      * 将Cookie集合转为字符串
+     *
      * @param cookies
      * @return
      */
@@ -103,7 +105,7 @@ public class BrowserUtil {
     /**
      * 页面导航（合并加载等待逻辑）
      */
-    public static boolean navigatePage(String url, Page page, WaitUntilState state,double navigateTimeoutMs) {
+    public static boolean navigatePage(String url, Page page, WaitUntilState state, double navigateTimeoutMs) {
         if (url == null || url.trim().isEmpty()) {
             throw new IllegalArgumentException("URL不能为空");
         }
@@ -122,7 +124,7 @@ public class BrowserUtil {
         } catch (TimeoutError e1) {
             log.error("页面导航超时:{}", url);
         } catch (PlaywrightException e2) {
-            log.error("页面导航失败:{} ,{} ", url, ThrowableUtil.toString(e2,128));
+            log.error("页面导航失败:{} ,{} ", url, ThrowableUtil.toString(e2, 128));
         } catch (Throwable e) {
             log.error("页面导航失败:{}", e.getMessage());
         }
@@ -130,7 +132,7 @@ public class BrowserUtil {
     }
 
     public static boolean navigatePage(String url, Page page, WaitUntilState state) {
-        return navigatePage(url,page,state,30_000);
+        return navigatePage(url, page, state, 30_000);
     }
 
 
@@ -175,11 +177,17 @@ public class BrowserUtil {
         }
     }
 
-    public static Response waitForTargetResponse(Page page, String target_request_prefix, long navigateTimeoutMs) {
+    public static Response waitForTargetResponse(Page page, long navigateTimeoutMs, String... target_request_prefix) {
         try {
             // 1. 定义响应匹配规则：Predicate<Request>
-            Predicate<Response> requestPredicate = response ->
-                    response.url().startsWith(target_request_prefix) && StrUtil.isNotBlank(response.text());
+            Predicate<Response> requestPredicate = response -> {
+                for (String prefix : target_request_prefix) {
+                    if (response.url().startsWith(prefix) && StrUtil.isNotBlank(response.text())) {
+                        return true;
+                    }
+                }
+                return false;
+            };
 
             // 2. 定义响应匹配后的回调逻辑（Runnable）
             Runnable callback = () -> {

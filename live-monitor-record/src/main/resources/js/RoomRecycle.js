@@ -4,8 +4,7 @@ function roomRecycle() {
             actionKey: key,
             pageNum: 1,
             pageSize: 100,
-        })
-            .then((msg) => {
+        }).then((msg) => {
                 if (!msg.success) {
                     showActionAfterModal(msg);
                 } else {
