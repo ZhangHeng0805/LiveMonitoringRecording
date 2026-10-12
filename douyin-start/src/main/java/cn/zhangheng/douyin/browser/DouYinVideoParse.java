@@ -318,7 +318,7 @@ public class DouYinVideoParse {
                         vid.setSpecifications(specifications);
                         vid.setSize(size);
                         vid.setUrl(urlList.getStr(i));
-                        vid.setCover(image1.getUrl());
+                        vid.setCover(image2.getUrl());
                         videos.add(vid);
                     }
                     video.setVideos(videos);

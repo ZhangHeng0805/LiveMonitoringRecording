@@ -138,7 +138,7 @@
         </div>
 
         <!-- 内容切换标签 -->
-        <div class="bg-white rounded-t-2xl shadow-card p-1 mb-0 flex">
+        <div class="bg-white rounded-t-2xl shadow-card p-1 mb-0 flex" id="tabs">
             <button id="tab-video"
                     class="content-tab flex-1 py-3 px-4 rounded-xl bg-primary text-white font-medium transition-custom"
                     data-tab="video">
@@ -163,15 +163,6 @@
             <div id="videoScrollWrap" class="flex gap-4 overflow-x-auto items-center h-[500px]">
                 <!-- 视频项会JS动态填充-->
             </div>
-            <!--            <div class="relative aspect-video bg-neutral-900">-->
-            <!--                <video-->
-            <!--                        id="videoPlayer"-->
-            <!--                        class="w-full h-full"-->
-            <!--                        controls-->
-            <!--                        autoplay="autoplay">-->
-            <!--                    您的浏览器不支持HTML5视频播放-->
-            <!--                </video>-->
-            <!--            </div>-->
             <!-- 视频信息区域 -->
             <div class="p-4 border-b border-neutral-200">
                 <div class="flex items-center justify-between">
@@ -410,18 +401,13 @@
         selectedImgSrc = null;
 
         if (!images || images.length === 0) return;
-        if (images.length === 1) {
-            scrollWrap.classList.add('justify-center');
-            scrollWrap.classList.remove('justify-start');
-        } else {
-            scrollWrap.classList.remove('justify-center');
-            scrollWrap.classList.add('justify-start');
-        }
+        let allImageWidth = 0;
         images.forEach((image) => {
+            allImageWidth += getRealWidth(image.specifications);
             const div = document.createElement('div');
             div.className = 'flex-shrink-0 cursor-pointer rounded-lg overflow-hidden border-2 border-transparent hover:border-primary transition-custom';
             div.innerHTML = `
-                <img src="${image.url}" alt="${image.specifications} 封面图" class="h-[300px] max-w-none object-contain block">
+                <img src="${image.url}" alt="${image.specifications} 封面图" class="h-[500px] max-w-none object-contain block">
             `;
             // 点击选中图片
             div.addEventListener('click', () => {
@@ -432,9 +418,20 @@
             });
             scrollWrap.appendChild(div);
         });
-
+        if (document.getElementById("loading").offsetWidth > allImageWidth) {
+            scrollWrap.classList.add('justify-center');
+            scrollWrap.classList.remove('justify-start');
+        } else {
+            scrollWrap.classList.remove('justify-center');
+            scrollWrap.classList.add('justify-start');
+        }
         // 默认选中第一张
         scrollWrap.firstElementChild?.click();
+    }
+
+    function getRealWidth(specifications, height = 500) {
+        let split = specifications.split('×');
+        return (height / parseInt(split[1])) * parseInt(split[0]);
     }
 
     // 渲染多个视频
@@ -444,19 +441,15 @@
         selectedVideoSrc = null;
 
         if (!videos || videos.length === 0) return;
-        if (videos.length === 1) {
-            scrollWrap.classList.add('justify-center');
-            scrollWrap.classList.remove('justify-start');
-        } else {
-            scrollWrap.classList.remove('justify-center');
-            scrollWrap.classList.add('justify-start');
-        }
+        let allVideoWidth = 0;
         videos.forEach((video) => {
+            allVideoWidth += getRealWidth(video.specifications);
             const div = document.createElement('div');
             div.className = 'flex-shrink-0 h-full cursor-pointer rounded-lg overflow-hidden border-2 border-transparent hover:border-primary transition-custom';
             div.innerHTML = `
-                <video src="${video.url}" poster="${video.cover}"
-                    class="w-full h-full bg-neutral-900 object-cover" controls>
+                <video src="${video.url}"
+                poster="${video.cover}"
+                    class="w-full h-full bg-neutral-900" controls>
                 </video>
             `;
             const videoEl = div.querySelector('video');
@@ -468,14 +461,19 @@
                     // 至少保留1个，只剩这一个时不删除
                     if (videoItems.length > 1) {
                         div.remove();
-                        if (videoItems.length === 2) {
-                            scrollWrap.classList.add('justify-center');
-                            scrollWrap.classList.remove('justify-start');
-                        }
+                        allVideoWidth -= getRealWidth(video.specifications);
                     } else {
                         // 最后一个加载失败：隐藏内容，保留占位DOM，可加样式提示错误
-                        // videoEl.style.display = 'none';
+                        videoEl.style.display = 'none';
                         div.classList.add('opacity-40');
+                    }
+                    console.log(scrollWrap.offsetWidth, allVideoWidth)
+                    if (scrollWrap.offsetWidth > allVideoWidth) {
+                        scrollWrap.classList.add('justify-center');
+                        scrollWrap.classList.remove('justify-start');
+                    } else {
+                        scrollWrap.classList.remove('justify-center');
+                        scrollWrap.classList.add('justify-start');
                     }
                 });
             }
@@ -494,19 +492,23 @@
                 document.getElementById('videoSize').innerHTML = formatFileSize(video.size);
                 document.getElementById('videoSpecifications').innerHTML = video.specifications;
                 selectedVideoSrc = video.url;
-
                 scrollWrap.querySelectorAll('video').forEach(v => {
                     if (v !== videoEl) {
                         v.pause();
                     }
-                });
-                videoEl.play().catch(err => {
                 });
             });
 
             scrollWrap.appendChild(div);
         });
 
+        if (document.getElementById("loading").offsetWidth > allVideoWidth) {
+            scrollWrap.classList.add('justify-center');
+            scrollWrap.classList.remove('justify-start');
+        } else {
+            scrollWrap.classList.remove('justify-center');
+            scrollWrap.classList.add('justify-start');
+        }
         // 默认选中第一个
         scrollWrap.firstElementChild?.click();
     }
