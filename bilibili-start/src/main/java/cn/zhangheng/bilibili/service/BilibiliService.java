@@ -5,8 +5,8 @@ import cn.hutool.json.JSONUtil;
 import cn.zhangheng.bilibili.bean.BiliRoom;
 import cn.zhangheng.record.service.RoomService;
 import cn.zhangheng.record.util.HttpUtils;
-import cn.zhangheng.record.util.UserAgentUtil;
 import com.zhangheng.util.TimeUtil;
+import com.zhangheng.util.UserAgentUtil;
 
 import java.util.Date;
 import java.util.HashMap;
@@ -24,7 +24,7 @@ public class BilibiliService extends RoomService<BiliRoom> {
 
 
     private final Map<Integer, String> qn = new HashMap<>();
-    private final UserAgentUtil ua = new UserAgentUtil();
+    private final UserAgentUtil ua = UserAgentUtil.create(true,false);
     private final Map<String, String> header = new HashMap<>();
 
     public static void main(String[] args) {

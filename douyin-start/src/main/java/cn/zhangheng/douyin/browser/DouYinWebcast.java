@@ -2,15 +2,16 @@ package cn.zhangheng.douyin.browser;
 
 import cn.hutool.core.util.StrUtil;
 import cn.zhangheng.browser.BrowserUtil;
+import cn.zhangheng.douyin.util.DouYinUtil;
 import cn.zhangheng.record.bean.Setting;
 import cn.zhangheng.record.util.LogUtil;
 import cn.zhangheng.douyin.bean.DouYinRoomCounter;
 import cn.zhangheng.douyin.bean.DouYinRoom;
 import cn.zhangheng.record.*;
+import cn.zhangheng.record.util.UserAgentUtil;
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.WaitUntilState;
 import com.zhangheng.util.TimeUtil;
-import com.zhangheng.util.UserAgentUtil;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -231,14 +232,14 @@ public class DouYinWebcast {
             return wss;
         }
         Page page = null;
-        String userAgent = UserAgentUtil.getRandomUser_Agent();
+        String userAgent = UserAgentUtil.getRandomPc();
         boolean headless = room.getSetting() == null || !Objects.equals(room.getSetting().getBrowserHeadless(), Boolean.FALSE);
         try (Playwright playwright = Playwright.create();
-             Browser browser = playwright.chromium().launch(BrowserUtil.getLaunchOptions(userAgent, headless))
+             Browser browser = playwright.chromium().launch(BrowserUtil.getLaunchOptions(headless))
         ) {
-            Browser.NewContextOptions contextOptions = new Browser.NewContextOptions().setUserAgent(userAgent);
-            BrowserContext context = browser.newContext(contextOptions);
+            BrowserContext context = browser.newContext(DouYinUtil.buildDouyinPcContextOptions(userAgent));
             page = context.newPage();
+            page.addInitScript(DouYinUtil.getDouyinFingerprintScript());
             setRoomCookie(room, page, roomUrl);
             BrowserUtil.navigatePage(room.getRoomUrl(), page, WaitUntilState.DOMCONTENTLOADED);
             //提取界面信息
@@ -279,12 +280,12 @@ public class DouYinWebcast {
         Page page = null;
         Consumer<WebSocket> handler = null;
         boolean headless = true;
-        String userAgent = UserAgentUtil.getRandomUser_Agent();
+        String userAgent = UserAgentUtil.getRandomPc();
         if (room.getSetting() != null) {
             headless = !Objects.equals(room.getSetting().getBrowserHeadless(), Boolean.FALSE);
         }
         try (Playwright playwright = Playwright.create();
-             Browser browser = playwright.chromium().launch(BrowserUtil.getLaunchOptions(userAgent, headless));
+             Browser browser = playwright.chromium().launch(BrowserUtil.getLaunchOptions(headless));
         ) {
             Browser.NewContextOptions contextOptions = new Browser.NewContextOptions().setUserAgent(userAgent);
             BrowserContext context = browser.newContext(contextOptions);

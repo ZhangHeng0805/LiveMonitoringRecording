@@ -1,10 +1,17 @@
 package cn.zhangheng.douyin.util;
 
+import com.microsoft.playwright.Browser;
+import com.zhangheng.util.RandomUtil;
+
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static cn.zhangheng.record.util.UserAgentUtil.PC_VIEWPORTS;
+
 
 /**
  * @author: ZhangHeng
@@ -68,6 +75,7 @@ public class DouYinUtil {
         }
         return currentUrl;
     }
+
     public static String extractNoteId(String reflowUrl) {
         Pattern pattern = Pattern.compile("note/(\\d+)");
         Matcher matcher = pattern.matcher(reflowUrl);
@@ -75,5 +83,46 @@ public class DouYinUtil {
             return matcher.group(1);
         }
         return null;
+    }
+
+    public static String getDouyinFingerprintScript() {
+        String initScript =
+                "Object.defineProperty(navigator, 'webdriver', { get: () => undefined });\n" +
+                        "if (!window.chrome) {\n" +
+                        "  window.chrome = {\n" +
+                        "    runtime: {},\n" +
+                        "    webstore: {}\n" +
+                        "  };\n" +
+                        "}\n" +
+                        "Object.defineProperty(navigator, 'plugins', {\n" +
+                        "  get: () => [\n" +
+                        "    { name: 'Chrome PDF Plugin', filename: 'internal-pdf-viewer', description: '' },\n" +
+                        "    { name: 'Widevine Content Decryption Module', filename: 'widevinecdm.dll', description: '' }\n" +
+                        "  ]\n" +
+                        "});\n" +
+                        "Object.defineProperty(navigator, 'mimeTypes', {\n" +
+                        "  get: () => [\n" +
+                        "    { type: 'application/pdf', suffixes: 'pdf', description: '' }\n" +
+                        "  ]\n" +
+                        "});\n" +
+                        "Object.defineProperty(navigator, 'languages', { get: () => ['zh‑CN', 'zh', 'en'] });\n";
+        // java层随机硬件参数
+        int mem = new int[]{4, 8, 16}[RandomUtil.randomInt(3)];
+        int cpuCore = new int[]{4, 6, 8, 12}[RandomUtil.randomInt(4)];
+
+        String script = initScript + String.format("Object.defineProperty(navigator, 'deviceMemory', { get: () => %d });\n" +
+                "Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => %d });", mem, cpuCore);
+        return script;
+    }
+    /**
+     * 一键构建抖音PC网页Context配置：随机UA + 随机分辨率 + zh-CN + Asia/Shanghai
+     */
+    public static Browser.NewContextOptions buildDouyinPcContextOptions(String ua) {
+        int[] vp = PC_VIEWPORTS[new Random().nextInt(PC_VIEWPORTS.length)];
+        return new Browser.NewContextOptions()
+                .setUserAgent(ua)
+                .setViewportSize(vp[0], vp[1])
+                .setLocale("zh-CN")
+                .setTimezoneId("Asia/Shanghai");
     }
 }

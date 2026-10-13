@@ -2,14 +2,14 @@ package cn.zhangheng.douyin.browser;
 
 import cn.zhangheng.browser.BrowserUtil;
 import cn.zhangheng.browser.login.BrowserLogin;
-import cn.zhangheng.record.bean.Constant;
+import cn.zhangheng.douyin.util.DouYinUtil;
+import cn.zhangheng.record.util.UserAgentUtil;
 import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 import com.microsoft.playwright.options.Cookie;
 import com.zhangheng.file.TxtOperation;
-import com.zhangheng.util.UserAgentUtil;
 
 import java.io.File;
 import java.io.IOException;
@@ -33,18 +33,20 @@ public class DouYinLogin {
         String url1 = "https://www.douyin.com/";
         String url2 = "https://www.douyin.com/user/self";
         try (Playwright playwright = Playwright.create();
-             Browser browser = playwright.chromium().launch(BrowserUtil.getLaunchOptions(Constant.User_Agent, false))
+             Browser browser = playwright.chromium().launch(BrowserUtil.getLaunchOptions(false))
         ) {
-            Browser.NewContextOptions contextOptions = new Browser.NewContextOptions().setUserAgent(UserAgentUtil.getRandomUser_Agent());
-            BrowserContext context = browser.newContext(contextOptions);
+            String userAgent = UserAgentUtil.getRandomPc();
+            BrowserContext context = browser.newContext(DouYinUtil.buildDouyinPcContextOptions(userAgent));
             Page page = context.newPage();
+            page.addInitScript(DouYinUtil.getDouyinFingerprintScript());
             System.out.println("正在打开抖音网页版...");
             System.out.println("请使用手机扫码登录");
             boolean isLoginSuccess = BrowserUtil.goToBySelector(url1, page, "span[data-e2e='live-avatar']", BrowserLogin.maxWaitTimeSec);
 
             if (!isLoginSuccess) {
                 System.err.println("登录超时，未检测到登录状态，浏览器关闭！");
-                context.close();;
+                context.close();
+                ;
                 browser.close();
                 return;
             }
@@ -105,8 +107,6 @@ public class DouYinLogin {
 //        }
 //        return isLoginSuccess;
 //    }
-
-
 
 
     public static String getUser(Page page) {

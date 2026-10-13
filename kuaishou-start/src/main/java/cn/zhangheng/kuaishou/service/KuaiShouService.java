@@ -8,11 +8,11 @@ import cn.hutool.json.JSONUtil;
 import cn.zhangheng.record.bean.Room;
 import cn.zhangheng.record.service.RoomService;
 import cn.zhangheng.record.util.RequestUtils;
-import cn.zhangheng.record.util.UserAgentUtil;
 import cn.zhangheng.kuaishou.bean.KuaiShouRoom;
 import cn.zhangheng.kuaishou.util.InitialStateExtractor;
 import com.zhangheng.util.HttpURLConnectionUtil;
 import com.zhangheng.util.ThrowableUtil;
+import com.zhangheng.util.UserAgentUtil;
 
 import java.net.HttpURLConnection;
 import java.util.*;
@@ -27,7 +27,7 @@ import java.util.*;
 public class KuaiShouService extends RoomService<KuaiShouRoom> {
     private static String cookieStr = "did=web_bec7a4478cae400ca13b46730b6380ed; clientid=3; did=web_bec7a4478cae400ca13b46730b6380ed; client_key=65890b29; kpn=GAME_ZONE; kwpsecproductname=PCLive; kuaishou.live.bfb1s=3e261140b0cf7444a0ba411c6f227d88; kwssectoken=Unr42xCL187Gl5Y9UahgPIhxv9hE4BGTGme7esVao/zKtIk0pPFyPAFNEtojF6mNm1I7W33Vu/spUe4PKlIHTw==; kwscode=10051eaba4b351a85f5e7cd1a7a8d2e4d12be582296db3cd133b7afa2c78e711; kwfv1=PnGU+9+Y8008S+nH0U+0mjPf8fP08f+98f+nLlwnrIP9+Sw/ZFGfzY+eGlGf+f+e4SGfbYP0QfGnLFwBLU80mYG9pDG/cU8fbDG/QS8BPFPnrU+9LEwerl+9PIGf+jwnbfG/bYPnpf+0H7+/PM+0L7G/8f+/DhwBLUP0zSwBrl+9P=";
 
-    private final UserAgentUtil ua = new UserAgentUtil();
+    private final UserAgentUtil ua = UserAgentUtil.create(true, false);
     private final Map<String, String> header = new HashMap<>();
 
 

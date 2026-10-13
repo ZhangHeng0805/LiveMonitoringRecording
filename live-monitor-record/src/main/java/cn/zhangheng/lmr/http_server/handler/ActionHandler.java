@@ -14,10 +14,10 @@ import cn.zhangheng.lmr.FileModeMain;
 import cn.zhangheng.lmr.Main;
 import cn.zhangheng.lmr.bean.RoomFileModel;
 import cn.zhangheng.lmr.bean.RoomJson;
+import cn.zhangheng.record.util.UserAgentUtil;
 import com.sun.net.httpserver.HttpExchange;
 import com.zhangheng.bean.Message;
 import com.zhangheng.util.ThrowableUtil;
-import com.zhangheng.util.UserAgentUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -92,7 +92,7 @@ public class ActionHandler extends JSONHandler {
                 }
             } else if (indexPath.startsWith("parseDouYinLink")) {
                 Map<String, String> query = parseQuery(httpExchange);
-                String link = DouYinUrlParse.parseDouyinShareLink(query.get("shareLink"), UserAgentUtil.getRandomUser_Agent());
+                String link = DouYinUrlParse.parseDouyinShareLink(query.get("shareLink"), UserAgentUtil.getRandomPc());
                 msg.setData(link);
             } else if (indexPath.startsWith("refresh")) {
                 Map<String, String> query = parseQuery(httpExchange);

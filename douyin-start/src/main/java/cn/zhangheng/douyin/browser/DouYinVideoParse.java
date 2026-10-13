@@ -16,12 +16,12 @@ import cn.zhangheng.record.bean.Setting;
 import cn.zhangheng.record.bean.work.Author;
 import cn.zhangheng.record.bean.work.Work;
 import cn.zhangheng.record.util.RequestUtils;
+import cn.zhangheng.record.util.UserAgentUtil;
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.WaitForSelectorState;
 import com.microsoft.playwright.options.WaitUntilState;
 import com.zhangheng.util.ThrowableUtil;
 import com.zhangheng.util.TimeUtil;
-import com.zhangheng.util.UserAgentUtil;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -84,22 +84,19 @@ public class DouYinVideoParse {
             return work;
         }
         if (userAgent == null) {
-            userAgent = UserAgentUtil.getRandomUser_Agent();
+            userAgent = UserAgentUtil.getRandomPc();
         }
         BrowserAPI browserApi = new BrowserAPI(null);
         JSONObject htmlJson = null;
         boolean headless = setting == null || !Objects.equals(setting.getBrowserHeadless(), Boolean.FALSE);
         try (Playwright playwright = Playwright.create();
-             Browser browser = playwright.chromium().launch(BrowserUtil.getLaunchOptions(Constant.User_Agent, headless))
+             Browser browser = playwright.chromium().launch(BrowserUtil.getLaunchOptions(headless))
         ) {
-            Browser.NewContextOptions contextOptions = new Browser.NewContextOptions().setUserAgent(userAgent);
-            BrowserContext context = browser.newContext(contextOptions);
+            BrowserContext context = browser.newContext(DouYinUtil.buildDouyinPcContextOptions(userAgent));
             Page page = context.newPage();
-            page.setViewportSize(1920, 1080);
+            page.addInitScript(DouYinUtil.getDouyinFingerprintScript());
             BrowserUtil.navigatePage(link, page, WaitUntilState.DOMCONTENTLOADED);
             htmlJson = extractHtmlJson(page.content());
-//            System.out.println(entries);
-//            String awemeId = entries.getStr("awemeId");
             Response response;
             try {
                 response = BrowserUtil.waitForTargetResponse(page, 10_000, urlVideoPrefix, urlImagePrefix, urlImagePrefix2);
@@ -150,14 +147,14 @@ public class DouYinVideoParse {
             return null;
         }
         if (userAgent == null) {
-            userAgent = UserAgentUtil.getRandomUser_Agent();
+            userAgent = UserAgentUtil.getRandomPc();
         }
         try (Playwright playwright = Playwright.create();
-             Browser browser = playwright.chromium().launch(BrowserUtil.getLaunchOptions(Constant.User_Agent, true))
+             Browser browser = playwright.chromium().launch(BrowserUtil.getLaunchOptions(true))
         ) {
-            Browser.NewContextOptions contextOptions = new Browser.NewContextOptions().setUserAgent(userAgent);
-            BrowserContext context = browser.newContext(contextOptions);
+            BrowserContext context = browser.newContext(DouYinUtil.buildDouyinPcContextOptions(userAgent));
             Page page = context.newPage();
+            page.addInitScript(DouYinUtil.getDouyinFingerprintScript());
             BrowserUtil.navigatePage(link, page, WaitUntilState.LOAD);
             String content = page.content();
 //            System.out.println(content);

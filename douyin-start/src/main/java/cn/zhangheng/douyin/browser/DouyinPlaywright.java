@@ -44,7 +44,7 @@ public class DouyinPlaywright {
         try {
             Setting setting = room.getSetting();
             boolean headless = !Objects.equals(setting.getBrowserHeadless(), Boolean.FALSE);
-            browser = new PlaywrightBrowser(Constant.User_Agent, headless);
+            browser = new PlaywrightBrowser(headless);
             browser.setIsPageClear(setting.getBrowserIsPageClear());
 //            browser.setUpdateContextCounts(setting.getUpdateContextCounts());
             Page page = browser.newPage();

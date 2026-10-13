@@ -151,7 +151,7 @@ public class CpolarStarter {
     private static String getIPTicket() {
         HttpURLConnection connection = null;
         try {
-            connection = HttpURLConnectionUtil.getRequest("https://ip.cn/", MapUtil.of("User-Agent", UserAgentUtil.getRandomUser_Agent()));
+            connection = HttpURLConnectionUtil.getRequest("https://ip.cn/", MapUtil.of("User-Agent", UserAgentUtil.getRandomPc()));
             String bodyStr = HttpURLConnectionUtil.responseBodyStr(connection);
             int index;
             if ((index = bodyStr.indexOf("_ticket")) > 0) {

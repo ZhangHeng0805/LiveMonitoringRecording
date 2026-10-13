@@ -25,12 +25,11 @@ public class BrowserUtil {
     /**
      * 浏览器启动配置
      */
-    public static BrowserType.LaunchOptions getLaunchOptions(String userAgent, boolean headless) {
+    public static BrowserType.LaunchOptions getLaunchOptions(boolean headless) {
         return new BrowserType.LaunchOptions()
                 .setHeadless(headless) // 无头模式：生产环境建议true
                 .setArgs(Arrays.asList(
                         "--disable-blink-features=AutomationControlled",
-                        "--user-agent=" + userAgent,
                         "--no-sandbox",
                         "--disable-gpu",
                         "--disable-dev-shm-usage", // 解决容器环境内存限制问题

@@ -29,9 +29,9 @@ public class BiliLogin {
     public static void open() {
         String url1 = "https://www.bilibili.com/";
 //        String url2 = "https://www.douyin.com/user/self";
-        String userAgent = UserAgentUtil.getRandomUser_Agent();
+        String userAgent = UserAgentUtil.getRandomPc();
         try (Playwright playwright = Playwright.create();
-             Browser browser = playwright.chromium().launch(BrowserUtil.getLaunchOptions(userAgent, false))
+             Browser browser = playwright.chromium().launch(BrowserUtil.getLaunchOptions(false))
         ) {
             Browser.NewContextOptions contextOptions = new Browser.NewContextOptions().setUserAgent(userAgent);
             BrowserContext context = browser.newContext(contextOptions);

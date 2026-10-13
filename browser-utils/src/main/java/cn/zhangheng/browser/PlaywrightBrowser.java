@@ -1,5 +1,6 @@
 package cn.zhangheng.browser;
 
+import cn.hutool.core.util.StrUtil;
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.WaitUntilState;
 import com.zhangheng.util.ThrowableUtil;
@@ -124,23 +125,21 @@ public class PlaywrightBrowser implements AutoCloseable {
 //                    "  document.body.dispatchEvent(event);\n" +
 //                    "});";
 
-    private final String userAgent;
     private final boolean headless;
     private final UserAgentUtil userAgentUtil;
 
-    public PlaywrightBrowser(String userAgent) {
-        this(userAgent, true);
+    public PlaywrightBrowser() {
+        this(true);
     }
 
-    public PlaywrightBrowser(String userAgent, boolean headless) {
-        this.userAgent = userAgent;
+    public PlaywrightBrowser(boolean headless) {
         this.headless = headless;
-        this.userAgentUtil = new UserAgentUtil();
+        this.userAgentUtil = UserAgentUtil.create(true, false);
         try {
             // 先初始化Playwright
             this.playwright = Playwright.create();
             // 再初始化浏览器（若失败，需关闭已创建的Playwright）
-            this.browser = playwright.chromium().launch(BrowserUtil.getLaunchOptions(userAgent, headless));
+            this.browser = playwright.chromium().launch(getLaunchOptions(headless));
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 if (isRunning()) {
                     //程序关闭，自动关闭浏览器
@@ -158,11 +157,11 @@ public class PlaywrightBrowser implements AutoCloseable {
 
 
     public BrowserType.LaunchOptions getLaunchOptions(boolean headless) {
-        return BrowserUtil.getLaunchOptions(userAgent, headless);
+        return BrowserUtil.getLaunchOptions(headless);
     }
 
     public BrowserType.LaunchOptions getLaunchOptions() {
-        return BrowserUtil.getLaunchOptions(userAgent, headless);
+        return BrowserUtil.getLaunchOptions(headless);
     }
 
     /**
@@ -179,7 +178,7 @@ public class PlaywrightBrowser implements AutoCloseable {
     /**
      * 创建新页面（自动处理浏览器断开重连）
      */
-    public Page newPage(String userAgent) {
+    public Page newPage(Browser.NewContextOptions options, String initScript) {
         // 双重检查：确保浏览器可用
         if (!isRunning()) {
             log.warn("浏览器已断开，尝试重新启动...");
@@ -214,8 +213,6 @@ public class PlaywrightBrowser implements AutoCloseable {
             isContextValid = (browserContext != null)
                     && browserContext.browser().equals(browser);
         }
-//        String name = Thread.currentThread().getName();
-//        log.debug(name + "---" + isContextValid);
         if (!isContextValid) {
             if (browserContext != null) {
                 try {
@@ -225,19 +222,6 @@ public class PlaywrightBrowser implements AutoCloseable {
                     log.warn("关闭旧 Context 失败", e);
                 }
             }
-            // 创建新 Context 并覆盖 ThreadLocal
-            Browser.NewContextOptions options = new Browser.NewContextOptions()
-                    .setUserAgent(userAgent)
-//                    .setViewportSize(1920, 1080) // 模拟PC端分辨率
-//                    .setJavaScriptEnabled(true)
-//                    .setIgnoreHTTPSErrors(true)
-                    // 禁用录像/截图缓存
-//                    .setRecordVideoDir(null)
-//                    .setRecordHarPath(null)
-                    // 限制缓存大小
-//                    .setExtraHTTPHeaders(MapUtil.of("Cache-Control", "no-cache"))
-                    ;
-
 
             browserContext = browser.newContext(options);
             BrowserContent content = new BrowserContent(browserContext);
@@ -246,8 +230,26 @@ public class PlaywrightBrowser implements AutoCloseable {
         }
         Page page = browserContext.newPage();
         // 创建新页面并注入反检测脚本
-//        page.addInitScript(initScript);
+        if (StrUtil.isNotBlank(initScript)) {
+            page.addInitScript(initScript);
+        }
         return page;
+    }
+
+    public Page newPage(String userAgent) {
+        // 创建新 Context 并覆盖 ThreadLocal
+        Browser.NewContextOptions options = new Browser.NewContextOptions()
+                .setUserAgent(userAgent)
+//                    .setViewportSize(1920, 1080) // 模拟PC端分辨率
+//                    .setJavaScriptEnabled(true)
+//                    .setIgnoreHTTPSErrors(true)
+                // 禁用录像/截图缓存
+//                    .setRecordVideoDir(null)
+//                    .setRecordHarPath(null)
+                // 限制缓存大小
+//                    .setExtraHTTPHeaders(MapUtil.of("Cache-Control", "no-cache"))
+                ;
+        return newPage(options, null);
     }
 
     public boolean navigatePage(String url, Page page) {

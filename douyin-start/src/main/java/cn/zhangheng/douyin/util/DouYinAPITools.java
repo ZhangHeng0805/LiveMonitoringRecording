@@ -5,9 +5,9 @@ import cn.hutool.core.util.RandomUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import cn.zhangheng.record.util.RequestUtils;
-import cn.zhangheng.record.util.UserAgentUtil;
 import com.zhangheng.util.HttpURLConnectionUtil;
 import com.zhangheng.util.ThrowableUtil;
+import com.zhangheng.util.UserAgentUtil;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -29,7 +29,7 @@ public class DouYinAPITools {
     private String cookie, userAgent;
     private final String domain;
     private final AtomicInteger count = new AtomicInteger(0);
-    private static final UserAgentUtil userAgentUtil = new UserAgentUtil();
+    private static final UserAgentUtil userAgentUtil = UserAgentUtil.create(true,false);
     private final Map<String, String> headers = new HashMap<>();
 
     public int getCount() {

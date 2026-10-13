@@ -2,12 +2,12 @@ package cn.zhangheng.douyin.browser;
 
 import cn.zhangheng.browser.BrowserUtil;
 import cn.zhangheng.douyin.util.DouYinUtil;
+import cn.zhangheng.record.util.UserAgentUtil;
 import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 import com.microsoft.playwright.options.WaitUntilState;
-import com.zhangheng.util.UserAgentUtil;
 
 import java.util.regex.Pattern;
 
@@ -20,26 +20,28 @@ import java.util.regex.Pattern;
  */
 public class DouYinUrlParse {
     public static void main(String[] args) {
-        String s="9- #在抖音，记录美好生活#【央视纪录片频道直播】直播中 。复制下方链接，打开【抖音】，直接观看节目！ https://v.douyin.com/KmPe69CGQ1A/ 4@0.com :5pm";
+        String s = "9- #在抖音，记录美好生活#【央视纪录片频道直播】直播中 。复制下方链接，打开【抖音】，直接观看节目！ https://v.douyin.com/KmPe69CGQ1A/ 4@0.com :5pm";
         System.out.println(DouYinUtil.extractDouyinLink(null));
         long sta = System.currentTimeMillis();
-        System.out.println(parseDouyinShareLink(s, UserAgentUtil.getRandomUser_Agent()));
-        System.out.println("耗时："+(System.currentTimeMillis()-sta));
+        System.out.println(parseDouyinShareLink(s, UserAgentUtil.getRandomPc()));
+        System.out.println("耗时：" + (System.currentTimeMillis() - sta));
     }
+
     public static String parseDouyinShareLink(String shareLink, String userAgent) {
         String link = DouYinUtil.extractDouyinLink(shareLink);
-        if (link == null) {return "";}
-       try (Playwright playwright = Playwright.create();
-             Browser browser = playwright.chromium().launch(BrowserUtil.getLaunchOptions(userAgent, true))
-        ){
-            Browser.NewContextOptions contextOptions = new Browser.NewContextOptions().setUserAgent(userAgent);
-            BrowserContext context = browser.newContext(contextOptions);
+        if (link == null) {
+            return "";
+        }
+        try (Playwright playwright = Playwright.create();
+             Browser browser = playwright.chromium().launch(BrowserUtil.getLaunchOptions(true))
+        ) {
+            BrowserContext context = browser.newContext(DouYinUtil.buildDouyinPcContextOptions(userAgent));
             Page page = context.newPage();
-//            Page page = browser.newPage();
+            page.addInitScript(DouYinUtil.getDouyinFingerprintScript());
             BrowserUtil.navigatePage(link, page, WaitUntilState.LOAD);
-           String url = page.url();
-           context.close();
-           return url;
+            String url = page.url();
+            context.close();
+            return url;
         }
     }
 }
