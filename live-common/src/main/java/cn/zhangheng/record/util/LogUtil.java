@@ -3,6 +3,7 @@ package cn.zhangheng.record.util;
 import cn.hutool.http.HttpUtil;
 import cn.zhangheng.record.bean.Room;
 import com.zhangheng.util.TimeUtil;
+import com.zhangheng.log.AsyncBatchLogger;
 import lombok.Getter;
 
 import java.io.IOException;
@@ -125,7 +126,7 @@ public class LogUtil {
      */
     public void close() {
         if (logger != null) {
-            logger.flushRemaining();
+            logger.shutdown();
         }
     }
 

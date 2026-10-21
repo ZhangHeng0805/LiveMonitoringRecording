@@ -38,9 +38,8 @@ public class DouYinAPITools {
 
     public DouYinAPITools(String domain) {
         this.domain = domain;
-        headers.put("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*");
+        headers.put("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*");
         headers.put("Accept-Language", "zh-CN,zh;q=0.9");
-        headers.put("accept-encoding", "gzip, deflate");
         headers.put("cache-control", "max-age=0");
         headers.put("Referer", domain);
         refresh();

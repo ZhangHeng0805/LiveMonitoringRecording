@@ -21,6 +21,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * 利用cpolar端口映射工具实现内网穿透，
@@ -28,44 +30,44 @@ import java.nio.file.Paths;
  * 实现实时获取最新的映射外网URL地址
  */
 public class CpolarStarter {
-    private static Process process = null;
-    private static final AsyncBatchLogger logger = new AsyncBatchLogger(Paths.get("./logs/cpolar-run.log"));
+    private Process process = null;
+    private AsyncBatchLogger logger = null;
     ;
-    private static CpolarSetting setting = null;
-    private static final Debouncer debouncer = new Debouncer(1000);
+    private CpolarSetting setting = null;
+    private final Debouncer debouncer = new Debouncer(1000);
     //    private static final String gitRepoDir = "F:\\Git Project\\LiveMonitoringRecordingPage";
 //    private static final String gitFileRelativePath = "redirect/json/config.json";
 //    private static final String exePath = "./bin/cpolar.exe";
     @Getter
-    private static final String[] localCommand = {"http", "8005"};
+    private final String[] localCommand = {"http", "8005"};
     @Getter
-    private static volatile boolean isRunning;
+    private volatile boolean isRunning;
     @Getter
-    private static volatile String publicUrl;
+    private volatile boolean isUpdateGitSuccess;
     @Getter
-    private static volatile long updateGitTime;
+    private volatile String publicUrl;
+    @Getter
+    private volatile long updateGitTime;
+    // 单独业务线程池执行git操作
+    private final ExecutorService gitExecutor = Executors.newSingleThreadExecutor();
+    private volatile boolean isGitRunning = false;
 
-    static {
+    public CpolarStarter() {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            if (process != null && process.isAlive()) {
-                process.destroyForcibly();
-                try {
-                    process.waitFor();
-                } catch (InterruptedException ignored) {
-                }
-            }
-            logger.flushRemaining();
+            stop(true);
+            gitExecutor.shutdownNow();
         }));
     }
 
     public static void main(String[] args) throws RuntimeException {
         String mapping = args.length > 0 ? args[args.length - 1] : "8005";
-        start(Integer.parseInt(mapping));
+        new CpolarStarter().start(Integer.parseInt(mapping));
     }
 
-    public static void start(int port) throws RuntimeException {
+    public void start(int port) throws RuntimeException {
         try {
             setting = CpolarSetting.getInstance(true);
+            logger = new AsyncBatchLogger(Paths.get("./logs/cpolar-run.log"));
             localCommand[1] = String.valueOf(port);
             System.out.println("=====启动HTTP端口映射 " + port + "=====");
             highLog("运行命令: " + String.join(" ", localCommand), "info");
@@ -84,6 +86,8 @@ public class CpolarStarter {
             process = pb.start();
             // 单独线程读取字节流，手动处理\r \n
             Thread thread = new Thread(() -> processResult(process));
+            thread.setName("CpolarStarterProcessResult");
+            thread.setDaemon(true);
             thread.start();
             int i = process.waitFor();
             highLog("程序退出码:" + i, "info");
@@ -92,12 +96,15 @@ public class CpolarStarter {
             highLog("启动运行异常:" + ThrowableUtil.getAllCauseMessage(e), "error");
             throw new RuntimeException("cpolar工具启动异常", e);
         } finally {
-            isRunning = false;
+            stop(false);
         }
     }
 
-    public static void stop(boolean force) {
+    public void stop(boolean force) {
         isRunning = false;
+        if (logger != null) {
+            logger.shutdown();
+        }
         if (process != null && process.isAlive()) {
             if (force) {
                 process.destroyForcibly();
@@ -111,7 +118,7 @@ public class CpolarStarter {
         }
     }
 
-    private static void processResult(Process process) {
+    private void processResult(Process process) {
         // 读取输出信息
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
@@ -129,7 +136,7 @@ public class CpolarStarter {
         }
     }
 
-    private static void processResult(String line, AppLog appLog) {
+    private void processResult(String line, AppLog appLog) {
         AppLog log = LogParser.parseLogLine(line, appLog);
         if (log != null) {
             String msg = log.getMsg();
@@ -138,7 +145,7 @@ public class CpolarStarter {
                 debouncer.debounce(() -> {
                     publicUrl = msg.substring(msg.lastIndexOf("at ") + 3);
                     try {
-                        updateGitURLFile();
+                        triggerGitUpload();
                         highLog("获取URl更新: " + publicUrl, "info");
                     } catch (Exception e) {
                         highLog("更新GitURL文件失败:" + ThrowableUtil.getAllCauseMessage(e), "error");
@@ -148,7 +155,7 @@ public class CpolarStarter {
         }
     }
 
-    private static String getIPTicket() {
+    private String getIPTicket() {
         HttpURLConnection connection = null;
         try {
             connection = HttpURLConnectionUtil.getRequest("https://ip.cn/", MapUtil.of("User-Agent", UserAgentUtil.getRandomPc()));
@@ -166,26 +173,50 @@ public class CpolarStarter {
         return null;
     }
 
-    public static void updateGitURLFile() throws Exception {
-        if (publicUrl == null || !isRunning()) throw new RuntimeException("cpolar未运行或未获取公网地址，无法更新Git文件");
-        JSONObject jsonObject = JSONUtil.createObj().set("redirectUrl", publicUrl)
-                .set("localCommand", String.join(" ", localCommand))
-                .set("ip", JSONUtil.createObj().set("ticket", getIPTicket()))
-                .set("updateTime", TimeUtil.getNowTime());
-        Path file = Paths.get(setting.getGitRepoDir(), setting.getGitFileRelativePath());
-        highLog(jsonObject.toString(), "info");
-        String json = jsonObject.toStringPretty();
-        TxtOperation.writeTxtFile(json, file.toFile(), "UTF-8", false);
-        GitUtil.gitUploadFile(setting.getGitRepoDir(), setting.getGitFileRelativePath(), "自动提交");
-        updateGitTime = System.currentTimeMillis();
+    private void updateGitURLFile() throws Exception {
+        try {
+            if (publicUrl == null || !isRunning())
+                throw new RuntimeException("cpolar未运行或未获取公网地址，无法更新Git文件");
+            JSONObject jsonObject = JSONUtil.createObj().set("redirectUrl", publicUrl)
+                    .set("localCommand", String.join(" ", localCommand))
+                    .set("ip", JSONUtil.createObj().set("ticket", getIPTicket()))
+                    .set("updateTime", TimeUtil.getNowTime());
+            Path file = Paths.get(setting.getGitRepoDir(), setting.getGitFileRelativePath());
+            highLog(jsonObject.toString(), "info");
+            String json = jsonObject.toStringPretty();
+            TxtOperation.writeTxtFile(json, file.toFile(), "UTF-8", false);
+            GitUtil.gitUploadFile(setting.getGitRepoDir(), setting.getGitFileRelativePath(), "自动提交");
+            updateGitTime = System.currentTimeMillis();
+            isUpdateGitSuccess = true;
+        } catch (Exception e) {
+            isUpdateGitSuccess = false;
+            throw e;
+        }
     }
 
-    private static void highLog(String msg, String level) {
+    public void triggerGitUpload() {
+        if (isGitRunning) {
+            return;
+        }
+        gitExecutor.submit(() -> {
+            try {
+                isGitRunning = true;
+                updateGitURLFile();
+            } catch (Exception e) {
+                highLog("更新GitURL文件失败:" + ThrowableUtil.getAllCauseMessage(e), "error");
+            } finally {
+                isGitRunning = false;
+            }
+        });
+    }
+
+
+    private void highLog(String msg, String level) {
         msg = TimeUtil.getNowTime() + " [" + level + "] " + msg;
         highLog(msg);
     }
 
-    private static void highLog(String msg) {
+    private void highLog(String msg) {
         logger.highLog(msg);
         System.out.println(msg);
     }

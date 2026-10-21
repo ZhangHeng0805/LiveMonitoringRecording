@@ -11,66 +11,94 @@ import java.io.File;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Scanner;
+import java.util.concurrent.*;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class GitUtil {
 
     // 命令执行超时时间 30秒
-    private static final long PROCESS_TIMEOUT = 30000L;
+    private static final long PROCESS_TIMEOUT = 30_000L;
+
+    // 流读取最大字符数（防止输出过大撑爆内存）
+    private static final int MAX_STREAM_OUTPUT_SIZE = 1024 * 128;
+
+    // 按仓库路径加锁，防止多线程并发操作同一个本地git仓库（避免 index.lock 冲突）
+    private static final ConcurrentHashMap<String, ReentrantLock> REPO_LOCK_MAP = new ConcurrentHashMap<>();
 
     /**
-     * 提交并推送单个文件到远程git仓库
+     * 提交并推送单个文件到远程git仓库（使用默认commit message）
      * @param repoDir 仓库本地根目录
      * @param fileRelativePath 文件在仓库内相对路径/文件名
-     * @throws GitOperateException git操作异常
      */
     public static void gitUploadFile(String repoDir, String fileRelativePath) throws GitOperateException {
-        // 入参校验
+        gitUploadFile(repoDir, fileRelativePath, "自动提交：" + fileRelativePath);
+    }
+
+    /**
+     * 提交并推送单个文件到远程git仓库（自定义commit message，主方法）
+     * @param repoDir       仓库本地根目录
+     * @param fileRelativePath 文件在仓库内相对路径/文件名
+     * @param commitMsg     提交备注
+     */
+    public static void gitUploadFile(String repoDir, String fileRelativePath, String commitMsg) throws GitOperateException {
+        // ===== 入参统一校验 =====
         if (repoDir == null || repoDir.isEmpty()) {
             throw new GitOperateException("仓库目录不能为空");
         }
         if (fileRelativePath == null || fileRelativePath.isEmpty()) {
             throw new GitOperateException("提交文件名称不能为空");
         }
+        if (commitMsg == null || commitMsg.isEmpty()) {
+            throw new GitOperateException("提交备注不能为空");
+        }
 
         File repoFolder = new File(repoDir);
         if (!repoFolder.exists() || !repoFolder.isDirectory()) {
             throw new GitOperateException("仓库目录不存在或不是文件夹：" + repoDir);
         }
-        // 判断是否为git仓库（存在.git隐藏文件夹）
         File gitFolder = new File(repoFolder, ".git");
         if (!gitFolder.exists() || !gitFolder.isDirectory()) {
             throw new GitOperateException("目标目录不是Git仓库：" + repoDir);
         }
 
-        // 1. git add 文件
-        execCommand(repoDir, "git", "add", fileRelativePath);
-
-        // 2. 检查是否有变更，无变更直接结束
-        String changeInfo = getCommandOutput(repoDir, "git", "status", "--porcelain");
-        if (changeInfo.isEmpty()) {
-            System.out.println("无文件变更，无需提交推送");
-            return;
+        // ===== 按仓库加锁，防止并发操作同一个git仓库 =====
+        ReentrantLock lock = REPO_LOCK_MAP.computeIfAbsent(repoFolder.getAbsolutePath(), k -> new ReentrantLock());
+        // tryLock：拿不到锁说明有另一个任务在跑，直接快速失败，不阻塞等待
+        if (!lock.tryLock()) {
+            throw new GitOperateException("仓库[" + repoDir + "]正在执行git操作，请勿重复提交");
         }
 
-        // 3. commit提交
-        CommandResult commitRes = runProcess(repoDir, "git", "commit", "-m", "自动提交：" + fileRelativePath);
-        // 退出码1=无变更，属于正常场景
-        if (commitRes.exitCode == 1 && commitRes.errorMsg.isEmpty()) {
-            System.out.println("文件无实质修改，跳过commit");
-            return;
-        } else if (commitRes.exitCode != 0) {
-            throw new GitOperateException("commit失败：" + commitRes.errorMsg);
-        }
+        try {
+            // 1. git add 文件
+            execCommand(repoDir, "git", "add", fileRelativePath);
 
-        // 4. push推送到远程
-        execCommand(repoDir, "git", "push");
-        System.out.println("文件[" + fileRelativePath + "]推送远程仓库成功");
+            // 2. 检查是否有变更，无变更直接结束
+            String changeInfo = getCommandOutput(repoDir, "git", "status", "--porcelain");
+            if (changeInfo.isEmpty()) {
+                System.out.println("无文件变更，无需提交推送");
+                return;
+            }
+
+            // 3. commit提交（单独处理 exitCode=1 无变更的正常场景）
+            CommandResult commitRes = runProcess(repoDir, "git", "commit", "-m", commitMsg);
+            if (commitRes.exitCode == 1 && commitRes.errorMsg.isEmpty()) {
+                System.out.println("文件无实质修改，跳过commit");
+                return;
+            } else if (commitRes.exitCode != 0) {
+                throw new GitOperateException("commit失败：" + commitRes.errorMsg);
+            }
+
+            // 4. push推送到远程
+            execCommand(repoDir, "git", "push");
+            System.out.println("文件[" + fileRelativePath + "]推送远程仓库成功");
+
+        } finally {
+            lock.unlock();
+        }
     }
 
     /**
      * 执行命令，失败直接抛异常
-     * @param workDir 工作目录
-     * @param cmd 命令参数
      */
     private static void execCommand(String workDir, String... cmd) throws GitOperateException {
         CommandResult result = runProcess(workDir, cmd);
@@ -94,56 +122,67 @@ public class GitUtil {
     }
 
     /**
-     * 底层执行进程，捕获输出、错误、退出码、超时
+     * 底层执行进程：并行读取 stdout/stderr 防止缓冲区死锁，带超时控制
      */
     private static CommandResult runProcess(String workDir, String... cmd) throws GitOperateException {
         File dir = new File(workDir);
-        Process process = null;
+        final Process[] processHolder = new Process[1];
         CommandResult result = new CommandResult();
+        ExecutorService streamExecutor = Executors.newFixedThreadPool(2);
 
         try {
             ProcessBuilder pb = new ProcessBuilder(cmd);
             pb.directory(dir);
-            // 分开流，方便读取日志
             pb.redirectInput(ProcessBuilder.Redirect.PIPE);
-            process = pb.start();
+            processHolder[0] = pb.start();
+            Process process = processHolder[0];
 
-            // 异步读取标准输出、错误流，防止缓冲区阻塞卡死
-            String output = readStream(process.getInputStream());
-            String error = readStream(process.getErrorStream());
-            result.outputMsg = output;
-            result.errorMsg = error;
+            // 并行异步读取 stdout、stderr，避免串行读取导致缓冲区满死锁
+            Future<String> outFuture = streamExecutor.submit(() -> readStream(processHolder[0].getInputStream()));
+            Future<String> errFuture = streamExecutor.submit(() -> readStream(processHolder[0].getErrorStream()));
 
-            // 带超时等待进程结束
-            boolean finished = process.waitFor(PROCESS_TIMEOUT, java.util.concurrent.TimeUnit.MILLISECONDS);
+            // 等待进程退出（30s超时）
+            boolean finished = process.waitFor(PROCESS_TIMEOUT, TimeUnit.MILLISECONDS);
             if (!finished) {
                 process.destroyForcibly();
                 throw new GitOperateException("命令执行超时(" + PROCESS_TIMEOUT / 1000 + "s)：" + String.join(" ", cmd));
             }
+
+            // 获取输出结果，额外加2s流读取超时，防止流读取卡死
+            result.outputMsg = outFuture.get(2, TimeUnit.SECONDS);
+            result.errorMsg = errFuture.get(2, TimeUnit.SECONDS);
             result.exitCode = process.exitValue();
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new GitOperateException("命令线程被中断：" + String.join(" ", cmd), e);
+        } catch (TimeoutException e) {
+            throw new GitOperateException("读取进程输出流超时：" + String.join(" ", cmd), e);
         } catch (Exception e) {
             throw new GitOperateException("启动进程异常：" + String.join(" ", cmd), e);
         } finally {
-            if (process != null) {
-                process.destroy();
+            streamExecutor.shutdown();
+            if (processHolder[0] != null && processHolder[0].isAlive()) {
+                processHolder[0].destroy();
             }
         }
         return result;
     }
 
     /**
-     * 读取流文本内容
+     * 读取流文本内容，带最大长度限制
      */
     private static String readStream(InputStream inputStream) {
         if (inputStream == null) return "";
         StringBuilder sb = new StringBuilder();
         try (Scanner scanner = new Scanner(inputStream, StandardCharsets.UTF_8.name())) {
             while (scanner.hasNextLine()) {
-                sb.append(scanner.nextLine()).append(System.lineSeparator());
+                String line = scanner.nextLine();
+                if (sb.length() + line.length() + System.lineSeparator().length() > MAX_STREAM_OUTPUT_SIZE) {
+                    sb.append("【输出截断，超出最大长度限制】");
+                    break;
+                }
+                sb.append(line).append(System.lineSeparator());
             }
         }
         return sb.toString();
@@ -156,24 +195,5 @@ public class GitUtil {
         int exitCode = -1;
         String outputMsg = "";
         String errorMsg = "";
-    }
-
-    // ========== 扩展重载方法示例 ==========
-
-    /**
-     * 自定义提交备注
-     */
-    public static void gitUploadFile(String repoDir, String fileRelativePath, String commitMsg) throws GitOperateException {
-        if (repoDir == null || repoDir.isEmpty()) throw new GitOperateException("仓库目录不能为空");
-        if (fileRelativePath == null || fileRelativePath.isEmpty()) throw new GitOperateException("文件名称不能为空");
-        File repoFolder = new File(repoDir);
-        File gitFolder = new File(repoFolder, ".git");
-        if (!repoFolder.exists() || !gitFolder.exists()) throw new GitOperateException("非法Git仓库");
-
-        execCommand(repoDir, "git", "add", fileRelativePath);
-        String change = getCommandOutput(repoDir, "git", "status", "--porcelain");
-        if (change.isEmpty()) return;
-        execCommand(repoDir, "git", "commit", "-m", commitMsg);
-        execCommand(repoDir, "git", "push");
     }
 }

@@ -4,8 +4,8 @@ import cn.hutool.core.map.MapUtil;
 import cn.zhangheng.record.bean.Setting;
 import cn.zhangheng.record.httpServer.handle.MyHandler;
 import cn.zhangheng.record.httpServer.util.JWTUtil;
-import cn.zhangheng.record.util.AsyncBatchLogger;
 import com.sun.net.httpserver.HttpExchange;
+import com.zhangheng.log.AsyncBatchLogger;
 import com.zhangheng.util.TimeUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,16 +29,10 @@ public class ClientHandler extends MyHandler {
 
     private final String prefix;
 
-    // 允许的全部前端Origin白名单，按需新增
-//    private final Set<String> ALLOW_ORIGINS = new HashSet<>();
+
 
     public ClientHandler(String prefix) {
         this.prefix = prefix;
-        String port = System.getProperty("monitor.port");
-//        ALLOW_ORIGINS.add("https://zhangzheng0805.github.io"); // GitHub线上
-//        ALLOW_ORIGINS.add("http://127.0.0.1:"+port); // 本地服务1
-//        ALLOW_ORIGINS.add("http://localhost:"+port);  // 本地服务2
-//        ALLOW_ORIGINS.add("http://live-monitor-record.xxxr:"+port); // 局域网本地(配置host域名live-monitor-record.xxxr)
     }
 
     @Override

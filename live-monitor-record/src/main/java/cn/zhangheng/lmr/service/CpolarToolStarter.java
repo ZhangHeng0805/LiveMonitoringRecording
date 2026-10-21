@@ -26,9 +26,11 @@ public class CpolarToolStarter extends Starter implements CpolarToolStarterMBean
     private Thread thread;
     // ========== MBean 注册 ==========
     private ObjectName mbeanObjectName;
+    private final CpolarStarter cpolarStarter;
 
     public CpolarToolStarter() {
         registerMBean();
+        cpolarStarter = new CpolarStarter();
     }
 
     @Override
@@ -43,9 +45,9 @@ public class CpolarToolStarter extends Starter implements CpolarToolStarterMBean
                     }
                 }
                 int port = System.getProperty("monitor.port") != null ? Integer.parseInt(System.getProperty("monitor.port")) : Setting.getInstance().getMonitorServerPort();
-                thread.setName("CpolarToolStarter - " + port);
+                thread.setName("CpolarToolStarter-" + port);
                 setRunning(true);
-                CpolarStarter.start(port);
+                cpolarStarter.start(port);
             } catch (Exception e) {
                 log.error("cpolar端口映射服务创建失败！{}", ThrowableUtil.getAllCauseMessage(e));
             } finally {
@@ -60,7 +62,7 @@ public class CpolarToolStarter extends Starter implements CpolarToolStarterMBean
     public void stop() {
         if (thread == null && !isRunning()) throw new RuntimeException("cpolar未运行！");
         try {
-            CpolarStarter.stop(false);
+            cpolarStarter.stop(false);
             thread.interrupt();
             thread = null;
         } catch (Exception e) {
@@ -120,7 +122,7 @@ public class CpolarToolStarter extends Starter implements CpolarToolStarterMBean
     @Override
     public void updateGitURLFile() {
         try {
-            CpolarStarter.updateGitURLFile();
+            cpolarStarter.triggerGitUpload();
         } catch (Exception e) {
             throw new RuntimeException(ThrowableUtil.getAllCauseMessage(e));
         }
@@ -132,6 +134,11 @@ public class CpolarToolStarter extends Starter implements CpolarToolStarterMBean
     }
 
     @Override
+    public boolean getIsUpdateGit() {
+        return cpolarStarter.isUpdateGitSuccess();
+    }
+
+    @Override
     public String getStartTime() {
         String time = TimeUtil.toTime(updateTime);
         return isRunning() ? "启动时间: " + time : "停止时间: " + time;
@@ -139,8 +146,8 @@ public class CpolarToolStarter extends Starter implements CpolarToolStarterMBean
 
     @Override
     public String getUpdateGitTime() {
-        if (CpolarStarter.getUpdateGitTime() > 0) {
-            return TimeUtil.toTime(CpolarStarter.getUpdateGitTime());
+        if (cpolarStarter.getUpdateGitTime() > 0) {
+            return TimeUtil.toTime(cpolarStarter.getUpdateGitTime());
         } else {
             return null;
         }
@@ -148,12 +155,12 @@ public class CpolarToolStarter extends Starter implements CpolarToolStarterMBean
 
     @Override
     public String getPublicUrl() {
-        return CpolarStarter.getPublicUrl();
+        return cpolarStarter.getPublicUrl();
     }
 
     @Override
     public String getLocalCommand() {
-        return String.join(" ", CpolarStarter.getLocalCommand());
+        return String.join(" ", cpolarStarter.getLocalCommand());
     }
 
     @Override

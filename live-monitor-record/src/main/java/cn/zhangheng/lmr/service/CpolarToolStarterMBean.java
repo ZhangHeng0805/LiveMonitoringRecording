@@ -16,6 +16,8 @@ public interface CpolarToolStarterMBean {
 
     boolean getIsRunning();
 
+    boolean getIsUpdateGit();
+
     String getStartTime();
 
     String getUpdateGitTime();
