@@ -1,5 +1,8 @@
 package cn.zhangheng.record.service;
 
+import cn.zhangheng.common.jmx.JmxAttribute;
+import cn.zhangheng.common.jmx.JmxOperation;
+import cn.zhangheng.common.jmx.JmxRegisterUtil;
 import cn.zhangheng.record.bean.Room;
 import cn.zhangheng.record.bean.Task;
 import com.zhangheng.util.RandomUtil;
@@ -8,9 +11,7 @@ import com.zhangheng.util.TimeUtil;
 import lombok.Getter;
 import lombok.Setter;
 
-import javax.management.MBeanServer;
 import javax.management.ObjectName;
-import java.lang.management.ManagementFactory;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -23,7 +24,7 @@ import java.util.concurrent.TimeUnit;
  * @version: 1.0
  * @description: 直播监听
  */
-public abstract class RoomMonitor<R extends Room, S extends RoomService<R>> extends Task implements RoomMonitorMBean {
+public abstract class RoomMonitor<R extends Room, S extends RoomService<R>> extends Task {
     @Getter
     private State state;
     @Getter
@@ -34,7 +35,7 @@ public abstract class RoomMonitor<R extends Room, S extends RoomService<R>> exte
     // 用于保存任务所在的工作线程
     private volatile Thread workerThread = null;
     // ========== MBean 注册 ==========
-    private ObjectName mbeanObjectName;
+    private ObjectName mbeanObjectName, mbeanRoomName;
 
     public RoomMonitor(R room) {
         this.room = room;
@@ -48,48 +49,47 @@ public abstract class RoomMonitor<R extends Room, S extends RoomService<R>> exte
         roomService.getRoomData(force);
     }
 
-    @Override
+    @JmxOperation(desc = "开始弹幕记录")
     public void startSubtitle() {
         roomService.startSubtitle();
     }
 
-    @Override
+    @JmxOperation(desc = "停止弹幕记录")
     public void stopSubtitle() {
         roomService.stopSubtitle();
     }
 
-    @Override
+    @JmxAttribute(name = "RefreshCount", desc = "刷新次数")
     public int getRefreshCount() {
         return roomService.getRefreshCount();
     }
 
-    @Override
+    @JmxAttribute(name = "RoomName", desc = "直播间名称")
     public String getRoomName() {
         return room.getNickname();
     }
 
-    @Override
+    @JmxAttribute(name = "RoomUrl", desc = "直播间地址")
     public String getRoomUrl() {
         return room.getRoomUrl();
     }
 
-    @Override
+    @JmxAttribute(name = "RoomPlatform", desc = "直播间平台")
     public String getRoomPlatform() {
         return room.getPlatform().getName();
     }
 
-    @Override
+    @JmxAttribute(name = "RefreshTime", desc = "直播间刷新时间")
     public String getRefreshTime() {
         return TimeUtil.toTime(room.getUpdateTime());
     }
 
-
-    @Override
+    @JmxAttribute(name = "IsLiving", desc = "直播间是否开启直播")
     public boolean getIsLiving() {
         return room.isLiving();
     }
 
-    @Override
+    @JmxAttribute(name = "IsOpenSubtitle", desc = "直播间是否开启弹幕记录")
     public boolean getIsOpenSubtitle() {
         return roomService.isOpenSubtitle();
     }
@@ -171,7 +171,7 @@ public abstract class RoomMonitor<R extends Room, S extends RoomService<R>> exte
         mainExecutors.shutdown();
     }
 
-    @Override
+    @JmxOperation(desc = "直播间立即刷新")
     public void nowRefresh() {
         refresh(true);
         workerThread.interrupt();
@@ -207,32 +207,25 @@ public abstract class RoomMonitor<R extends Room, S extends RoomService<R>> exte
 
     // JMX MBean 注册
     public void registerMBean() {
-        String mbeanName = "cn.zhangheng.lmr:type=RoomMonitor,name=" + room.getPlatform() + "-" + room.getId();
+        String name = room.getPlatform().getName() + "-" + room.getNickname();
         try {
-            MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-            mbeanObjectName = new ObjectName(mbeanName);
-            if (!mbs.isRegistered(mbeanObjectName)) {
-                mbs.registerMBean(this, mbeanObjectName);
-            }
+            mbeanRoomName = JmxRegisterUtil.register(room, "Room", "name", name);
+            mbeanObjectName =JmxRegisterUtil.register(this, "RoomMonitor","name", name);
         } catch (Exception e) {
-            log.error("JMX MBean注册失败[{}]", mbeanName, e);
+            log.error("JMX MBean注册失败[{}]", name, e);
         }
     }
 
     // JMX注销（销毁时调用）
     public void unregisterMBean() {
-        if (mbeanObjectName == null) {
-            return;
-        }
         try {
-            MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-            if (mbs.isRegistered(mbeanObjectName)) {
-                mbs.unregisterMBean(mbeanObjectName);
-            }
+            JmxRegisterUtil.unregister(mbeanObjectName);
+            JmxRegisterUtil.unregister(mbeanRoomName);
         } catch (Exception e) {
             log.error("JMX注销异常[{}]", mbeanObjectName.getCanonicalName(), e);
         }
         // 置空，防止重复注销
         mbeanObjectName = null;
+        mbeanRoomName = null;
     }
 }

@@ -1,6 +1,7 @@
 package cn.zhangheng.record.bean;
 
 import cn.hutool.core.util.StrUtil;
+import cn.zhangheng.common.jmx.JmxAttribute;
 import cn.zhangheng.common.setting.ConfigLoader;
 import cn.zhangheng.common.setting.PropertiesConfig;
 import cn.zhangheng.common.setting.PropertyValue;
@@ -58,6 +59,7 @@ public class Setting {
     /**
      * 默认监听平台服务端口
      */
+    @JmxAttribute(desc = "监听平台服务端口")
     @PropertyValue(value = "server.monitor.port", regex = "^(6553[0-5]|655[0-2][0-9]|65[0-4][0-9]{2}|6[0-4][0-9]{3}|[1-5][0-9]{4}|[1-9][0-9]{0,3})$", regexMessage = "端口号范围1-65535")
     private int monitorServerPort = 8005;
 
@@ -76,10 +78,12 @@ public class Setting {
      * 详情查看：https://xz.qqoq.net/
      */
     @PropertyValue("notice.xiZhi.url")
+    @JmxAttribute(desc = "息知通知地址")
     private String xiZhiUrl;
     /**
      * 是否转换录制的视频
      */
+    @JmxAttribute(desc = "是否转换录制的视频")
     @PropertyValue("record.FlvToMp4")
     private boolean convertFlvToMp4;
     /**
@@ -102,11 +106,13 @@ public class Setting {
     /**
      * 是否循环监听直播（直播结束后，重新监听）
      */
+    @JmxAttribute(desc = "是否循环监听直播（直播结束后，重新监听）")
     @PropertyValue("record.isLoop")
     private boolean isLoop;
     /**
      * 是否开启弹幕记录
      */
+    @JmxAttribute(desc = "是否开启弹幕记录")
     @PropertyValue("record.openSubtitle")
     private boolean openSubtitle;
 
@@ -129,6 +135,7 @@ public class Setting {
     /**
      * 监听间隔延时（秒）
      */
+    @JmxAttribute(desc = "监听间隔延时（秒）")
     @PropertyValue(value = "monitor.delayIntervalSec", regex = "^([1-9][0-9]+)$", regexMessage = "必须大于等于10")
     private int delayIntervalSec = Constant.minDelayIntervalSec;
 

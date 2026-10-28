@@ -4,6 +4,7 @@ package cn.zhangheng.douyin.bean;
 import cn.hutool.core.annotation.PropIgnore;
 import cn.hutool.core.util.StrUtil;
 import cn.zhangheng.browser.BrowserAPI;
+import cn.zhangheng.common.jmx.JmxAttribute;
 import cn.zhangheng.record.bean.Room;
 import cn.zhangheng.record.bean.Setting;
 import lombok.Getter;
@@ -33,16 +34,21 @@ public class DouYinRoom extends Room {
 
     @PropIgnore
     private BrowserAPI browserApi;
+    @JmxAttribute(desc = "总观看人数")
     //总观看人数
     private volatile String totalUserStr;
+    @JmxAttribute(desc = "当前在线人数")
     //当前在线人数
     private volatile String userCountStr;
+    @JmxAttribute(desc = "喜欢点赞数")
     //喜欢点赞数
     private volatile long likeCount;
     //直播间封面
     private List<String> coverList;
+    @JmxAttribute(desc = "是否运行弹幕监听")
     //弹幕是否运行
     private volatile boolean isSubtitleRunning;
+    @JmxAttribute(desc = "直播间统计")
     private DouYinRoomCounter counter;
 
 

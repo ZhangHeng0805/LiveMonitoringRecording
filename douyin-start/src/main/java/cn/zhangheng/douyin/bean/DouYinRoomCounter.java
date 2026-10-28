@@ -1,5 +1,6 @@
 package cn.zhangheng.douyin.bean;
 
+import cn.zhangheng.common.jmx.JmxAttribute;
 import lombok.Data;
 
 /**
@@ -12,7 +13,9 @@ import lombok.Data;
 @Data
 public class DouYinRoomCounter {
     //最大在线用户数
+    @JmxAttribute(desc = "最大在线用户数")
     private long maxOnlineUsers = 0;
+    @JmxAttribute(desc = "总计礼物数（钻石）")
     //总计礼物数（钻石）
     private long totalGift = 0;
 

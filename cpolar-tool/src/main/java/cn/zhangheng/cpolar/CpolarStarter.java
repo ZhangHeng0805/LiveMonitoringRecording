@@ -66,8 +66,8 @@ public class CpolarStarter {
 
     public void start(int port) throws RuntimeException {
         try {
-            setting = CpolarSetting.getInstance(true);
             logger = new AsyncBatchLogger(Paths.get("./logs/cpolar-run.log"));
+            setting = CpolarSetting.getInstance(true);
             localCommand[1] = String.valueOf(port);
             System.out.println("=====启动HTTP端口映射 " + port + "=====");
             highLog("运行命令: " + String.join(" ", localCommand), "info");

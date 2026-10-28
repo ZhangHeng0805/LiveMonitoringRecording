@@ -1,6 +1,8 @@
 package cn.zhangheng.lmr.service;
 
-import cn.hutool.json.JSONUtil;
+import cn.zhangheng.common.jmx.JmxAttribute;
+import cn.zhangheng.common.jmx.JmxOperation;
+import cn.zhangheng.common.jmx.JmxRegisterUtil;
 import cn.zhangheng.cpolar.CpolarSetting;
 import cn.zhangheng.cpolar.CpolarStarter;
 import cn.zhangheng.record.bean.Setting;
@@ -9,9 +11,7 @@ import com.zhangheng.util.TimeUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.management.MBeanServer;
 import javax.management.ObjectName;
-import java.lang.management.ManagementFactory;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit;
  * @version: 1.0
  * @description:
  */
-public class CpolarToolStarter extends Starter implements CpolarToolStarterMBean {
+public class CpolarToolStarter extends Starter {
     private final Logger log = LoggerFactory.getLogger(getClass());
     private Thread thread;
     // ========== MBean 注册 ==========
@@ -80,28 +80,18 @@ public class CpolarToolStarter extends Starter implements CpolarToolStarterMBean
 
     // JMX MBean 注册
     private void registerMBean() {
-        String mbeanName = "cn.zhangheng.lmr:type=CpolarToolStarter";
+        String type = "CpolarToolStarter";
         try {
-            MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-            mbeanObjectName = new ObjectName(mbeanName);
-            if (!mbs.isRegistered(mbeanObjectName)) {
-                mbs.registerMBean(this, mbeanObjectName);
-            }
+            mbeanObjectName = JmxRegisterUtil.register(this, type);
         } catch (Exception e) {
-            log.error("JMX MBean注册失败[{}]", mbeanName, e);
+            log.error("JMX MBean注册失败[{}]", type, e);
         }
     }
 
     // JMX注销（销毁时调用）
     private void unregisterMBean() {
-        if (mbeanObjectName == null) {
-            return;
-        }
         try {
-            MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-            if (mbs.isRegistered(mbeanObjectName)) {
-                mbs.unregisterMBean(mbeanObjectName);
-            }
+            JmxRegisterUtil.unregister(mbeanObjectName);
         } catch (Exception e) {
             log.error("JMX注销异常[{}]", mbeanObjectName.getCanonicalName(), e);
         }
@@ -109,17 +99,17 @@ public class CpolarToolStarter extends Starter implements CpolarToolStarterMBean
         mbeanObjectName = null;
     }
 
-    @Override
+    @JmxOperation(desc = "启动服务")
     public void startServer() {
         start();
     }
 
-    @Override
+    @JmxOperation(desc = "停止服务")
     public void stopServer() {
         stop();
     }
 
-    @Override
+    @JmxOperation(desc = "更新Git文件")
     public void updateGitURLFile() {
         try {
             cpolarStarter.triggerGitUpload();
@@ -128,23 +118,23 @@ public class CpolarToolStarter extends Starter implements CpolarToolStarterMBean
         }
     }
 
-    @Override
+    @JmxAttribute(name = "isRunning", desc = "是否运行")
     public boolean getIsRunning() {
         return isRunning();
     }
 
-    @Override
+    @JmxAttribute(name = "isUpdateGitSuccess", desc = "是否更新Git文件成功")
     public boolean getIsUpdateGit() {
         return cpolarStarter.isUpdateGitSuccess();
     }
 
-    @Override
+    @JmxAttribute(name = "startTime", desc = "启动/停止时间")
     public String getStartTime() {
         String time = TimeUtil.toTime(updateTime);
         return isRunning() ? "启动时间: " + time : "停止时间: " + time;
     }
 
-    @Override
+    @JmxAttribute(name = "updateGitTime", desc = "更新Git文件时间")
     public String getUpdateGitTime() {
         if (cpolarStarter.getUpdateGitTime() > 0) {
             return TimeUtil.toTime(cpolarStarter.getUpdateGitTime());
@@ -153,18 +143,18 @@ public class CpolarToolStarter extends Starter implements CpolarToolStarterMBean
         }
     }
 
-    @Override
+    @JmxAttribute(name = "publicUrl", desc = "映射公网地址")
     public String getPublicUrl() {
         return cpolarStarter.getPublicUrl();
     }
 
-    @Override
+    @JmxAttribute(name = "localCommand", desc = "运行命令")
     public String getLocalCommand() {
         return String.join(" ", cpolarStarter.getLocalCommand());
     }
 
-    @Override
-    public String getSetting() {
-        return JSONUtil.parseObj(CpolarSetting.getInstance()).toStringPretty();
+    @JmxAttribute(name = "setting", desc = "设置")
+    public CpolarSetting getSetting() {
+        return CpolarSetting.getInstance();
     }
 }

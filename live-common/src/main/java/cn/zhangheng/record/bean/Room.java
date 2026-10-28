@@ -1,6 +1,7 @@
 package cn.zhangheng.record.bean;
 
 import cn.hutool.core.util.StrUtil;
+import cn.zhangheng.common.jmx.JmxAttribute;
 import lombok.Data;
 import lombok.Getter;
 import lombok.ToString;
@@ -31,10 +32,15 @@ public abstract class Room {
         this.id = id.trim();
     }
 
+    @JmxAttribute(desc = "直播标题")
     //直播标题
     protected String title;
+
+    @JmxAttribute(desc = "用户名")
     //用户名
     protected String nickname;
+
+    @JmxAttribute(desc = "是否在直播")
     //是否在直播
     protected volatile boolean living;
 
@@ -45,8 +51,10 @@ public abstract class Room {
         }
     }
 
+    @JmxAttribute(desc = "开始时间")
     //开始时间
     protected Date startTime;
+    @JmxAttribute(desc = "更新时间")
     //更新时间
     protected Date updateTime;
     //直播封面url
@@ -54,15 +62,20 @@ public abstract class Room {
     //用户头像url
     protected String avatar;
 
+    @JmxAttribute(desc = "直播流地址")
     //直播流不同清晰度地址（由高到低排序）
     protected Map<String, String> streams;
 
-
+    @JmxAttribute(desc = "直播间cookie")
     private String cookie;
+    @JmxAttribute(desc = "直播间的地址")
     //直播间的地址
     protected String roomUrl;
 
+    @JmxAttribute(desc = "设置")
     private volatile Setting setting;
+
+    @JmxAttribute(desc = "直播平台")
     //平台
     protected Platform platform;
 

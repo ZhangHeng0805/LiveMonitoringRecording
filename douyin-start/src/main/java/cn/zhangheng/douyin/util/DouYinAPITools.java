@@ -29,8 +29,9 @@ public class DouYinAPITools {
     private String cookie, userAgent;
     private final String domain;
     private final AtomicInteger count = new AtomicInteger(0);
-    private static final UserAgentUtil userAgentUtil = UserAgentUtil.create(true,false);
+    private static final UserAgentUtil userAgentUtil = UserAgentUtil.create(true, false);
     private final Map<String, String> headers = new HashMap<>();
+    private int refreshCount;
 
     public int getCount() {
         return count.get();
@@ -75,7 +76,7 @@ public class DouYinAPITools {
             if (connection != null) {
                 connection.disconnect();
             }
-            if (getCount() % 100 == 0) {
+            if (getCount() % refreshCount == 0) {
                 refresh();
             }
         }
@@ -83,6 +84,7 @@ public class DouYinAPITools {
     }
 
     private void refresh() {
+        refreshCount = RandomUtil.randomInt(50, 100);
         userAgent = userAgentUtil.get();
         headers.put("User-Agent", userAgent);
         String fetchCookie = fetchCookie();
