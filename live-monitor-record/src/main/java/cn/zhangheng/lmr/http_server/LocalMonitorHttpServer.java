@@ -43,7 +43,7 @@ public class LocalMonitorHttpServer {
             try {
                 server = HttpServer.create(new InetSocketAddress("::", port), 100);
                 poolExecutor = new ThreadPoolExecutor(
-                        1, 80,
+                        1, 128,
                         30L, TimeUnit.SECONDS, // 空闲线程30秒再销毁
                         new SynchronousQueue<>(),
                         new ThreadFactory() {

@@ -18,7 +18,7 @@ import static cn.zhangheng.record.httpServer.util.HandlerUtils.parseQuery;
  * @email: zhangheng_0805@163.com
  * @date: 2025/06/06 星期五 06:35
  * @version: 1.0
- * @description:
+ * @description: 读取内部文件资源
  */
 public class StreamFileHandler extends MyHandler {
     private String type = "application/octet-stream";

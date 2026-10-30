@@ -24,6 +24,7 @@ import java.nio.file.Paths;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 
 import static cn.zhangheng.record.httpServer.util.HandlerUtils.getClientIP;
@@ -63,21 +64,21 @@ public class FileResourcesHandler extends JSONHandler {
                 if (Files.isDirectory(targetPath)) {
                     try {
                         Predicate<FilePageUtils.FileResult> filePredicate = null;
-                        if (!"127.0.0.1".equals(getClientIP(httpExchange))) {
-                            filePredicate = r -> {
-                                if ("file".equals(r.getType())) {
-                                    String name = r.getName();
-                                    return !name.endsWith(".mp4") &&
-                                            !name.endsWith(".flv") &&
-                                            !name.endsWith("视频转换.log") &&
-                                            !name.endsWith("视频下载.log")
-                                            ;
-                                }
-                                return true;
-                            };
-                        }
+//                        if (!"127.0.0.1".equals(getClientIP(httpExchange))) {
+//                            filePredicate = r -> {
+//                                if ("file".equals(r.getType())) {
+//                                    String name = r.getName();
+//                                    return !name.endsWith(".mp4") &&
+//                                            !name.endsWith(".flv") &&
+//                                            !name.endsWith("视频转换.log") &&
+//                                            !name.endsWith("视频下载.log")
+//                                            ;
+//                                }
+//                                return true;
+//                            };
+//                        }
                         int pageNum = Integer.parseInt(query.getOrDefault("pageNum", "1"));
-                        int pageSize = Integer.parseInt(query.getOrDefault("pageSize", "100"));
+                        int pageSize = Integer.parseInt(query.getOrDefault("pageSize", "50"));
                         FilePageUtils.FilePageResult filePageResult = FilePageUtils.getFilePage(targetPath, pageNum, pageSize, filePredicate);
                         message.setData(filePageResult);
                     } catch (Exception e) {
@@ -98,44 +99,46 @@ public class FileResourcesHandler extends JSONHandler {
         responseJson(httpExchange, message);
     }
 
-    public void responseFile1(HttpExchange httpExchange, File file) throws IOException {
-        log.debug("{} 请求[{}]:{}", getClientIP(httpExchange), httpExchange.getRequestURI().getPath(), httpExchange.getRequestHeaders().getFirst("User-Agent"));
-        if (!file.exists()) {
-            httpExchange.sendResponseHeaders(404, -1);
-            return;
-        }
+//    public void responseFile1(HttpExchange httpExchange, File file) throws IOException {
+//        log.debug("{} 请求[{}]:{}", getClientIP(httpExchange), httpExchange.getRequestURI().getPath(), httpExchange.getRequestHeaders().getFirst("User-Agent"));
+//        if (!file.exists()) {
+//            httpExchange.sendResponseHeaders(404, -1);
+//            return;
+//        }
+//
+//        long fileLength = file.length();
+//
+//        Headers headers = httpExchange.getResponseHeaders();
+//        String fileName = file.getName();
+//        String fileContentType = FiletypeUtil.getFileContentType(fileName);
+//        // ====================== 智能 Content-Type ======================
+//        if (fileContentType.startsWith("video/") || fileContentType.startsWith("audio/") || fileContentType.startsWith("image/")) {
+//            headers.set("Content-Type", fileContentType);
+//        } else {
+//            headers.set("Content-Type", fileContentType + "; charset=utf-8");
+//        }
+//
+//        // ====================== 基础响应头 ======================
+////        headers.set("Access-Control-Allow-Origin", "*");
+//        // 文件名编码
+//        String encodedFileName = URLEncoder.encode(fileName, charset.name()).replace("+", "%20");
+//        String dis = "application/octet-stream".equals(fileContentType) ? "attachment" : "inline";
+//        headers.set("Content-Disposition", dis + "; filename*=UTF-8''" + encodedFileName);
+//
+//        // ====================== 输出流 ======================
+//        httpExchange.sendResponseHeaders(200, fileLength);
+//
+//        try (BufferedInputStream bis = new BufferedInputStream(Files.newInputStream(file.toPath()));
+//             OutputStream out = httpExchange.getResponseBody()
+//        ) {
+//            IoUtil.copy(bis, out);
+//        }
+//    }
 
-        long fileLength = file.length();
-
-        Headers headers = httpExchange.getResponseHeaders();
-        String fileName = file.getName();
-        String fileContentType = FiletypeUtil.getFileContentType(fileName);
-        // ====================== 智能 Content-Type ======================
-        if (fileContentType.startsWith("video/") || fileContentType.startsWith("audio/") || fileContentType.startsWith("image/")) {
-            headers.set("Content-Type", fileContentType);
-        } else {
-            headers.set("Content-Type", fileContentType + "; charset=utf-8");
-        }
-
-        // ====================== 基础响应头 ======================
-//        headers.set("Access-Control-Allow-Origin", "*");
-        // 文件名编码
-        String encodedFileName = URLEncoder.encode(fileName, charset.name()).replace("+", "%20");
-        String dis = "application/octet-stream".equals(fileContentType) ? "attachment" : "inline";
-        headers.set("Content-Disposition", dis + "; filename*=UTF-8''" + encodedFileName);
-
-        // ====================== 输出流 ======================
-        httpExchange.sendResponseHeaders(200, fileLength);
-
-        try (BufferedInputStream bis = new BufferedInputStream(Files.newInputStream(file.toPath()));
-             OutputStream out = httpExchange.getResponseBody()
-        ) {
-            IoUtil.copy(bis, out);
-        }
-    }
-
+    // 限速：字节/毫秒，0=不限速，例如 100 代表 100KB/s
+    private static final long LIMIT_BYTE_PER_MS = 0;
     private static final SimpleDateFormat GMT_DATE_FORMAT;
-    private static final int BUFFER_SIZE = 1024 * 64; // 64KB 大缓冲区，优化大文件IO
+    private static final int BUFFER_SIZE = 1024 * 8; //缓冲区，优化大文件IO
     static {
         GMT_DATE_FORMAT = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
         GMT_DATE_FORMAT.setTimeZone(TimeZone.getTimeZone("GMT"));
@@ -245,24 +248,46 @@ public class FileResourcesHandler extends JSONHandler {
         }
 
         // 分片读取输出，不会一次性加载整个文件
-        try (BufferedInputStream bis = new BufferedInputStream(Files.newInputStream(filePath), BUFFER_SIZE);
-             OutputStream out = httpExchange.getResponseBody()
-        ) {
-            // 跳过起始偏移
-            if (start > 0) {
-                bis.skip(start);
+        try (RandomAccessFile raf = new RandomAccessFile(filePath.toFile(), "r")) {
+            raf.seek(start);
+            copyWithLimit(raf, httpExchange.getResponseBody(), start, end);
+        }
+
+    }
+
+    /**
+     * 带限速的拷贝
+     */
+    private void copyWithLimit(RandomAccessFile raf, OutputStream out, long start, long end) throws IOException {
+        byte[] buf = new byte[BUFFER_SIZE];
+        long remaining = end - start + 1;
+        int readLen;
+        long lastTs = System.currentTimeMillis();
+        while (remaining > 0) {
+            int toRead = (int) Math.min(buf.length, remaining);
+            readLen = raf.read(buf, 0, toRead);
+            if (readLen == -1) break;
+            out.write(buf, 0, readLen);
+            remaining -= readLen;
+
+            // 限速逻辑
+            if (LIMIT_BYTE_PER_MS > 0) {
+                long now = System.currentTimeMillis();
+                long cost = now - lastTs;
+                long expectCost = readLen / LIMIT_BYTE_PER_MS;
+                if (expectCost > cost) {
+                    try {
+                        TimeUnit.MILLISECONDS.sleep(expectCost - cost);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+                lastTs = System.currentTimeMillis();
             }
-            byte[] buf = new byte[BUFFER_SIZE];
-            long remain = contentLength;
-            int read;
-            while (remain > 0 && (read = bis.read(buf, 0, (int) Math.min(BUFFER_SIZE, remain))) != -1) {
-                out.write(buf, 0, read);
-                remain -= read;
-                // 可选：out.flush(); 低延迟预览，会小幅损耗性能
-            }
-            out.flush();
         }
     }
+
 
     private RoomFileModel checkRoomKey(Map<String, String> query, Message msg) {
         String key = query.get("key");

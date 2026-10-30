@@ -19,7 +19,7 @@ function showFileSelectModal(key) {
   const rootDom = document.getElementById("fileTree");
   // 挂载分页状态：当前页、每页条数
   rootDom.dataset.currentPage = "1";
-  rootDom.dataset.pageSize = "100";
+  rootDom.dataset.pageSize = "50";
   renderContent(rootDom, "./");
 }
 
@@ -30,7 +30,7 @@ function showFileSelectModal(key) {
  * @param {number} pageSize 页大小
  * @returns {Promise<Object>} {files:[],total,pageNum,pageSize}
  */
-async function fetchFolderContents(path = "./", pageNum = 1, pageSize = 100) {
+async function fetchFolderContents(path = "./", pageNum = 1, pageSize = 50) {
   try {
     const key = document.getElementById("fileTree").dataset.key;
     const res = await getRequest("fileRes", {
@@ -40,10 +40,10 @@ async function fetchFolderContents(path = "./", pageNum = 1, pageSize = 100) {
       pageSize: pageSize,
     });
     // 后端返回 FilePageResult
-    return res.data || { files: [], total: 0, pageNum: 1, pageSize: 100 };
+    return res.data || { files: [], total: 0, pageNum: 1, pageSize: 50 };
   } catch (error) {
     alert(`请求失败: ${error}`);
-    return { files: [], total: 0, pageNum: 1, pageSize: 100 };
+    return { files: [], total: 0, pageNum: 1, pageSize: 50 };
   }
 }
 
@@ -56,7 +56,7 @@ async function fetchFolderContents(path = "./", pageNum = 1, pageSize = 100) {
 async function renderContent(boxDom, path, isAppend = false) {
   // 读取容器上存储的分页状态
   let currentPage = parseInt(boxDom.dataset.currentPage || "1");
-  const pageSize = parseInt(boxDom.dataset.pageSize || "100");
+  const pageSize = parseInt(boxDom.dataset.pageSize || "50");
 
   // 非追加模式先清空+loading
   if (!isAppend) {
@@ -94,7 +94,7 @@ async function renderContent(boxDom, path, isAppend = false) {
           <i class="fa fa-folder text-yellow-400"></i>
           <span>${item.name}</span>
         </div>
-        <div class="folder-child-wrap pl-6 hidden" data-path="${item.path}" data-current-page="1" data-page-size="100"></div>
+        <div class="folder-child-wrap pl-6 hidden" data-path="${item.path}" data-current-page="1" data-page-size="50"></div>
       </div>`;
     } else {
       htmlStr += `
