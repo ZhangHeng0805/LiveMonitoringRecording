@@ -5,9 +5,9 @@ import cn.hutool.core.util.RandomUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import cn.zhangheng.record.util.RequestUtils;
+import cn.zhangheng.record.util.UserAgentUtil;
 import com.zhangheng.util.HttpURLConnectionUtil;
 import com.zhangheng.util.ThrowableUtil;
-import com.zhangheng.util.UserAgentUtil;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -15,6 +15,8 @@ import java.net.HttpURLConnection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * @author: ZhangHeng
@@ -29,9 +31,10 @@ public class DouYinAPITools {
     private String cookie, userAgent;
     private final String domain;
     private final AtomicInteger count = new AtomicInteger(0);
-    private static final UserAgentUtil userAgentUtil = UserAgentUtil.create(true, false);
+    private static final UserAgentUtil userAgentUtil = UserAgentUtil.create(true);
     private final Map<String, String> headers = new HashMap<>();
     private int refreshCount;
+    private final Pattern CHROME_VER_PATTERN = Pattern.compile("Chrome/(\\d+)");
 
     public int getCount() {
         return count.get();
@@ -39,7 +42,7 @@ public class DouYinAPITools {
 
     public DouYinAPITools(String domain) {
         this.domain = domain;
-        headers.put("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*");
+        headers.put("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8");
         headers.put("Accept-Language", "zh-CN,zh;q=0.9");
         headers.put("cache-control", "max-age=0");
         headers.put("Referer", domain);
@@ -84,15 +87,38 @@ public class DouYinAPITools {
     }
 
     private void refresh() {
-        refreshCount = RandomUtil.randomInt(50, 100);
+        refreshCount = RandomUtil.randomInt(30, 100);
         userAgent = userAgentUtil.get();
         headers.put("User-Agent", userAgent);
+        refreshSecHeader(userAgent);
         String fetchCookie = fetchCookie();
         if (fetchCookie != null) {
             cookie = fetchCookie;
         } else {
             log.warn("获取cookie为null");
         }
+    }
+
+    private void refreshSecHeader(String ua) {
+        Matcher m = CHROME_VER_PATTERN.matcher(ua);
+        String majorVer = "140";
+        if (m.find()) {
+            majorVer = m.group(1);
+        }
+        boolean isEdge = ua.contains("Edg/");
+        boolean isMac = ua.contains("Macintosh");
+
+        String secChUa;
+        if (isEdge) {
+            secChUa = "\"Chromium\";v=\"" + majorVer + "\", \"Not-A.Brand\";v=\"99\", \"Microsoft Edge\";v=\"" + majorVer + "\"";
+        } else {
+            secChUa = "\"Chromium\";v=\"" + majorVer + "\", \"Not-A.Brand\";v=\"99\", \"Google Chrome\";v=\"" + majorVer + "\"";
+        }
+        String platform = isMac ? "\"macOS\"" : "\"Windows\"";
+        String secChUaMobile = "?0";
+        headers.put("sec-ch-ua", secChUa);
+        headers.put("sec-ch-ua-platform", platform);
+        headers.put("sec-ch-ua-mobile", secChUaMobile);
     }
 
     public static JSONObject extractRoomJson(String pageBody) {
@@ -110,10 +136,10 @@ public class DouYinAPITools {
     public static void main(String[] args) {
 //        String roomID = "622216334529";
 //        String roomID = "208823316033";
-//        String domain = "https://live.douyin.com/";
-        String domain = "https://www.douyin.com/";
-        String url = "https://www.douyin.com/note/7694202898867991537";
-//        String url = "https://live.douyin.com/381351302222";
+        String domain = "https://live.douyin.com/";
+//        String domain = "https://www.douyin.com/";
+//        String url = "https://www.douyin.com/note/7694202898867991537";
+        String url = "https://live.douyin.com/381351302222";
         DouYinAPITools utils = new DouYinAPITools(domain);
         System.out.println(utils.getCookie());
 //        System.out.println(utils.headers);

@@ -1,5 +1,8 @@
 package cn.zhangheng.record.util;
 
+import cn.hutool.core.map.MapUtil;
+import com.zhangheng.util.RandomUtil;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -13,13 +16,12 @@ import java.util.Random;
  * @description:
  */
 public class UserAgentUtil {
-    private static final Random RANDOM = new Random();
 
     /**
      * 抖音专用PC UA池，仅 Windows Chrome & Edge
      */
     private static final String[] PC_USER_AGENTS = {
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+            // Windows Chrome
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
@@ -34,14 +36,18 @@ public class UserAgentUtil {
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36 Edg/154.0.0.0",
+            // Windows Edge
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36 Edg/152.0.0.0",
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36 Edg/150.0.0.0",
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36 Edg/139.0.0.0",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36 Edg/132.0.0.0"
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36 Edg/132.0.0.0",
+            // MacOS Chrome
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 15_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
     };
+
 
     /**
      * PC分辨率池
@@ -61,7 +67,7 @@ public class UserAgentUtil {
         instanceAgentList = new ArrayList<>(PC_USER_AGENTS.length);
         Collections.addAll(instanceAgentList, PC_USER_AGENTS);
         if (shuffle) {
-            Collections.shuffle(instanceAgentList, RANDOM);
+            Collections.shuffle(instanceAgentList, new Random());
         }
         index = 0;
     }
@@ -81,7 +87,7 @@ public class UserAgentUtil {
     }
 
     public static String getRandomPc() {
-        return PC_USER_AGENTS[RANDOM.nextInt(PC_USER_AGENTS.length)];
+        return PC_USER_AGENTS[RandomUtil.randomInt(PC_USER_AGENTS.length)];
     }
 
 }

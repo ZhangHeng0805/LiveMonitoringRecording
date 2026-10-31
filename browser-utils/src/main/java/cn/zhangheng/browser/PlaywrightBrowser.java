@@ -178,7 +178,7 @@ public class PlaywrightBrowser implements AutoCloseable {
     /**
      * 创建新页面（自动处理浏览器断开重连）
      */
-    public Page newPage(Browser.NewContextOptions options, String initScript) {
+    public Page newPage(String userAgent, String initScript) {
         // 双重检查：确保浏览器可用
         if (!isRunning()) {
             log.warn("浏览器已断开，尝试重新启动...");
@@ -222,7 +222,18 @@ public class PlaywrightBrowser implements AutoCloseable {
                     log.warn("关闭旧 Context 失败", e);
                 }
             }
-
+            // 创建新 Context 并覆盖 ThreadLocal
+            Browser.NewContextOptions options = new Browser.NewContextOptions()
+                    .setUserAgent(userAgent)
+//                    .setViewportSize(1920, 1080) // 模拟PC端分辨率
+//                    .setJavaScriptEnabled(true)
+//                    .setIgnoreHTTPSErrors(true)
+                    // 禁用录像/截图缓存
+//                    .setRecordVideoDir(null)
+//                    .setRecordHarPath(null)
+                    // 限制缓存大小
+//                    .setExtraHTTPHeaders(MapUtil.of("Cache-Control", "no-cache"))
+                    ;
             browserContext = browser.newContext(options);
             BrowserContent content = new BrowserContent(browserContext);
             contents.set(content);
@@ -237,19 +248,7 @@ public class PlaywrightBrowser implements AutoCloseable {
     }
 
     public Page newPage(String userAgent) {
-        // 创建新 Context 并覆盖 ThreadLocal
-        Browser.NewContextOptions options = new Browser.NewContextOptions()
-                .setUserAgent(userAgent)
-//                    .setViewportSize(1920, 1080) // 模拟PC端分辨率
-//                    .setJavaScriptEnabled(true)
-//                    .setIgnoreHTTPSErrors(true)
-                // 禁用录像/截图缓存
-//                    .setRecordVideoDir(null)
-//                    .setRecordHarPath(null)
-                // 限制缓存大小
-//                    .setExtraHTTPHeaders(MapUtil.of("Cache-Control", "no-cache"))
-                ;
-        return newPage(options, null);
+        return newPage(userAgent, null);
     }
 
     public boolean navigatePage(String url, Page page) {

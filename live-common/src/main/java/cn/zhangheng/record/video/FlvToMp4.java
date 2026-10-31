@@ -68,7 +68,9 @@ public class FlvToMp4 extends FFmpegService {
         } catch (IOException | InterruptedException e) {
             log.error("视频转换失败: {}", ThrowableUtil.getAllCauseMessage(e));
         } finally {
-
+            if (logUtil != null) {
+                logUtil.close();
+            }
         }
         return false;
     }

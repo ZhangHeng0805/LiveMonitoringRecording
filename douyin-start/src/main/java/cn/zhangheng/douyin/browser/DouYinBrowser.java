@@ -6,6 +6,7 @@ import cn.zhangheng.record.bean.Room;
 import cn.zhangheng.record.bean.Setting;
 import cn.zhangheng.douyin.bean.DouYinRoom;
 import cn.zhangheng.douyin.util.DouYinAPITools;
+import cn.zhangheng.record.util.UserAgentUtil;
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.WaitForSelectorState;
 import com.microsoft.playwright.options.WaitUntilState;
@@ -46,7 +47,7 @@ public class DouYinBrowser implements Closeable {
     private static final AtomicInteger totalCount = new AtomicInteger(0);
 
     // 线程安全的浏览器实例（volatile确保多线程可见性）
-    private PlaywrightBrowser browser;
+    private volatile PlaywrightBrowser browser;
 
     DouYinBrowser() {
         browser = createBrowser();
@@ -130,7 +131,7 @@ public class DouYinBrowser implements Closeable {
         try {
             checkAndInitBrowser();
             synchronized (this) {
-                page = browser.newPage();
+                page = browser.newPage(UserAgentUtil.getRandomPc());
             }
             setRoomCookie(room, page, roomUrl);
             // 导航到直播间页面
