@@ -4,7 +4,7 @@ import cn.hutool.core.util.StrUtil;
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.WaitUntilState;
 import com.zhangheng.util.ThrowableUtil;
-import com.zhangheng.util.UserAgentUtil;
+import cn.zhangheng.common.util.UserAgentUtil;
 import lombok.Getter;
 import lombok.Setter;
 import org.slf4j.Logger;
@@ -134,7 +134,7 @@ public class PlaywrightBrowser implements AutoCloseable {
 
     public PlaywrightBrowser(boolean headless) {
         this.headless = headless;
-        this.userAgentUtil = UserAgentUtil.create(true, false);
+        this.userAgentUtil = UserAgentUtil.create(true);
         try {
             // 先初始化Playwright
             this.playwright = Playwright.create();
@@ -172,13 +172,13 @@ public class PlaywrightBrowser implements AutoCloseable {
     }
 
     public Page newPage() {
-        return newPage(userAgentUtil.get());
+        return newPage(null);
     }
 
     /**
      * 创建新页面（自动处理浏览器断开重连）
      */
-    public Page newPage(String userAgent, String initScript) {
+    public Page newPage(String initScript) {
         // 双重检查：确保浏览器可用
         if (!isRunning()) {
             log.warn("浏览器已断开，尝试重新启动...");
@@ -224,7 +224,7 @@ public class PlaywrightBrowser implements AutoCloseable {
             }
             // 创建新 Context 并覆盖 ThreadLocal
             Browser.NewContextOptions options = new Browser.NewContextOptions()
-                    .setUserAgent(userAgent)
+                    .setUserAgent(userAgentUtil.get())
 //                    .setViewportSize(1920, 1080) // 模拟PC端分辨率
 //                    .setJavaScriptEnabled(true)
 //                    .setIgnoreHTTPSErrors(true)
@@ -245,10 +245,6 @@ public class PlaywrightBrowser implements AutoCloseable {
             page.addInitScript(initScript);
         }
         return page;
-    }
-
-    public Page newPage(String userAgent) {
-        return newPage(userAgent, null);
     }
 
     public boolean navigatePage(String url, Page page) {

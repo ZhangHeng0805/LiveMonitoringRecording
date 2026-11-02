@@ -8,7 +8,7 @@ import cn.zhangheng.record.util.LogUtil;
 import cn.zhangheng.douyin.bean.DouYinRoomCounter;
 import cn.zhangheng.douyin.bean.DouYinRoom;
 import cn.zhangheng.record.*;
-import cn.zhangheng.record.util.UserAgentUtil;
+import cn.zhangheng.common.util.UserAgentUtil;
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.WaitUntilState;
 import com.zhangheng.util.TimeUtil;

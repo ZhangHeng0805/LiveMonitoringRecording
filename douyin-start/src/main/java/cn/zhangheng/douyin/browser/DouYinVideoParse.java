@@ -8,15 +8,15 @@ import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import cn.zhangheng.browser.BrowserAPI;
 import cn.zhangheng.browser.BrowserUtil;
+import cn.zhangheng.common.cache.CacheWithOnceLoadHelper;
 import cn.zhangheng.douyin.bean.work.DouYinWork;
 import cn.zhangheng.douyin.bean.work.DouYinWorkCounter;
 import cn.zhangheng.douyin.util.DouYinUtil;
-import cn.zhangheng.record.bean.Constant;
 import cn.zhangheng.record.bean.Setting;
 import cn.zhangheng.record.bean.work.Author;
 import cn.zhangheng.record.bean.work.Work;
 import cn.zhangheng.record.util.RequestUtils;
-import cn.zhangheng.record.util.UserAgentUtil;
+import cn.zhangheng.common.util.UserAgentUtil;
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.WaitForSelectorState;
 import com.microsoft.playwright.options.WaitUntilState;
@@ -27,6 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * @author: ZhangHeng
@@ -41,9 +42,23 @@ public class DouYinVideoParse {
     private static final String urlVideoPrefix = "https://www.douyin.com/aweme/v1/web/aweme/detail/";
     private static final String urlImagePrefix = "https://www.douyin.com/aweme/v1/web/mix/aweme/";
     private static final String urlImagePrefix2 = "https://www.douyin.com/aweme/v1/web/aweme/post/";
-    private static final TimedCache<String, DouYinWork> timedCache = CacheUtil.newTimedCache(1000 * 60 * 10);
+//    private static final TimedCache<String, DouYinWork> timedCache = CacheUtil.newTimedCache(1000 * 60 * 10);
 
-    public static void main(String[] args) throws IOException {
+    private static final CacheWithOnceLoadHelper<String, DouYinWork> queryHelper;
+
+    static {
+        //每5min后台扫描清理过期
+//        timedCache.schedulePrune(60_000 * 5);
+        queryHelper = CacheWithOnceLoadHelper.<String, DouYinWork>builder(key -> {
+                    return parse(key, null, null);
+                })
+                .cacheExpireMs(10 * 60_000)
+                .loadTimeoutMs(30_000)
+                .cacheMaxSize(100)
+                .build();
+    }
+
+    public static void main(String[] args) throws Exception {
 //        String s = "1.76 复制打开抖音，看看【小兰花的作品】自我救赎的路上本就光怪陆离# 感觉至上  https://v.douyin.com/jvzZf1jio5w/ 10/01 t@R.xS hBT:/ ";
 //        String s = "0.28 Z@z.Ty :1pm 03/22 xsR:/ 那个……可以认识一下吗# 感觉至上 # 男生  https://v.douyin.com/HFnMsnbv_yI/ 复制此链接，打开Dou音搜索，直接观看视频！";
         String s = "5.87 素衫自有凌云气 锐目全无畏世心   https://v.douyin.com/ksjaDSGgWrg/ 复制此链接，打开抖音搜索，直接观看视频！ M@W.mQ :0pm dAg:/ 03/12 ";
@@ -60,28 +75,25 @@ public class DouYinVideoParse {
 //        System.out.println(finalUrl);
 //        System.out.println(DouYinUtil.extractNoteId(finalUrl));
         System.out.println(JSONUtil.parseObj(
-                parse(s, null, null, false)).toStringPretty());
+                parse(s, false)).toStringPretty());
+//        queryHelper.destroy();
         System.out.println("耗时:" + (System.currentTimeMillis() - sta));
     }
 
-    public static DouYinWork parse(String shareUrl, String userAgent) {
-        return parse(shareUrl, null, userAgent, false);
-    }
-
-    public static DouYinWork parse(String shareUrl, String userAgent, boolean isRefresh) {
-        return parse(shareUrl, null, userAgent, isRefresh);
-    }
-
-    public static DouYinWork parse(String shareUrl, Setting setting, String userAgent, boolean isRefresh) {
-        boolean success = false;
+    public static DouYinWork parse(String shareUrl, boolean isRefresh) throws Exception {
         String link = DouYinUtil.extractDouyinLink(shareUrl);
         if (link == null) {
             return null;
         }
-        if (isRefresh) timedCache.remove(link);
-        DouYinWork work = timedCache.get(link);
-        if (work != null) {
-            return work;
+        if (isRefresh) queryHelper.invalidate(link);
+        return queryHelper.get(link, 60_000);
+    }
+
+    public static DouYinWork parse(String shareUrl, Setting setting, String userAgent) {
+        boolean success = false;
+        String link = DouYinUtil.extractDouyinLink(shareUrl);
+        if (link == null) {
+            return null;
         }
         if (userAgent == null) {
             userAgent = UserAgentUtil.getRandomPc();
@@ -113,12 +125,12 @@ public class DouYinVideoParse {
             log.error("获取抖音作品信息失败！{}", e.getMessage());
         }
         if (success) {
+            DouYinWork work;
             if (browserApi.getDataUrl().startsWith(urlVideoPrefix)) {
                 work = handleVideoData(browserApi.getResponseBody());
             } else {
                 work = handleImageData(browserApi.getResponseBody(), htmlJson);
             }
-            timedCache.put(link, work);
             return work;
         } else {
             throw new RuntimeException("未解析到作品信息");

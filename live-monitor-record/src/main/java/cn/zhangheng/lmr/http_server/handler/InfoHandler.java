@@ -1,6 +1,7 @@
 package cn.zhangheng.lmr.http_server.handler;
 
 import cn.hutool.core.util.StrUtil;
+import cn.zhangheng.common.cache.CacheWithOnceLoadHelper;
 import cn.zhangheng.record.httpServer.handle.JSONHandler;
 import cn.zhangheng.douyin.browser.DouYinBrowserFactory;
 import cn.zhangheng.lmr.FileModeMain;
@@ -20,23 +21,38 @@ import java.util.concurrent.ThreadPoolExecutor;
  * @description:
  */
 public class InfoHandler extends JSONHandler {
+    private final CacheWithOnceLoadHelper<String,Map<String, Object>> queryHelper;
     public InfoHandler(String prefix) {
         super(prefix);
+        queryHelper=CacheWithOnceLoadHelper.<String,Map<String, Object>>builder(key->{
+                    Map<String, Object> douYinCounter = DouYinBrowserFactory.getBrowser().getCount();
+                    Map<String, Object> allCounter = FileModeMain.getCounter();
+                    Map<String, Object> data = new HashMap<>();
+                    data.put("DouYinCounter", douYinCounter);
+                    data.put("AllCounter", allCounter);
+                    return data;
+                })
+                .cacheExpireMs(3000)
+                .cacheMaxSize(1)
+                .build();
     }
 
 
     @Override
-    protected void request(HttpExchange httpExchange) throws IOException {
+    protected void request(HttpExchange httpExchange) throws Exception {
         String indexPath = getIndexPath(httpExchange, prefix);
         Message<Object> msg = new Message<>();
         if (indexPath.startsWith("getThread")) {
-            getThread(msg);
+            ThreadPoolExecutor threadPool = FileModeMain.getThreadPool();
+            int corePoolSize = threadPool.getCorePoolSize();
+            int activeCount = threadPool.getActiveCount();
+            Map<String, Integer> res = new HashMap<>();
+            res.put("corePoolSize", corePoolSize);
+            res.put("activeCount", activeCount);
+            msg.setData(res);
+            msg.setMessage(StrUtil.format("核心线程数: {}， 正在工作的线程数: {},", corePoolSize, activeCount));
         } else if (indexPath.startsWith("getCount")) {
-            Map<String, Object> douYinCounter = DouYinBrowserFactory.getBrowser().getCount();
-            Map<String, Object> allCounter = FileModeMain.getCounter();
-            Map<String, Object> data = new HashMap<>();
-            data.put("DouYinCounter", douYinCounter);
-            data.put("AllCounter", allCounter);
+            Map<String, Object> data = queryHelper.get("getCount", 2000);
             msg.setData(data);
         } else {
             msg.setCode(1);
@@ -45,16 +61,4 @@ public class InfoHandler extends JSONHandler {
         responseJson(httpExchange, msg);
     }
 
-    private void getThread(Message msg) {
-        ThreadPoolExecutor threadPool = FileModeMain.getThreadPool();
-        int corePoolSize = threadPool.getCorePoolSize();
-        int activeCount = threadPool.getActiveCount();
-        int remainingThreads = corePoolSize - activeCount;
-        Map<String, Integer> res = new HashMap<>();
-        res.put("corePoolSize", corePoolSize);
-        res.put("activeCount", activeCount);
-        res.put("remainingThreads", remainingThreads);
-        msg.setData(res);
-        msg.setMessage(StrUtil.format("核心线程数: {}， 正在工作的线程数: {}, 剩余可用线程数: {}", corePoolSize, activeCount, remainingThreads));
-    }
 }

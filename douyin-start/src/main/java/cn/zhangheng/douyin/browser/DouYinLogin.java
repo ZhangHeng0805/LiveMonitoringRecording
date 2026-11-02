@@ -3,7 +3,7 @@ package cn.zhangheng.douyin.browser;
 import cn.zhangheng.browser.BrowserUtil;
 import cn.zhangheng.browser.login.BrowserLogin;
 import cn.zhangheng.douyin.util.DouYinUtil;
-import cn.zhangheng.record.util.UserAgentUtil;
+import cn.zhangheng.common.util.UserAgentUtil;
 import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.Page;

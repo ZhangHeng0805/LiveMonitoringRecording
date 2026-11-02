@@ -2,14 +2,12 @@ package cn.zhangheng.douyin.browser;
 
 import cn.zhangheng.browser.BrowserUtil;
 import cn.zhangheng.douyin.util.DouYinUtil;
-import cn.zhangheng.record.util.UserAgentUtil;
+import cn.zhangheng.common.util.UserAgentUtil;
 import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 import com.microsoft.playwright.options.WaitUntilState;
-
-import java.util.regex.Pattern;
 
 /**
  * @author: ZhangHeng

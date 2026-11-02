@@ -32,6 +32,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -304,11 +305,13 @@ public class FileModeMain {
     }
 
     public static Map<String, Object> getCounter() {
+        List<Map<String, Object>> platformList = new ArrayList<>();
         Map<String, Object> platformData = new HashMap<>();
         long total = 0L;
         for (RoomFileModel model : roomFileMap.values()) {
             Map<String, Object> counter = new HashMap<>();
             Room room = model.getMain().getMonitorMain().getRoom();
+            counter.put("id", model.getId());
             counter.put("name", room.getNickname());
             counter.put("url", room.getRoomUrl());
             counter.put("platform", room.getPlatform().getName());
@@ -321,8 +324,11 @@ public class FileModeMain {
             counter.put("updateTime", TimeUtil.toTime(room.getUpdateTime()));
             counter.put("startTime", TimeUtil.toTime(model.getStartTime()));
             counter.put("endTime", model.getEndTime() > 0 ? TimeUtil.toTime(model.getEndTime()) : null);
-            platformData.put(model.getId(), counter);
+            platformList.add(counter);
         }
+
+        platformData.put("list", platformList);
+        platformData.put("listSize", platformList.size());
         platformData.put("totalCount", total);
         return platformData;
     }

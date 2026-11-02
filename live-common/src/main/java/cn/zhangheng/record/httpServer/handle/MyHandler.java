@@ -75,7 +75,7 @@ public abstract class MyHandler implements HttpHandler {
         return true;
     }
 
-    protected abstract void request(HttpExchange httpExchange) throws IOException;
+    protected abstract void request(HttpExchange httpExchange) throws Exception;
 
 
     protected String getIndexPath(HttpExchange httpExchange, String prefix) {

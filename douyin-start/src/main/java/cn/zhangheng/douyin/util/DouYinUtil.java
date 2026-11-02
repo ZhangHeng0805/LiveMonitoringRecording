@@ -10,7 +10,7 @@ import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static cn.zhangheng.record.util.UserAgentUtil.PC_VIEWPORTS;
+import static cn.zhangheng.common.util.UserAgentUtil.PC_VIEWPORTS;
 
 
 /**

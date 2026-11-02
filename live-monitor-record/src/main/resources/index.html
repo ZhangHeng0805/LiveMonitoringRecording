@@ -426,7 +426,7 @@
         refreshIcon.classList.add("btn-refresh-active");
 
         // 触发数据刷新
-        fetchData().then(() => {
+        fetchData(true).then(() => {
             // 动画完成后移除类
             setTimeout(() => {
                 refreshIcon.classList.remove("btn-refresh-active");
@@ -445,7 +445,7 @@
     }
 
     // 获取数据
-    async function fetchData() {
+    async function fetchData(isManual = false) {
         // 如果正在刷新中，则不重复触发
         if (isRefreshing) return;
 
@@ -457,7 +457,7 @@
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
 
-            const response = await fetch(MainUrl + "api/rooms", {
+            const response = await fetch(MainUrl + "api/rooms?manual=" + isManual, {
                 signal: controller.signal,
                 // 跨域携带凭证（Cookie）
                 credentials: "include"

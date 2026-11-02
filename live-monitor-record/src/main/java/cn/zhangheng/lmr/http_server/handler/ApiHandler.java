@@ -3,6 +3,7 @@ package cn.zhangheng.lmr.http_server.handler;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
+import cn.zhangheng.common.cache.CacheWithOnceLoadHelper;
 import cn.zhangheng.douyin.bean.work.DouYinWork;
 import cn.zhangheng.record.bean.Room;
 import cn.zhangheng.record.httpServer.handle.JSONHandler;
@@ -36,9 +37,18 @@ import static cn.zhangheng.record.httpServer.util.HandlerUtils.parseQuery;
  */
 @Slf4j
 public class ApiHandler extends JSONHandler {
+    private final CacheWithOnceLoadHelper<String, List<Map<String, Object>>> roomsQueryHelper;
 
     public ApiHandler(String prefix) {
         super(prefix);
+        roomsQueryHelper = CacheWithOnceLoadHelper.<String, List<Map<String, Object>>>builder(key -> FileModeMain.getRoomFileMap().values().stream()
+                        .map(ApiHandler::getRoomsMap)
+                        .filter(m -> m != null && !m.isEmpty())
+                        .sorted(Comparator.comparing(m -> m.get("isRunning").equals(false)))
+                        .collect(Collectors.toList()))
+                .cacheExpireMs(10000)
+                .cacheMaxSize(1)
+                .build();
     }
 
     @Override
@@ -49,20 +59,18 @@ public class ApiHandler extends JSONHandler {
 
 
     @Override
-    public void request(HttpExchange httpExchange) throws IOException {
+    public void request(HttpExchange httpExchange) throws Exception {
         try {
             String indexPath = getIndexPath(httpExchange, prefix);
             Message<Object> msg = new Message<>();
 
+            Map<String, String> query = parseQuery(httpExchange);
             if (indexPath.startsWith("rooms")) {
-                List<Map<String, Object>> collect = FileModeMain.getRoomFileMap().values().stream()
-                        .map(ApiHandler::getRoomsMap)
-                        .filter(m -> m != null && !m.isEmpty())
-                        .sorted(Comparator.comparing(m -> m.get("isRunning").equals(false)))
-                        .collect(Collectors.toList());
+                String roomsKey = "rooms";
+                if ("true".equalsIgnoreCase(query.get("manual"))) roomsQueryHelper.invalidate(roomsKey);
+                List<Map<String, Object>> collect = roomsQueryHelper.get(roomsKey, 2000);
                 msg.setData(collect);
             } else if (indexPath.startsWith("videoParsing")) {
-                Map<String, String> query = parseQuery(httpExchange);
                 videoParsing(msg, query, HandlerUtils.getRequestUserAgent(httpExchange));
             } else {
                 msg.setCode(1);
@@ -140,7 +148,7 @@ public class ApiHandler extends JSONHandler {
             if (url == null) {
                 throw new IllegalArgumentException("解析URl缺省！");
             }
-            DouYinWork parse = DouYinVideoParse.parse(url, null, "true".equalsIgnoreCase(isRefresh));
+            DouYinWork parse = DouYinVideoParse.parse(url, "true".equalsIgnoreCase(isRefresh));
             msg.setData(parse);
             msg.setMessage("解析成功！");
         } catch (Exception e) {

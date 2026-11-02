@@ -1,6 +1,5 @@
-package cn.zhangheng.record.util;
+package cn.zhangheng.common.util;
 
-import cn.hutool.core.map.MapUtil;
 import com.zhangheng.util.RandomUtil;
 
 import java.util.ArrayList;

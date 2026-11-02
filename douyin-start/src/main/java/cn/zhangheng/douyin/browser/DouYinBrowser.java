@@ -1,12 +1,10 @@
 package cn.zhangheng.douyin.browser;
 
 import cn.zhangheng.browser.*;
-import cn.zhangheng.record.bean.Constant;
 import cn.zhangheng.record.bean.Room;
 import cn.zhangheng.record.bean.Setting;
 import cn.zhangheng.douyin.bean.DouYinRoom;
 import cn.zhangheng.douyin.util.DouYinAPITools;
-import cn.zhangheng.record.util.UserAgentUtil;
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.WaitForSelectorState;
 import com.microsoft.playwright.options.WaitUntilState;
@@ -17,10 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -60,26 +55,30 @@ public class DouYinBrowser implements Closeable {
             Map<String, Integer> browserCount = browser.getAllCount();
             data.put("browserCount", browserCount);
         }
+        List<Map<String, Object>> counterList = new ArrayList<>();
         Map<String, Object> totalCounter = new HashMap<>();
         for (Map.Entry<String, BrowserCounter> entry : counters.entrySet()) {
-            BrowserCounter counter = entry.getValue();
             Map<String, Object> map = new HashMap<>();
+            BrowserCounter counter = entry.getValue();
             String url = counter.getUrl();
+            map.put("name", counter.getThreadName());
             map.put("url", url);
             map.put("totalCount", counter.getCount());
-            int count = apis.containsKey(url) ? apis.get(url).getCount() : 0;
-            map.put("apiCount", count);
+            int apiCount = apis.containsKey(url) ? apis.get(url).getCount() : 0;
+            map.put("apiCount", apiCount);
             map.put("lastTime", TimeUtil.toTime(counter.getLastTimestamp()));
-            totalCounter.put(counter.getThreadName(), map);
+            counterList.add(map);
         }
         totalCounter.put("totalCount", totalCount.get());
+        totalCounter.put("countList", counterList);
+        totalCounter.put("countSize", counterList.size());
         data.put("totalCounter", totalCounter);
 
         return data;
     }
 
 
-    boolean isFetch = true;
+    private boolean isFetch = true;
 
     /**
      * 发起请求并提取直播间信息
@@ -131,7 +130,7 @@ public class DouYinBrowser implements Closeable {
         try {
             checkAndInitBrowser();
             synchronized (this) {
-                page = browser.newPage(UserAgentUtil.getRandomPc());
+                page = browser.newPage();
             }
             setRoomCookie(room, page, roomUrl);
             // 导航到直播间页面

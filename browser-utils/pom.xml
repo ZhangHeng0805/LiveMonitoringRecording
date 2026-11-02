@@ -25,6 +25,11 @@
             <artifactId>playwright</artifactId>
             <version>1.39.0</version>
         </dependency>
+        <dependency>
+            <groupId>cn.zhangheng.common</groupId>
+            <artifactId>common-libs</artifactId>
+            <version>${xxxr.version}</version>
+        </dependency>
     </dependencies>
 
 </project>
