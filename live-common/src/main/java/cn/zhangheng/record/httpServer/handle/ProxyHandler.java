@@ -28,6 +28,7 @@ public class ProxyHandler extends MyHandler {
     // 重定向响应码集合（HTTP规范：无响应体或响应体可忽略）
     private static final List<Integer> REDIRECT_CODES = Arrays.asList(301, 302, 303, 307, 308);
 
+
     @Override
     public void request(HttpExchange httpExchange) throws IOException {
         Map<String, String> params = HandlerUtils.parseQuery(httpExchange);

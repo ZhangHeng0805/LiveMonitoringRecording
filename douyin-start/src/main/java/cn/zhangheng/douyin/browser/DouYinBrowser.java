@@ -1,6 +1,8 @@
 package cn.zhangheng.douyin.browser;
 
 import cn.zhangheng.browser.*;
+import cn.zhangheng.browser.exception.PlaywrightErrorInfo;
+import cn.zhangheng.browser.exception.PlaywrightExceptionParser;
 import cn.zhangheng.record.bean.Room;
 import cn.zhangheng.record.bean.Setting;
 import cn.zhangheng.douyin.bean.DouYinRoom;
@@ -156,7 +158,8 @@ public class DouYinBrowser implements Closeable {
             }
             return b;
         } catch (PlaywrightException e1) {
-            log.error("处理直播间[{}]时浏览器发生异常:{}", roomUrl, ThrowableUtil.toString(e1, 128));
+            PlaywrightErrorInfo errorInfo = PlaywrightExceptionParser.parse(e1);
+            log.error("处理直播间[{}]时浏览器发生异常:{} {}", roomUrl, errorInfo.getBriefMsg(),errorInfo.getInnerMessage());
         } catch (Throwable e) {
             log.error("处理直播间[{}]时发生异常,{}", roomUrl, ThrowableUtil.getAllCauseMessage(e));
         } finally {

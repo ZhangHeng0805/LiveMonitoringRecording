@@ -1,5 +1,6 @@
 package cn.zhangheng.lmr.http_server;
 
+import cn.zhangheng.record.httpServer.handle.MyHandler;
 import cn.zhangheng.record.httpServer.handle.ProxyHandler;
 import cn.zhangheng.record.httpServer.handle.StreamFileHandler;
 import cn.zhangheng.record.httpServer.handle.TextFileHandler;
@@ -25,6 +26,8 @@ import java.util.concurrent.*;
 @Slf4j
 public class LocalMonitorHttpServer {
     private HttpServer server;
+    private final int maxThreadSize = 128;
+    private final Semaphore globalSemaphore = new Semaphore((int) (maxThreadSize - (maxThreadSize * 0.2)));
     private ThreadPoolExecutor poolExecutor;
     @Getter
     private int port;
@@ -41,13 +44,14 @@ public class LocalMonitorHttpServer {
             System.setProperty("monitor.port", String.valueOf(getPort()));
             System.setProperty("monitor.url", getMainUrl());
             try {
-                server = HttpServer.create(new InetSocketAddress("::", port), 100);
+                server = HttpServer.create(new InetSocketAddress("::", port), (int) (maxThreadSize * 1.5));
                 poolExecutor = new ThreadPoolExecutor(
-                        1, 128,
+                        1, maxThreadSize,
                         30L, TimeUnit.SECONDS, // 空闲线程30秒再销毁
                         new SynchronousQueue<>(),
                         new ThreadFactory() {
                             private int cnt = 0;
+
                             @Override
                             public Thread newThread(Runnable r) {
                                 Thread t = new Thread(r, "http-handler-" + cnt++);
@@ -55,9 +59,10 @@ public class LocalMonitorHttpServer {
                                 return t;
                             }
                         },
-                        new ThreadPoolExecutor.CallerRunsPolicy() // 拒绝策略改为调用者线程执行，不抛异常
+                        new ThreadPoolExecutor.CallerRunsPolicy()
                 );
                 server.setExecutor(poolExecutor);
+                MyHandler.setGlobalSemaphore(globalSemaphore);//统一设置限流信号量
                 server.createContext("/", new TextFileHandler("index.html", "text/html"));
                 server.createContext("/DouYinVideoPares.html", new TextFileHandler("DouYinVideoPares.html", "text/html"));
                 server.createContext("/FLVPlayer.html", new TextFileHandler("FLVPlayer.html", "text/html"));
@@ -72,6 +77,7 @@ public class LocalMonitorHttpServer {
                 server.createContext("/client-info", new ClientHandler("/client-info/"));
                 server.createContext("/room-recycle", new RoomRecycleHandler("/room-recycle/"));
                 server.createContext("/info", new InfoHandler("/info/"));
+
             } catch (Exception e) {
                 log.error("本地API服务创建失败！{}", ThrowableUtil.getAllCauseMessage(e));
             }

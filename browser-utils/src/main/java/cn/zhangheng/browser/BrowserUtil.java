@@ -1,6 +1,8 @@
 package cn.zhangheng.browser;
 
 import cn.hutool.core.util.StrUtil;
+import cn.zhangheng.browser.exception.PlaywrightErrorInfo;
+import cn.zhangheng.browser.exception.PlaywrightExceptionParser;
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.Cookie;
 import com.microsoft.playwright.options.WaitUntilState;
@@ -123,7 +125,8 @@ public class BrowserUtil {
         } catch (TimeoutError e1) {
             log.error("页面导航超时:{}", url);
         } catch (PlaywrightException e2) {
-            log.error("页面导航失败:{} ,{} ", url, ThrowableUtil.toString(e2, 128));
+            PlaywrightErrorInfo errorInfo = PlaywrightExceptionParser.parse(e2);
+            log.error("页面导航失败:{} [{}: {}]  ", errorInfo.getBriefMsg(), errorInfo.getExceptionClass(), errorInfo.getInnerMessage());
         } catch (Throwable e) {
             log.error("页面导航失败:{}", e.getMessage());
         }

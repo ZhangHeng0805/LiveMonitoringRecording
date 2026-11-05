@@ -15,6 +15,7 @@ import java.io.*;
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.Semaphore;
 
 /**
  * @author: ZhangHeng
@@ -26,10 +27,26 @@ import java.nio.charset.StandardCharsets;
 public abstract class MyHandler implements HttpHandler {
     private final Logger log = LoggerFactory.getLogger(this.getClass());
     protected static final Charset charset = StandardCharsets.UTF_8;
+    //全局统一限流信号量
+    private volatile static Semaphore globalSemaphore = null;
+
+    public static void setGlobalSemaphore(Semaphore globalSemaphore) {
+        MyHandler.globalSemaphore = globalSemaphore;
+    }
 
     @Override
     public void handle(HttpExchange httpExchange) throws IOException {
+        boolean acquired = false;
         try {
+            if (globalSemaphore != null) {
+                //限流检查
+                if (!globalSemaphore.tryAcquire()) {
+                    httpExchange.sendResponseHeaders(503, -1);
+                    return;
+                }
+                acquired = true; // 标记：拿到了许可，后面要归还
+            }
+            //拦截器
             if (filter(httpExchange)) {
                 if (httpExchange.getResponseCode() != -1) {
                     return;
@@ -45,6 +62,10 @@ public abstract class MyHandler implements HttpHandler {
             handleThrowable(httpExchange, e);
         } finally {
             httpExchange.close();
+            // 只有成功拿到许可，才归还
+            if (acquired) {
+                globalSemaphore.release();
+            }
         }
     }
 

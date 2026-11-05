@@ -19,7 +19,6 @@ import java.util.Scanner;
  */
 public class TextFileHandler extends MyHandler {
 
-//    private static final Logger log = LoggerFactory.getLogger(TextFileHandler.class);
     private final String file;
     private final String contextType;
 
