@@ -1,7 +1,10 @@
 package cn.zhangheng.douyin.service;
 
+import cn.zhangheng.browser.factory.PlaywrightBrowserFactory;
 import cn.zhangheng.record.service.RoomService;
 import cn.zhangheng.douyin.bean.DouYinRoom;
+
+import java.util.Objects;
 
 /**
  * @author: ZhangHeng
@@ -18,6 +21,7 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
 
     public DouYinRoomService(DouYinRoom room) {
         super(room);
+        PlaywrightBrowserFactory.setHeadless(!Objects.equals(room.getSetting().getBrowserHeadless(), Boolean.FALSE));
         this.dataService = new DouYinDataService(room);
         this.subtitleService = new DouYinSubtitleService(room);
     }

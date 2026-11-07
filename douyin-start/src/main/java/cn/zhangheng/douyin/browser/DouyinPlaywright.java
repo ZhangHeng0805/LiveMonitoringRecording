@@ -6,9 +6,8 @@ package cn.zhangheng.douyin.browser; /**
  * @description:
  */
 
-import cn.zhangheng.browser.BrowserUtil;
+import cn.zhangheng.browser.util.BrowserUtil;
 import cn.zhangheng.browser.PlaywrightBrowser;
-import cn.zhangheng.record.bean.Constant;
 import cn.zhangheng.record.bean.Setting;
 import cn.zhangheng.douyin.bean.DouYinRoom;
 import com.microsoft.playwright.*;
@@ -20,7 +19,7 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-import static cn.zhangheng.douyin.browser.DouYinBrowserFactory.*;
+import static cn.zhangheng.douyin.browser.DouYinBrowserUtil.*;
 
 /**
  * 浏览器静态类，单次请求，请求完成自动关闭浏览器
@@ -48,7 +47,7 @@ public class DouyinPlaywright {
             browser.setIsPageClear(setting.getBrowserIsPageClear());
 //            browser.setUpdateContextCounts(setting.getUpdateContextCounts());
             Page page = browser.newPage();
-            setRoomCookie(room, page, roomUrl);
+            setRoomCookie(room, page);
 //            Consumer<Request> handler = request -> {
 //                // 过滤需要的接口（例如包含 "api"、"data" 等关键词的接口）
 //                getRequestApi(room, request);

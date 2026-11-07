@@ -1,4 +1,4 @@
-package cn.zhangheng.browser;
+package cn.zhangheng.browser.util;
 
 import cn.hutool.core.util.StrUtil;
 import cn.zhangheng.browser.exception.PlaywrightErrorInfo;

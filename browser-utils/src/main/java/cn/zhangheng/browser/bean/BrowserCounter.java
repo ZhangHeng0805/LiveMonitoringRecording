@@ -1,4 +1,4 @@
-package cn.zhangheng.browser;
+package cn.zhangheng.browser.bean;
 
 import lombok.Data;
 

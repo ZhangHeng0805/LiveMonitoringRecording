@@ -148,7 +148,7 @@ public class ApiHandler extends JSONHandler {
             if (url == null) {
                 throw new IllegalArgumentException("解析URl缺省！");
             }
-            DouYinWork parse = DouYinVideoParse.parse(url, "true".equalsIgnoreCase(isRefresh));
+            DouYinWork parse = DouYinVideoParse.parse(url, "true".equals(isRefresh));
             msg.setData(parse);
             msg.setMessage("解析成功！");
         } catch (Exception e) {

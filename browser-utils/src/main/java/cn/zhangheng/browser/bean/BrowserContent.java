@@ -1,7 +1,8 @@
-package cn.zhangheng.browser;
+package cn.zhangheng.browser.bean;
 
 import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.Page;
+import lombok.Getter;
 
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -16,6 +17,8 @@ import java.util.function.Consumer;
  */
 public class BrowserContent {
     private final BrowserContext context;
+    @Getter
+    private final String userAgent;
 
     // 🔥 修复：改用原子类型，保证线程安全
     private final AtomicLong lastUsedTimestamp = new AtomicLong(0);
@@ -23,8 +26,9 @@ public class BrowserContent {
     private final Consumer<Page> handler;
 
 
-    public BrowserContent(BrowserContext context) {
+    public BrowserContent(BrowserContext context, String userAgent) {
         this.context = context;
+        this.userAgent = userAgent;
         // 监听：新页面创建
         handler = page -> {
             // 更新最后使用时间

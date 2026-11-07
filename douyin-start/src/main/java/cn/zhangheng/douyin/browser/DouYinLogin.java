@@ -1,6 +1,6 @@
 package cn.zhangheng.douyin.browser;
 
-import cn.zhangheng.browser.BrowserUtil;
+import cn.zhangheng.browser.util.BrowserUtil;
 import cn.zhangheng.browser.login.BrowserLogin;
 import cn.zhangheng.douyin.util.DouYinUtil;
 import cn.zhangheng.common.util.UserAgentUtil;
@@ -36,9 +36,9 @@ public class DouYinLogin {
              Browser browser = playwright.chromium().launch(BrowserUtil.getLaunchOptions(false))
         ) {
             String userAgent = UserAgentUtil.getRandomPc();
-            BrowserContext context = browser.newContext(DouYinUtil.buildDouyinPcContextOptions(userAgent));
+            BrowserContext context = browser.newContext(DouYinBrowserUtil.buildDouyinPcContextOptions(userAgent));
             Page page = context.newPage();
-            page.addInitScript(DouYinUtil.getDouyinFingerprintScript());
+            page.addInitScript(DouYinBrowserUtil.getDouyinFingerprintScript());
             System.out.println("正在打开抖音网页版...");
             System.out.println("请使用手机扫码登录");
             boolean isLoginSuccess = BrowserUtil.goToBySelector(url1, page, "span[data-e2e='live-avatar']", BrowserLogin.maxWaitTimeSec);

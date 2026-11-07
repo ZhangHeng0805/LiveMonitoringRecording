@@ -1,5 +1,6 @@
-package cn.zhangheng.browser;
+package cn.zhangheng.browser.util;
 
+import cn.zhangheng.browser.bean.BrowserContent;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;

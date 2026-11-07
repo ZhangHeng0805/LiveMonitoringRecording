@@ -1,7 +1,11 @@
 package cn.zhangheng.douyin.browser;
 
 import cn.hutool.core.util.StrUtil;
-import cn.zhangheng.browser.BrowserUtil;
+import cn.zhangheng.browser.exception.PlaywrightErrorInfo;
+import cn.zhangheng.browser.exception.PlaywrightExceptionParser;
+import cn.zhangheng.browser.factory.MyBrowser;
+import cn.zhangheng.browser.factory.PlaywrightBrowserFactory;
+import cn.zhangheng.browser.util.BrowserUtil;
 import cn.zhangheng.douyin.util.DouYinUtil;
 import cn.zhangheng.record.bean.Setting;
 import cn.zhangheng.record.util.LogUtil;
@@ -23,7 +27,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
-import static cn.zhangheng.douyin.browser.DouYinBrowserFactory.*;
+import static cn.zhangheng.douyin.browser.DouYinBrowserUtil.*;
 
 
 /**
@@ -231,16 +235,12 @@ public class DouYinWebcast {
             log.error("直播间URL为空，无法发起请求");
             return wss;
         }
+        MyBrowser myBrowser = PlaywrightBrowserFactory.getBrowser(room.getRoomKey(), room.getSetting().getDelayIntervalSec() * 3000L, false);
         Page page = null;
-        String userAgent = UserAgentUtil.getRandomPc();
-        boolean headless = room.getSetting() == null || !Objects.equals(room.getSetting().getBrowserHeadless(), Boolean.FALSE);
-        try (Playwright playwright = Playwright.create();
-             Browser browser = playwright.chromium().launch(BrowserUtil.getLaunchOptions(headless))
-        ) {
-            BrowserContext context = browser.newContext(DouYinUtil.buildDouyinPcContextOptions(userAgent));
-            page = context.newPage();
-            page.addInitScript(DouYinUtil.getDouyinFingerprintScript());
-            setRoomCookie(room, page, roomUrl);
+        try {
+
+            page = myBrowser.newPage(DouYinBrowserUtil.getDouyinFingerprintScript());
+            setRoomCookie(room, page);
             BrowserUtil.navigatePage(room.getRoomUrl(), page, WaitUntilState.DOMCONTENTLOADED);
             //提取界面信息
             extractRoomInfo(room, page);
@@ -254,17 +254,17 @@ public class DouYinWebcast {
                     webSocket = BrowserUtil.waitForTargetWebSocket(page, TARGET_WSS, 15_000);
                 }
 
-                wss.setUserAgent(userAgent);
+                wss.setUserAgent(myBrowser.getContent().getUserAgent());
                 wss.setUrl(webSocket.url());
                 wss.setCookie(BrowserUtil.toCookieStr(page.context().cookies()));
             }
+        } catch (PlaywrightException pe) {
+            PlaywrightErrorInfo errorInfo = PlaywrightExceptionParser.parse(pe);
+            log.error("获取直播弹幕wss失败！{}", errorInfo.toSimpleString());
         } catch (Exception e) {
             log.error("获取直播弹幕wss失败！{}", e.getMessage());
         } finally {
-            if (page != null && !page.isClosed()) {
-                // 关闭页面（可选：触发beforeunload事件）
-                page.close(new Page.CloseOptions().setRunBeforeUnload(false));
-            }
+            myBrowser.closePage(page);
         }
         return wss;
     }
@@ -290,7 +290,7 @@ public class DouYinWebcast {
             Browser.NewContextOptions contextOptions = new Browser.NewContextOptions().setUserAgent(userAgent);
             BrowserContext context = browser.newContext(contextOptions);
             page = context.newPage();
-            setRoomCookie(room, page, roomUrl);
+            setRoomCookie(room, page);
             CountDownLatch latch = new CountDownLatch(1);
 
             handler = ws -> {

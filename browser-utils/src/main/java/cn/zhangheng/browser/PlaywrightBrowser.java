@@ -1,6 +1,11 @@
 package cn.zhangheng.browser;
 
 import cn.hutool.core.util.StrUtil;
+import cn.zhangheng.browser.bean.BrowserContent;
+import cn.zhangheng.browser.util.MyThreadLocal;
+import cn.zhangheng.browser.util.AutoClearContextThread;
+import cn.zhangheng.browser.util.AutoClearContextThreadListener;
+import cn.zhangheng.browser.util.BrowserUtil;
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.WaitUntilState;
 import com.zhangheng.util.ThrowableUtil;
@@ -223,8 +228,9 @@ public class PlaywrightBrowser implements AutoCloseable {
                 }
             }
             // 创建新 Context 并覆盖 ThreadLocal
+            String userAgent = userAgentUtil.get();
             Browser.NewContextOptions options = new Browser.NewContextOptions()
-                    .setUserAgent(userAgentUtil.get())
+                    .setUserAgent(userAgent)
 //                    .setViewportSize(1920, 1080) // 模拟PC端分辨率
 //                    .setJavaScriptEnabled(true)
 //                    .setIgnoreHTTPSErrors(true)
@@ -235,7 +241,7 @@ public class PlaywrightBrowser implements AutoCloseable {
 //                    .setExtraHTTPHeaders(MapUtil.of("Cache-Control", "no-cache"))
                     ;
             browserContext = browser.newContext(options);
-            BrowserContent content = new BrowserContent(browserContext);
+            BrowserContent content = new BrowserContent(browserContext,userAgent);
             contents.set(content);
             log.debug("{}-创建新的browserContext", Thread.currentThread().getName());
         }

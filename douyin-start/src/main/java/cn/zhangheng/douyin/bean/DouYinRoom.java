@@ -3,7 +3,7 @@ package cn.zhangheng.douyin.bean;
 
 import cn.hutool.core.annotation.PropIgnore;
 import cn.hutool.core.util.StrUtil;
-import cn.zhangheng.browser.BrowserAPI;
+import cn.zhangheng.browser.bean.BrowserAPI;
 import cn.zhangheng.common.jmx.JmxAttribute;
 import cn.zhangheng.record.bean.Room;
 import cn.zhangheng.record.bean.Setting;

@@ -1,6 +1,6 @@
 package cn.zhangheng.browser.login;
 
-import cn.zhangheng.browser.BrowserUtil;
+import cn.zhangheng.browser.util.BrowserUtil;
 import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.Page;

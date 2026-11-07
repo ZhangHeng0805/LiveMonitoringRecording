@@ -1,13 +1,14 @@
 package cn.zhangheng.douyin.browser;
 
-import cn.hutool.cache.CacheUtil;
-import cn.hutool.cache.impl.TimedCache;
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONConfig;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
-import cn.zhangheng.browser.BrowserAPI;
-import cn.zhangheng.browser.BrowserUtil;
+import cn.zhangheng.browser.bean.BrowserAPI;
+import cn.zhangheng.browser.exception.PlaywrightExceptionParser;
+import cn.zhangheng.browser.factory.MyBrowser;
+import cn.zhangheng.browser.factory.PlaywrightBrowserFactory;
+import cn.zhangheng.browser.util.BrowserUtil;
 import cn.zhangheng.common.cache.CacheWithOnceLoadHelper;
 import cn.zhangheng.douyin.bean.work.DouYinWork;
 import cn.zhangheng.douyin.bean.work.DouYinWorkCounter;
@@ -27,7 +28,6 @@ import lombok.extern.slf4j.Slf4j;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * @author: ZhangHeng
@@ -49,12 +49,10 @@ public class DouYinVideoParse {
     static {
         //每5min后台扫描清理过期
 //        timedCache.schedulePrune(60_000 * 5);
-        queryHelper = CacheWithOnceLoadHelper.<String, DouYinWork>builder(key -> {
-                    return parse(key, null, null);
-                })
+        queryHelper = CacheWithOnceLoadHelper.<String, DouYinWork>builder(DouYinVideoParse::parse)
                 .cacheExpireMs(10 * 60_000)
-                .loadTimeoutMs(30_000)
-                .cacheMaxSize(100)
+                .loadTimeoutMs(60_000)
+                .cacheMaxSize(10)
                 .build();
     }
 
@@ -86,27 +84,22 @@ public class DouYinVideoParse {
             return null;
         }
         if (isRefresh) queryHelper.invalidate(link);
-        return queryHelper.get(link, 60_000);
+        return queryHelper.get(link, 120_000);
     }
 
-    public static DouYinWork parse(String shareUrl, Setting setting, String userAgent) {
+    public static DouYinWork parse(String shareUrl) {
         boolean success = false;
         String link = DouYinUtil.extractDouyinLink(shareUrl);
         if (link == null) {
             return null;
         }
-        if (userAgent == null) {
-            userAgent = UserAgentUtil.getRandomPc();
-        }
+
         BrowserAPI browserApi = new BrowserAPI(null);
         JSONObject htmlJson = null;
-        boolean headless = setting == null || !Objects.equals(setting.getBrowserHeadless(), Boolean.FALSE);
-        try (Playwright playwright = Playwright.create();
-             Browser browser = playwright.chromium().launch(BrowserUtil.getLaunchOptions(headless))
-        ) {
-            BrowserContext context = browser.newContext(DouYinUtil.buildDouyinPcContextOptions(userAgent));
-            Page page = context.newPage();
-            page.addInitScript(DouYinUtil.getDouyinFingerprintScript());
+        MyBrowser myBrowser = PlaywrightBrowserFactory.getBrowser(DouYinVideoParse.class.getName(), 60_000, false);
+        Page page = null;
+        try {
+            page = myBrowser.newPage(DouYinBrowserUtil.getDouyinFingerprintScript());
             BrowserUtil.navigatePage(link, page, WaitUntilState.DOMCONTENTLOADED);
             htmlJson = extractHtmlJson(page.content());
             Response response;
@@ -121,8 +114,12 @@ public class DouYinVideoParse {
             browserApi.setHeaders(response.request().headers());
             browserApi.setResponseBody(response.text());
             success = true;
+        } catch (PlaywrightException pe) {
+            log.error("获取抖音作品信息失败！{}", PlaywrightExceptionParser.parse(pe).toSimpleString());
         } catch (Exception e) {
             log.error("获取抖音作品信息失败！{}", e.getMessage());
+        } finally {
+            myBrowser.closePage(page);
         }
         if (success) {
             DouYinWork work;
@@ -164,9 +161,9 @@ public class DouYinVideoParse {
         try (Playwright playwright = Playwright.create();
              Browser browser = playwright.chromium().launch(BrowserUtil.getLaunchOptions(true))
         ) {
-            BrowserContext context = browser.newContext(DouYinUtil.buildDouyinPcContextOptions(userAgent));
+            BrowserContext context = browser.newContext(DouYinBrowserUtil.buildDouyinPcContextOptions(userAgent));
             Page page = context.newPage();
-            page.addInitScript(DouYinUtil.getDouyinFingerprintScript());
+            page.addInitScript(DouYinBrowserUtil.getDouyinFingerprintScript());
             BrowserUtil.navigatePage(link, page, WaitUntilState.LOAD);
             String content = page.content();
 //            System.out.println(content);

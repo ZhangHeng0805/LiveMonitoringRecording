@@ -166,6 +166,10 @@ public abstract class Room {
         return header;
     }
 
+    public String getRoomKey() {
+        return platform.name() + "-" + id;
+    }
+
     /**
      * 重置直播间
      */

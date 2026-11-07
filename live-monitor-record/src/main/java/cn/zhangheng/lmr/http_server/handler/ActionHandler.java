@@ -92,7 +92,7 @@ public class ActionHandler extends JSONHandler {
                 }
             } else if (indexPath.startsWith("parseDouYinLink")) {
                 Map<String, String> query = parseQuery(httpExchange);
-                String link = DouYinUrlParse.parseDouyinShareLink(query.get("shareLink"), UserAgentUtil.getRandomPc());
+                String link = DouYinUrlParse.parseDouyinShareLink(query.get("shareLink"));
                 msg.setData(link);
             } else if (indexPath.startsWith("refresh")) {
                 Map<String, String> query = parseQuery(httpExchange);

@@ -7,6 +7,7 @@ import cn.hutool.json.JSONUtil;
 import cn.zhangheng.douyin.bean.DouYinRoom;
 import cn.zhangheng.douyin.browser.DouYinBrowserFactory;
 import cn.zhangheng.douyin.browser.DouyinPlaywright;
+import cn.zhangheng.douyin.browser.factory.DouYinDataHandler;
 import cn.zhangheng.record.bean.Setting;
 import cn.zhangheng.record.bean.enums.RunMode;
 import cn.zhangheng.record.util.RequestUtils;
@@ -30,9 +31,11 @@ public class DouYinDataService {
     private final DouYinRoom room;
     private Map<String, String> headers;
     private String url;
+    private final DouYinDataHandler handler;
 
     public DouYinDataService(DouYinRoom room) {
         this.room = room;
+        handler=new DouYinDataHandler(room);
     }
     public static void main(String[] args) {
         long sta = System.currentTimeMillis();
@@ -51,6 +54,17 @@ public class DouYinDataService {
     public boolean refresh(boolean force) {
         boolean success = false;
         if (!room.isLiving() || room.getBrowserApi().getDataUrl() == null) {
+            success=handler.request();
+        }
+        if (room.isLiving() && room.getBrowserApi().getDataUrl() != null) {
+            getData(force);
+        }
+        return success;
+    }
+
+    public boolean refresh2(boolean force) {
+        boolean success = false;
+        if (!room.isLiving() || room.getBrowserApi().getDataUrl() == null) {
             if (RunMode.FILE.equals(room.getSetting().getRunMode())) {
                 success = DouYinBrowserFactory.getBrowser().request(room);
             } else {
@@ -65,6 +79,8 @@ public class DouYinDataService {
         }
         return success;
     }
+
+
     private void init() {
         url = room.getBrowserApi().getDataUrl();
         headers = room.getBrowserApi().getHeaders();

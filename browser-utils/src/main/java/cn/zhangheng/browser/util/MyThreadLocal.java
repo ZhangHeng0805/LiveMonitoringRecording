@@ -1,4 +1,4 @@
-package cn.zhangheng.browser;
+package cn.zhangheng.browser.util;
 
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -74,7 +74,7 @@ public class MyThreadLocal<T> {
         map.clear();
     }
 
-    interface Listener<T> {
+    public interface Listener<T> {
         /**
          * 当某个线程的值被移除时调用
          */

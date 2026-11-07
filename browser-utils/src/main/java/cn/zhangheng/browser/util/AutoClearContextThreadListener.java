@@ -1,4 +1,6 @@
-package cn.zhangheng.browser;
+package cn.zhangheng.browser.util;
+
+import cn.zhangheng.browser.bean.BrowserContent;
 
 import java.util.Map;
 

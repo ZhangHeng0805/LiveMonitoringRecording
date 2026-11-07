@@ -1,8 +1,13 @@
 package cn.zhangheng.douyin.browser;
 
 import cn.zhangheng.browser.*;
+import cn.zhangheng.browser.bean.BrowserContent;
+import cn.zhangheng.browser.bean.BrowserCounter;
 import cn.zhangheng.browser.exception.PlaywrightErrorInfo;
 import cn.zhangheng.browser.exception.PlaywrightExceptionParser;
+import cn.zhangheng.browser.util.AutoClearContextThreadListener;
+import cn.zhangheng.browser.util.BrowserUtil;
+import cn.zhangheng.douyin.util.DouYinUtil;
 import cn.zhangheng.record.bean.Room;
 import cn.zhangheng.record.bean.Setting;
 import cn.zhangheng.douyin.bean.DouYinRoom;
@@ -25,7 +30,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import static cn.zhangheng.douyin.browser.DouYinBrowserFactory.*;
+import static cn.zhangheng.douyin.browser.DouYinBrowserUtil.*;
 
 /**
  * @author: ZhangHeng
@@ -134,7 +139,7 @@ public class DouYinBrowser implements Closeable {
             synchronized (this) {
                 page = browser.newPage();
             }
-            setRoomCookie(room, page, roomUrl);
+            setRoomCookie(room, page);
             // 导航到直播间页面
             boolean navigated = BrowserUtil.navigatePage(roomUrl, page, WaitUntilState.DOMCONTENTLOADED);
             if (!navigated) return false;
@@ -181,7 +186,7 @@ public class DouYinBrowser implements Closeable {
             synchronized (this) {
                 page = browser.newPage();
             }
-            setRoomCookie(room, page, roomUrl);
+            setRoomCookie(room, page);
             // 【关键】把 latch 放在 原子引用 里，保证全局唯一
             CountDownLatch latch = new CountDownLatch(1);
             // 注册请求监听器（提取目标请求信息）

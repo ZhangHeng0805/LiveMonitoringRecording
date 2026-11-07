@@ -25,10 +25,10 @@ public class InfoHandler extends JSONHandler {
     public InfoHandler(String prefix) {
         super(prefix);
         queryHelper=CacheWithOnceLoadHelper.<String,Map<String, Object>>builder(key->{
-                    Map<String, Object> douYinCounter = DouYinBrowserFactory.getBrowser().getCount();
+//                    Map<String, Object> douYinCounter = DouYinBrowserFactory.getBrowser().getCount();
                     Map<String, Object> allCounter = FileModeMain.getCounter();
                     Map<String, Object> data = new HashMap<>();
-                    data.put("DouYinCounter", douYinCounter);
+//                    data.put("DouYinCounter", douYinCounter);
                     data.put("AllCounter", allCounter);
                     return data;
                 })

@@ -1,10 +1,10 @@
 package cn.zhangheng.douyin.service;
 
-import cn.zhangheng.browser.BrowserAPI;
+import cn.zhangheng.browser.bean.BrowserAPI;
 import cn.zhangheng.record.service.RoomMonitor;
 import cn.zhangheng.douyin.bean.DouYinRoom;
 
-import static cn.zhangheng.douyin.browser.DouYinBrowserFactory.TARGET_REQUEST_PREFIX;
+import static cn.zhangheng.douyin.browser.DouYinBrowserUtil.TARGET_REQUEST_PREFIX;
 
 /**
  * @author: ZhangHeng

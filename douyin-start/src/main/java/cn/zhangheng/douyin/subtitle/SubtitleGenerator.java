@@ -20,9 +20,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeMap;
 
-/**
- *
- */
 public abstract class SubtitleGenerator {
     protected static final DateTimeFormatter START_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH-mm-ss");
     protected static final DateTimeFormatter LOG_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -45,7 +42,7 @@ public abstract class SubtitleGenerator {
 
         // 流式读取大文件，不会OOM
         // 1MB 缓冲
-        int bufferSize = 1024 * 1024;
+//        int bufferSize = 1024 * 1024;
         try (BufferedReader br = new BufferedReader(new FileReader(inputPath));
              BufferedWriter bw = new BufferedWriter(new FileWriter(outputPath))) {
 
@@ -56,7 +53,6 @@ public abstract class SubtitleGenerator {
                     String timeStr = line.substring(0, 19);
                     LocalDateTime logTime = LocalDateTime.parse(timeStr, LOG_TIME_FORMAT);
 
-                    // 过滤早于开始时间的日志
                     if (logTime.isBefore(baseTime)) {
                         continue;
                     }
