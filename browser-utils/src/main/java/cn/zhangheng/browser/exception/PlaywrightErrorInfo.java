@@ -63,6 +63,7 @@ public class PlaywrightErrorInfo {
     private String stackTrace;
 
     public String toSimpleString() {
-        return StrUtil.format("{} [{}: {}]", briefMsg, exceptionClass, innerMessage);
+        String msg = StrUtil.isNotBlank(innerMessage) ? innerMessage : StrUtil.sub(rawMessage, 0, 128);
+        return StrUtil.format("{} [{}: {}]", briefMsg, exceptionClass, msg);
     }
 }

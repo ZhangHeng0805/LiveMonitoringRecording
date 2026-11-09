@@ -7,18 +7,14 @@ import cn.zhangheng.browser.factory.PlaywrightBrowserFactory;
 import cn.zhangheng.browser.util.BrowserUtil;
 import cn.zhangheng.douyin.bean.DouYinRoom;
 import cn.zhangheng.douyin.util.DouYinAPITools;
-import cn.zhangheng.douyin.util.DouYinUtil;
 import cn.zhangheng.record.bean.Room;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.PlaywrightException;
 import com.microsoft.playwright.Request;
 import com.microsoft.playwright.options.WaitUntilState;
-import com.zhangheng.util.RandomUtil;
 import com.zhangheng.util.ThrowableUtil;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-
-import java.util.concurrent.TimeUnit;
 
 import static cn.zhangheng.douyin.browser.DouYinBrowserUtil.*;
 
@@ -79,9 +75,9 @@ public class DouYinDataHandler {
             boolean navigated = BrowserUtil.navigatePage(roomUrl, page, WaitUntilState.DOMCONTENTLOADED);
             if (!navigated) return false;
             //提取界面信息
-            boolean b = extractRoomInfo(room, page);
+            boolean success = extractRoomInfo(room, page);
             // 若直播中，等待目标请求完成（替代固定休眠，更高效）
-            if (room.isLiving()) {
+            if (success && room.isLiving()) {
                 Request request;
                 try {
                     request = BrowserUtil.waitForTargetRequest(page, TARGET_REQUEST_PREFIX, 10_000);
@@ -92,26 +88,23 @@ public class DouYinDataHandler {
                 }
                 getRequestApi(room, request);
             }
-            if (!b) {
-                //为了应对手动验证码
-                TimeUnit.SECONDS.sleep(RandomUtil.createRandom(6, 10));
-            }
-            return b;
+            navigateAfterHandle(browser);
+            return success;
         } catch (PlaywrightException e1) {
             PlaywrightErrorInfo errorInfo = PlaywrightExceptionParser.parse(e1);
             log.error("处理直播间[{}]时浏览器发生异常:{}", roomUrl, errorInfo.toSimpleString());
         } catch (Throwable e) {
             log.error("处理直播间[{}]时发生异常,{}", roomUrl, ThrowableUtil.getAllCauseMessage(e));
         } finally {
-            if (page != null) {
-                browser.closePage(page);
-            }
+            browser.closePage(page);
             if (forceRefreshBrowser) forceRefreshBrowser = false;
-            if (browser.getContent().getPageCount() % 100 == 0) {
+            if (browser.getContent().getPageCount() % 50 == 0) {
                 forceRefreshBrowser = true;
                 isUseApi = true;
             }
         }
         return false;
     }
+
+
 }

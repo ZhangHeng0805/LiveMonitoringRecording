@@ -87,7 +87,7 @@ public class DouYinAPITools {
     }
 
     private void refresh() {
-        refreshCount = RandomUtil.randomInt(30, 100);
+        refreshCount = RandomUtil.randomInt(50, 100);
         userAgent = userAgentUtil.get();
         headers.put("User-Agent", userAgent);
         refreshSecHeader(userAgent);

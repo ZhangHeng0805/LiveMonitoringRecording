@@ -3,6 +3,8 @@ package cn.zhangheng.douyin.browser;
 import cn.hutool.core.text.UnicodeUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.zhangheng.browser.bean.BrowserAPI;
+import cn.zhangheng.browser.factory.MyBrowser;
+import cn.zhangheng.browser.factory.PlaywrightBrowserFactory;
 import cn.zhangheng.browser.util.BrowserUtil;
 import cn.zhangheng.douyin.bean.DouYinRoom;
 import com.microsoft.playwright.*;
@@ -72,7 +74,6 @@ public class DouYinBrowserUtil {
     }
 
 
-
     /**
      * 通用正则提取方法（复用逻辑）
      *
@@ -103,14 +104,14 @@ public class DouYinBrowserUtil {
         // 所有匹配都被排除或无匹配
         return null;
     }
+
     /**
      * 提取直播间信息（独立方法，便于维护）
      */
     public static Boolean extractRoomInfo(DouYinRoom room, Page page) {
         String title = safeGetTitle(page);
-
         if (title.contains("验证码")) {
-            log.warn("浏览器触发验证码验证机制！");
+            log.warn("访问" + room.getRoomUrl() + "导致浏览器触发验证码验证机制！");
             return false;
         }
         String pageSource = page.content();
@@ -177,6 +178,30 @@ public class DouYinBrowserUtil {
         }
     }
 
+    public static void navigateAfterHandle(MyBrowser browser) {
+        Page page = browser.getPage();
+        String title = page.title();
+        if (!title.contains("验证码")) {
+            if (!PlaywrightBrowserFactory.isHeadless()) {
+                int count = browser.getContent().getPageCount();
+                if (count % 10 == 0) {
+                    PlaywrightBrowserFactory.setHeadless(true);
+                    PlaywrightBrowserFactory.destroy();
+                }
+            }
+        } else {
+            //为了应对手动验证码
+            if (PlaywrightBrowserFactory.isHeadless()) {
+                PlaywrightBrowserFactory.setHeadless(false);
+                PlaywrightBrowserFactory.destroy();
+            } else {
+                page.waitForFunction("keyword => document.title.includes(keyword)",
+                        "抖音直播间",
+                        new Page.WaitForFunctionOptions().setTimeout(15000));
+            }
+        }
+    }
+
     public static String getDouyinFingerprintScript() {
         String initScript =
                 "Object.defineProperty(navigator, 'webdriver', { get: () => undefined });\n" +
@@ -206,6 +231,7 @@ public class DouYinBrowserUtil {
                 "Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => %d });", mem, cpuCore);
         return script;
     }
+
     /**
      * 一键构建抖音PC网页Context配置：随机UA + 随机分辨率 + zh-CN + Asia/Shanghai
      */

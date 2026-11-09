@@ -7,26 +7,21 @@ import cn.zhangheng.browser.util.BrowserUtil;
 import cn.zhangheng.common.jmx.JmxAttribute;
 import cn.zhangheng.common.jmx.JmxOperation;
 import cn.zhangheng.common.jmx.JmxRegisterUtil;
-import cn.zhangheng.common.util.UserAgentUtil;
 import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.Playwright;
-import com.zhangheng.util.RandomUtil;
 import com.zhangheng.util.ThrowableUtil;
 import com.zhangheng.util.TimeUtil;
-import lombok.Setter;
+import com.zhangheng.util.UserAgentUtil;
+import lombok.Data;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.management.MalformedObjectNameException;
-import javax.management.ObjectName;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * @author: ZhangHeng
@@ -37,25 +32,52 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 @Slf4j
 public class PlaywrightBrowserFactory {
-
+    private static final String JmxType = "PlaywrightBrowser";
     private static Playwright playwright = null;
     private static volatile Browser browser = null;
-    @Setter
-    private static boolean headless = true;// 无头模式：生产环境建议true，仅在Browser重建时生效，运行中修改无效
+    @Getter
+    @JmxAttribute(desc = "是否浏览器无头模式（是否隐藏浏览器）")
+    private static volatile boolean headless = true;// 无头模式：生产环境建议true，仅在Browser重建时生效，运行中修改无效
     private static TimedCache<String, MyBrowser> browsersCache = null;
     //缓存版本号
+    @Getter
+    @JmxAttribute(desc = "版本号")
     private static int cacheVersion = 0;
     private static UserAgentUtil userAgentUtil = null;
     // key粒度锁，防止同一个key并发创建多个BrowserContext
-    private static final ConcurrentHashMap<String, Lock> keyLockMap = new ConcurrentHashMap<>();
+//    private static final ConcurrentHashMap<String, Lock> keyLockMap = new ConcurrentHashMap<>();
     // Browser空闲延时关闭配置：所有context清空后，等待多久再关闭浏览器进程
-    private static final long BROWSER_IDLE_DELAY_MS = 300_000; // 示例：空闲到期后关Chromium
+    private static final long BROWSER_IDLE_DELAY_MS = 300_000; // 空闲到期后关Chromium
     private static ScheduledExecutorService idleScheduler;
     private static ScheduledFuture<?> idleCloseTask;
+    //总计数
     private static final AtomicLong count = new AtomicLong(0);
-    private static ObjectName objectName = null;
+    @Getter
+    @JmxAttribute(desc = "浏览器Cookie信息")
+    private static String cookie;
+
+    @JmxOperation(desc = "设置浏览器所有实例的cookie", paramDesc = {"cookie信息(为空时代表清空Cookie)"})
+    public static void setAllCookie(String cookie) {
+        if (cookie.isEmpty()) cookie = null;
+        PlaywrightBrowserFactory.cookie = cookie;
+        if (browsersCache.isEmpty()) return;
+        String targetDomain = ".douyin.com";//目前作用域是抖音
+        for (String key : browsersCache.keySet()) {
+            BrowserContent content = browsersCache.get(key).getContent();
+            if (cookie != null) {
+                content.setCookie(targetDomain, cookie);
+            } else {
+                content.getContext().clearCookies();
+            }
+        }
+    }
 
     static {
+        try {
+            JmxRegisterUtil.register(new PlaywrightBrowserFactory(), JmxType);
+        } catch (MalformedObjectNameException e) {
+            log.warn("JMX注册失败!{}", ThrowableUtil.getAllCauseMessage(e));
+        }
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             if (isRunning()) {
                 destroy();
@@ -63,22 +85,31 @@ public class PlaywrightBrowserFactory {
         }));
     }
 
+    @JmxOperation(desc = "设置浏览器无头模式", paramDesc = {"是否隐藏浏览器"})
+    public static synchronized void setHeadless(boolean headless) {
+        PlaywrightBrowserFactory.headless = headless;
+    }
 
-    @JmxAttribute(desc = "请求次数")
+    @JmxAttribute(name = "count", desc = "总请求次数")
     public long getCount() {
         return count.get();
     }
 
-    @JmxAttribute(desc = "浏览器缓存统计")
-    public Map<String, Integer> getCacheCount() {
-        Map<String, Integer> data = new HashMap<>();
-        if (browsersCache == null) return data;
+    //    @JmxAttribute(name = "cacheCount", desc = "浏览器缓存统计", tabularIndexKeys = {"key", "threadName"})
+    public List<Counter> getCacheCount() {
+        List<Counter> list = new ArrayList<>();
+        if (browsersCache == null) return list;
         for (String key : browsersCache.keySet()) {
+            Counter counter = new Counter();
             MyBrowser myBrowser = browsersCache.get(key);
             BrowserContent content = myBrowser.getContent();
-            data.put(key,content.getPageCount());
+            counter.setKey(key);
+            counter.setCount(content.getPageCount());
+            counter.setThreadName(content.getThreadName());
+            counter.setLastTime(content.getLastUsedTimestamp());
+            list.add(counter);
         }
-        return data;
+        return list;
     }
 
     /**
@@ -89,7 +120,7 @@ public class PlaywrightBrowserFactory {
      * @param forceRefresh 是否强制刷新实例
      * @return
      */
-    public static MyBrowser getBrowser(String key, long expirationMs, boolean forceRefresh) {
+    public static synchronized MyBrowser getBrowser(String key, long expirationMs, boolean forceRefresh) {
         // 只要有人来拿任务上下文，说明有活，取消空闲关闭倒计时
         cancelIdleCloseTask();
 
@@ -106,8 +137,8 @@ public class PlaywrightBrowserFactory {
             }
         }
         // key粒度锁，解决 check-then-act 并发问题
-        Lock lock = keyLockMap.computeIfAbsent(key, k -> new ReentrantLock());
-        lock.lock();
+//        Lock lock = keyLockMap.computeIfAbsent(key, k -> new ReentrantLock());
+//        lock.lock();
         try {
 
             if (forceRefresh) {
@@ -116,32 +147,43 @@ public class PlaywrightBrowserFactory {
 
             MyBrowser myBrowser = browsersCache.get(key);
             boolean isContextValid = false;
-            if (myBrowser != null) {
-                BrowserContext context = myBrowser.getContent().getContext();
-                //判断浏览器是否一致
-                if (context != null && context.browser().equals(browser)) {
-                    isContextValid = true;
-                }
-            }
-            if (forceRefresh || !isContextValid) {
+            synchronized (browser) {
                 if (myBrowser != null) {
-                    //关闭旧的
-                    browsersCache.remove(key);
+                    BrowserContext context = myBrowser.getContent().getContext();
+                    //判断浏览器是否一致
+                    if (context != null && context.browser().equals(browser)) {
+                        isContextValid = true;
+                    }
                 }
-                int[] vp = UserAgentUtil.PC_VIEWPORTS[RandomUtil.randomInt(UserAgentUtil.PC_VIEWPORTS.length)];
-                String userAgent = userAgentUtil.get();
-                Browser.NewContextOptions options = new Browser.NewContextOptions()
-                        .setUserAgent(userAgent)
-                        .setViewportSize(vp[0], vp[1]);
-                BrowserContext context = browser.newContext(options);
+                if (forceRefresh || !isContextValid) {
+                    if (myBrowser != null) {
+                        //关闭旧的
+                        browsersCache.remove(key);
+                    }
 
-                BrowserContent content = new BrowserContent(context,userAgent);
-                myBrowser = new MyBrowser(content);
-                browsersCache.put(key, myBrowser, expirationMs);
+//                int[] vp = UserAgentUtil.PC_VIEWPORTS[RandomUtil.randomInt(UserAgentUtil.PC_VIEWPORTS.length)];
+                    String userAgent = userAgentUtil.get();
+                    Browser.NewContextOptions options = new Browser.NewContextOptions()
+                            .setUserAgent(userAgent)
+//                        .setViewportSize(vp[0], vp[1])
+                            .setLocale("zh-CN")
+                            .setTimezoneId("Asia/Shanghai");
+
+                    BrowserContext context = browser.newContext(options);
+
+                    BrowserContent content = new BrowserContent(context, userAgent);
+                    myBrowser = new MyBrowser(content);
+                    browsersCache.put(key, myBrowser, expirationMs);
+                    try {
+                        JmxRegisterUtil.register(content, JmxType, "name", key);
+                    } catch (MalformedObjectNameException e) {
+                        log.warn("JMX注册失败!{}", ThrowableUtil.getAllCauseMessage(e));
+                    }
+                }
             }
             return myBrowser;
         } finally {
-            lock.unlock();
+//            lock.unlock();
             count.incrementAndGet();
         }
     }
@@ -178,6 +220,7 @@ public class PlaywrightBrowserFactory {
                 // ✅ 异步关闭，不在缓存锁里阻塞
                 CompletableFuture.runAsync(() -> {
                     try {
+                        JmxRegisterUtil.unregister(JmxRegisterUtil.Domain, JmxType, "name", key);
                         myBrowser.close();
                         log.info("异步关闭BrowserContext成功！ key={}", key);
                     } catch (Throwable e) {
@@ -185,7 +228,7 @@ public class PlaywrightBrowserFactory {
                     }
                 });
                 // 移除锁，防止keyLockMap无限膨胀
-                keyLockMap.remove(key);
+//                keyLockMap.remove(key);
                 // 检查缓存是否已经空了
                 if (browsersCache.isEmpty()) {
                     scheduleBrowserIdleClose();
@@ -193,15 +236,9 @@ public class PlaywrightBrowserFactory {
             });
         }
         if (userAgentUtil == null) {
-            userAgentUtil = UserAgentUtil.create(true);
+            userAgentUtil = UserAgentUtil.create(true, false);
         }
-        if (objectName == null) {
-            try {
-                objectName = JmxRegisterUtil.register(new PlaywrightBrowserFactory(), "PlaywrightBrowser");
-            } catch (MalformedObjectNameException e) {
-                log.warn("JMX注册失败!{}", ThrowableUtil.getAllCauseMessage(e));
-            }
-        }
+
     }
 
     /**
@@ -235,7 +272,7 @@ public class PlaywrightBrowserFactory {
         if (idleCloseTask != null && !idleCloseTask.isDone()) {
             idleCloseTask.cancel(false);
             idleCloseTask = null;
-            log.debug("收到新任务，取消浏览器空闲关闭计时");
+//            log.debug("收到新任务，取消浏览器空闲关闭计时");
         }
     }
 
@@ -280,8 +317,8 @@ public class PlaywrightBrowserFactory {
         browsersCache = null;
         userAgentUtil = null;
         count.set(0);
-        JmxRegisterUtil.unregister(objectName);
-        objectName = null;
+//        JmxRegisterUtil.unregister(objectName);
+//        objectName = null;
         log.info("销毁Chromium浏览器进程");
     }
 
@@ -291,5 +328,21 @@ public class PlaywrightBrowserFactory {
     @JmxAttribute(desc = "是否运行")
     public static boolean isRunning() {
         return browser != null && browser.isConnected();
+    }
+
+    @Data
+    public static class Counter {
+        @JmxAttribute(desc = "标识")
+        private String key;
+        @JmxAttribute(desc = "计数")
+        private int count;
+        @JmxAttribute(desc = "线程名")
+        private String threadName;
+        @JmxAttribute(desc = "上次使用时间")
+        private String lastTime;
+
+        public void setLastTime(long lastTimestamp) {
+            this.lastTime = TimeUtil.toTime(lastTimestamp);
+        }
     }
 }

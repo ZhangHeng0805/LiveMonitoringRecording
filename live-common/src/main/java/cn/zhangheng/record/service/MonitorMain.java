@@ -145,6 +145,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
     private M.RoomListener<R> getRoomListener(R room) {
         NotificationUtil notificationUtil = new NotificationUtil(setting);
         String owner = room.getPlatform().getName() + "直播间: " + room.getNickname() + " [" + room.getId() + "]";
+        trayIconUtil.setPoPTitle(room.getPlatform().getName()+"<br>"+room.getNickname());
         isFliestStart = true;
         return new M.RoomListener<R>() {
             @Override

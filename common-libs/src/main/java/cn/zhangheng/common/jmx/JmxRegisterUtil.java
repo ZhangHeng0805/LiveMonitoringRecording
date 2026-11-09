@@ -14,6 +14,7 @@ import java.util.Objects;
 public class JmxRegisterUtil {
     private static final MBeanServer MBEAN_SERVER = ManagementFactory.getPlatformMBeanServer();
 
+    public static final String Domain = "cn.zhangheng.jmx";
     /**
      * 注册对象，默认 domain=monitor
      * @param bean 普通对象（带@JmxAttribute / @JmxOperation + Lombok @Data）
@@ -23,7 +24,7 @@ public class JmxRegisterUtil {
      * @throws MalformedObjectNameException
      */
     public static ObjectName register(Object bean, String type, String... keys) throws MalformedObjectNameException {
-        return register("cn.zhangheng.jmx", bean, type, keys);
+        return register(Domain, bean, type, keys);
     }
 
     /**

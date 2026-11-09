@@ -6,13 +6,11 @@ import cn.zhangheng.browser.exception.PlaywrightExceptionParser;
 import cn.zhangheng.browser.factory.MyBrowser;
 import cn.zhangheng.browser.factory.PlaywrightBrowserFactory;
 import cn.zhangheng.browser.util.BrowserUtil;
-import cn.zhangheng.douyin.util.DouYinUtil;
 import cn.zhangheng.record.bean.Setting;
 import cn.zhangheng.record.util.LogUtil;
 import cn.zhangheng.douyin.bean.DouYinRoomCounter;
 import cn.zhangheng.douyin.bean.DouYinRoom;
 import cn.zhangheng.record.*;
-import cn.zhangheng.common.util.UserAgentUtil;
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.WaitUntilState;
 import com.zhangheng.util.TimeUtil;
@@ -20,12 +18,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
-import java.util.Objects;
 import java.util.Scanner;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
 
 import static cn.zhangheng.douyin.browser.DouYinBrowserUtil.*;
 
@@ -243,8 +236,8 @@ public class DouYinWebcast {
             setRoomCookie(room, page);
             BrowserUtil.navigatePage(room.getRoomUrl(), page, WaitUntilState.DOMCONTENTLOADED);
             //提取界面信息
-            extractRoomInfo(room, page);
-            if (room.isLiving()) {
+            boolean success = extractRoomInfo(room, page);
+            if (success && room.isLiving()) {
                 WebSocket webSocket;
                 try {
                     webSocket = BrowserUtil.waitForTargetWebSocket(page, TARGET_WSS, 10_000);
@@ -258,6 +251,7 @@ public class DouYinWebcast {
                 wss.setUrl(webSocket.url());
                 wss.setCookie(BrowserUtil.toCookieStr(page.context().cookies()));
             }
+            navigateAfterHandle(myBrowser);
         } catch (PlaywrightException pe) {
             PlaywrightErrorInfo errorInfo = PlaywrightExceptionParser.parse(pe);
             log.error("获取直播弹幕wss失败！{}", errorInfo.toSimpleString());
@@ -269,70 +263,70 @@ public class DouYinWebcast {
         return wss;
     }
 
-    public static WebSocketModel browserGetWssUrl2(DouYinRoom room) {
-        // 校验房间URL有效性
-        String roomUrl = room.getRoomUrl();
-        if (roomUrl == null || roomUrl.trim().isEmpty()) {
-            log.error("直播间URL为空，无法发起请求");
-            return null;
-        }
-        AtomicReference<String> wss = new AtomicReference<>(null);
-        Page page = null;
-        Consumer<WebSocket> handler = null;
-        boolean headless = true;
-        String userAgent = UserAgentUtil.getRandomPc();
-        if (room.getSetting() != null) {
-            headless = !Objects.equals(room.getSetting().getBrowserHeadless(), Boolean.FALSE);
-        }
-        try (Playwright playwright = Playwright.create();
-             Browser browser = playwright.chromium().launch(BrowserUtil.getLaunchOptions(headless));
-        ) {
-            Browser.NewContextOptions contextOptions = new Browser.NewContextOptions().setUserAgent(userAgent);
-            BrowserContext context = browser.newContext(contextOptions);
-            page = context.newPage();
-            setRoomCookie(room, page);
-            CountDownLatch latch = new CountDownLatch(1);
-
-            handler = ws -> {
-                String url = ws.url();
-                if (url.indexOf(TARGET_WSS) > 0) {
-                    wss.set(url);
-                    latch.countDown();
-                    log.info("成功捕获目标webSocket!");
-                }
-            };
-
-            page.onWebSocket(handler);
-
-            BrowserUtil.navigatePage(room.getRoomUrl(), page, WaitUntilState.LOAD);
-            //提取界面信息
-            extractRoomInfo(room, page);
-            if (room.isLiving()) {
-                try {
-                    latch.await(15, TimeUnit.SECONDS);
-                    if (wss.get() != null) {
-                        WebSocketModel webSocketModel = new WebSocketModel();
-                        webSocketModel.setUserAgent(userAgent);
-                        webSocketModel.setUrl(wss.get());
-                        webSocketModel.setCookie(BrowserUtil.toCookieStr(page.context().cookies()));
-                        return webSocketModel;
-                    }
-                } catch (Exception e) {
-                    log.error("等待捕获webSocket失败！", e);
-                }
-            } else {
-                latch.countDown();
-            }
-            System.out.println("直播间未开启直播！");
-        } catch (Exception e) {
-            log.error("获取直播弹幕wss失败！{}", e.getMessage());
-        } finally {
-            if (handler != null) {
-                page.offWebSocket(handler);
-            }
-
-        }
-        return null;
-    }
+//    public static WebSocketModel browserGetWssUrl2(DouYinRoom room) {
+//        // 校验房间URL有效性
+//        String roomUrl = room.getRoomUrl();
+//        if (roomUrl == null || roomUrl.trim().isEmpty()) {
+//            log.error("直播间URL为空，无法发起请求");
+//            return null;
+//        }
+//        AtomicReference<String> wss = new AtomicReference<>(null);
+//        Page page = null;
+//        Consumer<WebSocket> handler = null;
+//        boolean headless = true;
+//        String userAgent = UserAgentUtil.getRandomPc();
+//        if (room.getSetting() != null) {
+//            headless = !Objects.equals(room.getSetting().getBrowserHeadless(), Boolean.FALSE);
+//        }
+//        try (Playwright playwright = Playwright.create();
+//             Browser browser = playwright.chromium().launch(BrowserUtil.getLaunchOptions(headless));
+//        ) {
+//            Browser.NewContextOptions contextOptions = new Browser.NewContextOptions().setUserAgent(userAgent);
+//            BrowserContext context = browser.newContext(contextOptions);
+//            page = context.newPage();
+//            setRoomCookie(room, page);
+//            CountDownLatch latch = new CountDownLatch(1);
+//
+//            handler = ws -> {
+//                String url = ws.url();
+//                if (url.indexOf(TARGET_WSS) > 0) {
+//                    wss.set(url);
+//                    latch.countDown();
+//                    log.info("成功捕获目标webSocket!");
+//                }
+//            };
+//
+//            page.onWebSocket(handler);
+//
+//            BrowserUtil.navigatePage(room.getRoomUrl(), page, WaitUntilState.LOAD);
+//            //提取界面信息
+//            extractRoomInfo(room, page);
+//            if (room.isLiving()) {
+//                try {
+//                    latch.await(15, TimeUnit.SECONDS);
+//                    if (wss.get() != null) {
+//                        WebSocketModel webSocketModel = new WebSocketModel();
+//                        webSocketModel.setUserAgent(userAgent);
+//                        webSocketModel.setUrl(wss.get());
+//                        webSocketModel.setCookie(BrowserUtil.toCookieStr(page.context().cookies()));
+//                        return webSocketModel;
+//                    }
+//                } catch (Exception e) {
+//                    log.error("等待捕获webSocket失败！", e);
+//                }
+//            } else {
+//                latch.countDown();
+//            }
+//            System.out.println("直播间未开启直播！");
+//        } catch (Exception e) {
+//            log.error("获取直播弹幕wss失败！{}", e.getMessage());
+//        } finally {
+//            if (handler != null) {
+//                page.offWebSocket(handler);
+//            }
+//
+//        }
+//        return null;
+//    }
 
 }

@@ -37,7 +37,7 @@ public class TrayIconUtil {
     @Getter
     private JPopupMenu pop;//创建弹出式菜单
     @Getter
-    private JMenuItem startRecordMenu, stopRecordMenu, closeMenu, openRoomMenu, playFlvVideo, openMonitorMenu;
+    private JMenuItem titleItem, startRecordMenu, stopRecordMenu, closeMenu, openRoomMenu, playFlvVideo, openMonitorMenu;
     @Setter
     @Getter
     private ClickListener clickListener;
@@ -144,7 +144,7 @@ public class TrayIconUtil {
         ClassPathResource classPathResource = new ClassPathResource("/logo.png");
         try (InputStream inputStreamImg = classPathResource.getStream()) {
             Image iconImg = ImageIO.read(inputStreamImg);
-            this.pop = new JPopupMenu();// 创建弹出式菜单
+            this.pop = new JPopupMenu(title);// 创建弹出式菜单
             addActionListener(pop);
             trayIcon = new TrayIcon(iconImg, title, null);
             // 右键托盘图标弹出Swing菜单
@@ -270,7 +270,10 @@ public class TrayIconUtil {
                 pop.setVisible(false);
                 trayIcon.setPopupMenu(null);
                 // 关键2：小延迟，让系统消息处理完（避免崩溃）
-                try { Thread.sleep(100); } catch (InterruptedException ignored) {}
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException ignored) {
+                }
                 // 先从系统托盘移除图标（native操作）
                 systemTray.remove(trayIcon);
 //                log.debug("线程[{}]：系统托盘已移除图标", threadKey);
@@ -291,24 +294,41 @@ public class TrayIconUtil {
         }
     }
 
-    private JMenuItem createMenuItem(String text) {
+    public void setPoPTitle(String title) {
+        String text = "<html><center><font color='#000000'>" + title + "</font></center></html>";
+        if (titleItem == null) {
+            titleItem = createMenuItem(text, Color.BLACK, new Font(null, Font.BOLD, 15));
+            titleItem.setBorderPainted(false);
+            titleItem.setOpaque(false);
+            titleItem.setArmed(false);
+            pop.add(titleItem, 0);
+            pop.add(new JPopupMenu.Separator(), 1);
+        } else {
+            titleItem.setText(text);
+        }
+    }
+
+    private JMenuItem createMenuItem(String text, Color hoverColor, Font font) {
         JMenuItem item = new JMenuItem(text);
+        if (font != null) {
+            item.setFont(font);
+        }
         // 正常颜色（黑色）
         Color normal = Color.BLACK;
-        // 鼠标移入颜色（红色，你可以随便改）
-        Color hover = Color.BLUE;
         item.setForeground(normal); // 默认黑色
         // 鼠标移入 → 变红
         item.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
-                item.setForeground(hover);
+                item.setForeground(hoverColor);
+                item.setBackground(Color.LIGHT_GRAY);
             }
 
             // 鼠标移出 → 恢复黑色
             @Override
             public void mouseExited(MouseEvent e) {
                 item.setForeground(normal);
+                item.setBackground(Color.WHITE);
             }
 
             @Override
@@ -320,22 +340,54 @@ public class TrayIconUtil {
     }
 
     private void addActionListener(JPopupMenu pop) {
-        startRecordMenu = createMenuItem("开始录制");
-        stopRecordMenu = createMenuItem("停止录制");
-        closeMenu = createMenuItem("退出监听");
-        openRoomMenu = createMenuItem("进入直播间");
-        playFlvVideo = createMenuItem("FLV播放器");
-        openMonitorMenu = createMenuItem("监控界面");
-
         Font boldFont = new Font(null, Font.BOLD, 14);
-        closeMenu.setFont(boldFont);
-        openMonitorMenu.setFont(boldFont);
+        startRecordMenu = createMenuItem("开始录制", Color.GREEN, null);
+        stopRecordMenu = createMenuItem("停止录制", Color.ORANGE, null);
+        closeMenu = createMenuItem("退出监听", Color.RED, boldFont);
+        openRoomMenu = createMenuItem("进入直播间", Color.BLUE, null);
+        playFlvVideo = createMenuItem("FLV播放器", Color.BLUE, null);
+        openMonitorMenu = createMenuItem("监控界面", Color.BLUE, boldFont);
 
-        pop.add(closeMenu);
+
         pop.add(openMonitorMenu);
+        pop.add(closeMenu);
         pop.addSeparator();
         pop.add(openRoomMenu);
         pop.add(playFlvVideo);
+
+//        pop.addPopupMenuListener(new PopupMenuListener() {
+//            @Override
+//            public void popupMenuWillBecomeVisible(PopupMenuEvent e) {
+//                JPopupMenu menu = (JPopupMenu) e.getSource();
+//                // 等布局渲染完成，再拿宽
+//                SwingUtilities.invokeLater(() -> {
+//                    int menuW = menu.getWidth();
+//                    if (menuW <= 0) return;
+//
+//                    for (Component comp : menu.getComponents()) {
+//                        if (!(comp instanceof JMenuItem)) continue;
+//                        JMenuItem item = (JMenuItem) comp;
+//                        String text = item.getText();
+//                        if (text.startsWith("<html>")) continue;
+//                        // 注意：这个方案不支持html文本，只能普通纯文本
+//                        FontMetrics fm = item.getFontMetrics(item.getFont());
+//                        int textW = fm.stringWidth(text);
+//
+//                        item.setBorder(null);
+//                        int padLeft = Math.max(2, (menuW - textW) / 2);
+//                        item.setBorder(BorderFactory.createEmptyBorder(2, padLeft, 2, padLeft));
+//                    }
+//                });
+//            }
+//
+//            @Override
+//            public void popupMenuWillBecomeInvisible(PopupMenuEvent e) {
+//            }
+//
+//            @Override
+//            public void popupMenuCanceled(PopupMenuEvent e) {
+//            }
+//        });
 
         openMonitorMenu.addActionListener(e -> {
             debouncer.debounce(() -> {

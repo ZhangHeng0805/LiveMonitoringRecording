@@ -126,7 +126,7 @@ public class BrowserUtil {
             log.error("页面导航超时:{}", url);
         } catch (PlaywrightException e2) {
             PlaywrightErrorInfo errorInfo = PlaywrightExceptionParser.parse(e2);
-            log.error("页面导航失败:{} [{}: {}]  ", errorInfo.getBriefMsg(), errorInfo.getExceptionClass(), errorInfo.getInnerMessage());
+            log.error("页面导航失败:{} ", errorInfo.toSimpleString());
         } catch (Throwable e) {
             log.error("页面导航失败:{}", e.getMessage());
         }

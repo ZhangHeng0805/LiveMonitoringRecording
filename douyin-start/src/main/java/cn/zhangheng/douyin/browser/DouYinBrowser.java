@@ -177,56 +177,56 @@ public class DouYinBrowser implements Closeable {
     }
 
 
-    public boolean browserRequest2(DouYinRoom room) {
-        String roomUrl = room.getRoomUrl();
-        Page page = null;
-        Consumer<Request> requestHandler = null;
-        try {
-            checkAndInitBrowser();
-            synchronized (this) {
-                page = browser.newPage();
-            }
-            setRoomCookie(room, page);
-            // 【关键】把 latch 放在 原子引用 里，保证全局唯一
-            CountDownLatch latch = new CountDownLatch(1);
-            // 注册请求监听器（提取目标请求信息）
-            requestHandler = request -> {
-                String url = request.url();
-                if (url.startsWith(TARGET_REQUEST_PREFIX)) {
-                    getRequestApi(room, request);
-                    latch.countDown();
-                    log.info("已捕获目标请求！");
-                }
-            };
-            page.onRequest(requestHandler);
-            BrowserUtil.navigatePage(roomUrl, page, WaitUntilState.LOAD);
-            Boolean is = extractRoomInfo(room, page);
-            if (room.isLiving()) {
-                try {
-                    latch.await(10, TimeUnit.SECONDS);
-                } catch (Exception e) {
-                    log.error("等待捕获目标失败！", e);
-                }
-                return room.getBrowserApi().getUpdateTimes() > 0;
-            } else {
-                latch.countDown();
-            }
-            return Boolean.TRUE.equals(is);
-        } catch (PlaywrightException e1) {
-            log.error("处理直播间[{}]时浏览器发生异常:{}", roomUrl, e1.getMessage().substring(0, 128));
-        } catch (Throwable e) {
-            log.error("处理直播间[{}]时发生异常,{}", roomUrl, ThrowableUtil.getAllCauseMessage(e)); // 记录完整堆栈
-        } finally {
-            if (requestHandler != null) {
-                page.offRequest(requestHandler);
-            }
-            // 确保页面关闭，释放资源
-            if (browser != null) {
-                browser.closePage(page);
-            }
-        }
-        return false;
-    }
+//    public boolean browserRequest2(DouYinRoom room) {
+//        String roomUrl = room.getRoomUrl();
+//        Page page = null;
+//        Consumer<Request> requestHandler = null;
+//        try {
+//            checkAndInitBrowser();
+//            synchronized (this) {
+//                page = browser.newPage();
+//            }
+//            setRoomCookie(room, page);
+//            // 【关键】把 latch 放在 原子引用 里，保证全局唯一
+//            CountDownLatch latch = new CountDownLatch(1);
+//            // 注册请求监听器（提取目标请求信息）
+//            requestHandler = request -> {
+//                String url = request.url();
+//                if (url.startsWith(TARGET_REQUEST_PREFIX)) {
+//                    getRequestApi(room, request);
+//                    latch.countDown();
+//                    log.info("已捕获目标请求！");
+//                }
+//            };
+//            page.onRequest(requestHandler);
+//            BrowserUtil.navigatePage(roomUrl, page, WaitUntilState.LOAD);
+//            Boolean is = extractRoomInfo(room, page);
+//            if (room.isLiving()) {
+//                try {
+//                    latch.await(10, TimeUnit.SECONDS);
+//                } catch (Exception e) {
+//                    log.error("等待捕获目标失败！", e);
+//                }
+//                return room.getBrowserApi().getUpdateTimes() > 0;
+//            } else {
+//                latch.countDown();
+//            }
+//            return Boolean.TRUE.equals(is);
+//        } catch (PlaywrightException e1) {
+//            log.error("处理直播间[{}]时浏览器发生异常:{}", roomUrl, e1.getMessage().substring(0, 128));
+//        } catch (Throwable e) {
+//            log.error("处理直播间[{}]时发生异常,{}", roomUrl, ThrowableUtil.getAllCauseMessage(e)); // 记录完整堆栈
+//        } finally {
+//            if (requestHandler != null) {
+//                page.offRequest(requestHandler);
+//            }
+//            // 确保页面关闭，释放资源
+//            if (browser != null) {
+//                browser.closePage(page);
+//            }
+//        }
+//        return false;
+//    }
 
     /**
      * 检查抖音直播间页面核心元素是否显示

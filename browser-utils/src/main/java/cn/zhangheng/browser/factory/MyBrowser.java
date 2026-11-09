@@ -23,17 +23,21 @@ import java.util.concurrent.CompletableFuture;
  * @description:
  */
 @Slf4j
+@Getter
 public class MyBrowser {
 
-    @Getter
+
     private final BrowserContent content;
+    private Page page;
+
 
     MyBrowser(BrowserContent content) {
         this.content = content;
     }
 
     public Page newPage(String initScript) {
-        Page page = content.getContext().newPage();
+
+        page = content.getContext().newPage();
         // 创建新页面并注入反检测脚本
         if (StrUtil.isNotBlank(initScript)) {
             page.addInitScript(initScript);
