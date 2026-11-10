@@ -17,6 +17,7 @@ import com.zhangheng.util.ThrowableUtil;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.*;
+import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -147,7 +148,7 @@ public class FileResourcesHandler extends JSONHandler {
         Path filePath = file.toPath();
         Headers reqHeaders = httpExchange.getRequestHeaders();
         Headers respHeaders = httpExchange.getResponseHeaders();
-        String uriPath = httpExchange.getRequestURI().getPath();
+        String uriPath = URLDecoder.decode(httpExchange.getRequestURI().toString(),charset.name());
         String ua = reqHeaders.getFirst("User-Agent");
         log.debug("{} 请求[{}]:{}", getClientIP(httpExchange), uriPath, ua);
 

@@ -33,7 +33,10 @@ public class InfoHandler extends JSONHandler {
                     return data;
                 })
                 .cacheExpireMs(3000)
+                .maxRetry(2)
                 .cacheMaxSize(1)
+                .pool(1,2,10)
+                .holderMapMaxSize(10)
                 .build();
     }
 

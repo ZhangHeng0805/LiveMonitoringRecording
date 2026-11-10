@@ -41,14 +41,26 @@ public class ApiHandler extends JSONHandler {
 
     public ApiHandler(String prefix) {
         super(prefix);
-        roomsQueryHelper = CacheWithOnceLoadHelper.<String, List<Map<String, Object>>>builder(key -> FileModeMain.getRoomFileMap().values().stream()
-                        .map(ApiHandler::getRoomsMap)
-                        .filter(m -> m != null && !m.isEmpty())
-                        .sorted(Comparator.comparing(m -> m.get("isRunning").equals(false)))
-                        .collect(Collectors.toList()))
-                .cacheExpireMs(10000)
+        roomsQueryHelper = CacheWithOnceLoadHelper.<String, List<Map<String, Object>>>builder(
+                        key -> getRooms()
+                )
+                .cacheExpireMs(10_000)
                 .cacheMaxSize(1)
+                .loadTimeoutMs(5000)
+                .pool(1, 2, 10)
+                .holderMapMaxSize(10)
                 .build();
+    }
+
+    private static List<Map<String, Object>> getRooms() {
+//        long sta = System.currentTimeMillis();
+        List<Map<String, Object>> list = FileModeMain.getRoomFileMap().values().stream()
+                .map(ApiHandler::getRoomsMap)
+                .filter(m -> m != null && !m.isEmpty())
+                .sorted(Comparator.comparing(m -> m.get("isRunning").equals(false)))
+                .collect(Collectors.toList());
+//        log.debug("getRooms耗时:{}ms", System.currentTimeMillis() - sta);
+        return list;
     }
 
     @Override
@@ -68,7 +80,7 @@ public class ApiHandler extends JSONHandler {
             if (indexPath.startsWith("rooms")) {
                 String roomsKey = "rooms";
                 if ("true".equalsIgnoreCase(query.get("manual"))) roomsQueryHelper.invalidate(roomsKey);
-                List<Map<String, Object>> collect = roomsQueryHelper.get(roomsKey, 2000);
+                List<Map<String, Object>> collect = roomsQueryHelper.get(roomsKey, 5000);
                 msg.setData(collect);
             } else if (indexPath.startsWith("videoParsing")) {
                 videoParsing(msg, query, HandlerUtils.getRequestUserAgent(httpExchange));

@@ -1,30 +1,32 @@
 package cn.zhangheng.common.cache;
 
-import cn.hutool.cache.Cache;
 import cn.hutool.cache.CacheListener;
 import cn.hutool.cache.CacheUtil;
 import cn.hutool.cache.impl.LRUCache;
-import cn.hutool.cache.impl.TimedCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * @author: ZhangHeng
  * @email: zhangheng_0805@163.com
  * @date: 2026/11/02 星期一 16:29
- * @version: 1.0
- * @description: 带缓存的单次数据加载工具类
+ * @version: 1.2
+ * @description: 带缓存的单次数据加载工具类 + 失败冷却熔断，修复失败永久异常、锁阻塞、清理时序问题
  */
 public class CacheWithOnceLoadHelper<K, V> {
     private static final Logger log = LoggerFactory.getLogger(CacheWithOnceLoadHelper.class);
 
+    // 自定义业务线程池：用于执行loader加载任务
+    private final ExecutorService loadExecutor;
+    // 定时清理器，替代每次新建Thread
+    private final ScheduledExecutorService scheduler;
+
     private final LRUCache<K, V> cache;
     private final ConcurrentHashMap<K, OnceLoadHolder<V>> holderMap = new ConcurrentHashMap<>();
+    private final int holderMapMaxSize;
 
     private final DataLoader<K, V> dataLoader;
     private final int maxRetry;
@@ -35,6 +37,7 @@ public class CacheWithOnceLoadHelper<K, V> {
     private final long holderIdleExpireMs;
     private final long cacheExpireMs;
     private final boolean isPrintLog;
+    private final long failCoolDownMs;
 
     @FunctionalInterface
     public interface DataLoader<K, V> {
@@ -51,15 +54,30 @@ public class CacheWithOnceLoadHelper<K, V> {
         this.holderIdleExpireMs = builder.holderIdleExpireMs;
         this.cacheExpireMs = builder.cacheExpireMs;
         this.isPrintLog = builder.isPrintLog;
+        this.holderMapMaxSize = builder.holderMapMaxSize;
+        this.failCoolDownMs = builder.failCoolDownMs;
 
-        // 构建Time缓存 + 注册移除监听器
+        // 加载线程池
+        this.loadExecutor = new ThreadPoolExecutor(
+                builder.corePoolSize,
+                builder.maxPoolSize,
+                60L,
+                TimeUnit.SECONDS,
+                new LinkedBlockingQueue<>(builder.queueCapacity),
+                new LoadThreadFactory("cache-once-load"),
+                new ThreadPoolExecutor.CallerRunsPolicy()
+        );
+
+        // 定时清理线程
+        this.scheduler = Executors.newSingleThreadScheduledExecutor(new LoadThreadFactory("cache-holder-schedule"));
+
         this.cache = CacheUtil.newLRUCache(builder.cacheMaxSize);
         this.cache.setListener(new CacheListener<K, V>() {
             @Override
             public void onRemove(K key, V value) {
-                // 缓存条目被移除：过期访问触发 / Time定时扫描过期 / 主动remove
-                if (isPrintLog)
-                    log.debug("[CacheListener] 缓存key移除，自动清理holder, key={}", key);
+                if (isPrintLog) {
+                    log.debug("[CacheListener] 缓存key移除，尝试清理holder, key={}", key);
+                }
                 holderMap.remove(key);
             }
         });
@@ -72,7 +90,7 @@ public class CacheWithOnceLoadHelper<K, V> {
      * @param apiAwaitTimeoutMs 接口等待超时（小于网关超时）
      * @return 数据
      * @throws TimeoutException 等待超时
-     * @throws Exception        加载失败且无降级
+     * @throws Exception        加载失败且无降级 / 冷却期内禁止加载
      */
     public V get(K key, long apiAwaitTimeoutMs) throws Exception {
         V cacheVal = cache.get(key);
@@ -80,11 +98,17 @@ public class CacheWithOnceLoadHelper<K, V> {
             return cacheVal;
         }
 
+        if (holderMap.size() >= holderMapMaxSize) {
+            throw new RejectedExecutionException("holderMap达到上限:" + holderMapMaxSize + ", 拒绝新增key:" + key);
+        }
+
         OnceLoadHolder<V> holder = holderMap.computeIfAbsent(key, k -> OnceLoadHolder.<V>builder(() -> dataLoader.load(k))
                 .maxRetry(maxRetry)
                 .retrySleepMs(retrySleepMs)
                 .loadTimeoutMs(loadTimeoutMs)
                 .enableFallback(enableFallback, fallbackValue)
+                .failCoolDownMs(failCoolDownMs)
+                .executor(loadExecutor)
                 .build());
 
         V val = holder.get(apiAwaitTimeoutMs);
@@ -95,35 +119,48 @@ public class CacheWithOnceLoadHelper<K, V> {
 
     /**
      * 主动失效缓存（数据更新后调用）
+     * 会重置holder冷却时间，下一次get允许直接发起加载
      */
     public void invalidate(K key) {
         cache.remove(key);
-        // listener会回调自动清holder，这里不需要重复remove
-        if (isPrintLog)
+        OnceLoadHolder<V> holder = holderMap.remove(key);
+        if (holder != null) {
+            holder.reset();
+            if (isPrintLog) {
+                log.debug("[CacheHelper] key={} 主动失效，重置holder与冷却时间", key);
+            }
+        }
+        if (isPrintLog) {
             log.debug("[CacheHelper] key={} 主动失效缓存", key);
+        }
     }
 
     public void invalidateAll() {
         cache.clear();
+        holderMap.forEach((k, h) -> h.reset());
         holderMap.clear();
     }
 
     /**
-     * 延迟兜底清理holder，作为listener的补充防护
+     * 延迟兜底清理holder：缓存已经不存在才清holder
      */
     private void scheduleRemoveHolder(K key) {
-        Thread thread = new Thread(() -> {
-            try {
-                TimeUnit.MILLISECONDS.sleep(holderIdleExpireMs);
-                if (cache.get(key) != null) {
-                    holderMap.remove(key);
+        scheduler.schedule(() -> {
+            if (cache.get(key) == null) {
+                holderMap.remove(key);
+                if (isPrintLog) {
+                    log.debug("[CacheHelper] 空闲到期清理holder, key={}", key);
                 }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
             }
-        }, "cache-holder-clean");
-        thread.setDaemon(true);
-        thread.start();
+        }, holderIdleExpireMs, TimeUnit.MILLISECONDS);
+    }
+
+    /**
+     * 销毁线程池，服务关闭时调用
+     */
+    public void shutdown() {
+        loadExecutor.shutdown();
+        scheduler.shutdown();
     }
 
     public static <K, V> Builder<K, V> builder(DataLoader<K, V> loader) {
@@ -132,23 +169,24 @@ public class CacheWithOnceLoadHelper<K, V> {
 
     public static class Builder<K, V> {
         private final DataLoader<K, V> dataLoader;
-        //缓存过期时间
         private long cacheExpireMs = 30_000;
-        //计划定时扫描过期延时
         private int cacheMaxSize = 10000;
-        //重试次数
         private int maxRetry = 1;
-        //重试间隔时间
-        private long retrySleepMs = 200;
-        //加载数据超时时间
+        private long retrySleepMs = 200;//重试间隔时间
         private long loadTimeoutMs = 1500;
-        //是否开启降级兜底,加载数据失败时要不要返回兜底数据
         private boolean enableFallback = false;
-        //兜底返回值
         private V fallbackValue = null;
-        //排队器闲置清理时间
         private long holderIdleExpireMs = 5000;
         private boolean isPrintLog = false;
+
+        // 线程池参数
+        private int corePoolSize = 8;
+        private int maxPoolSize = 16;
+        private int queueCapacity = 200;
+        private int holderMapMaxSize = 10000;
+
+        // 失败冷却，0=关闭冷却
+        private long failCoolDownMs = 0;
 
         public Builder(DataLoader<K, V> loader) {
             this.dataLoader = loader;
@@ -195,6 +233,27 @@ public class CacheWithOnceLoadHelper<K, V> {
             return this;
         }
 
+        public Builder<K, V> pool(int core, int max, int queueCap) {
+            this.corePoolSize = core;
+            this.maxPoolSize = max;
+            this.queueCapacity = queueCap;
+            return this;
+        }
+
+        public Builder<K, V> holderMapMaxSize(int size) {
+            this.holderMapMaxSize = size;
+            return this;
+        }
+
+        /**
+         * 失败冷却时间，失败后多久内不再发起真实加载
+         * @param ms 毫秒，0 关闭冷却
+         */
+        public Builder<K, V> failCoolDownMs(long ms) {
+            this.failCoolDownMs = Math.max(0, ms);
+            return this;
+        }
+
         public CacheWithOnceLoadHelper<K, V> build() {
             return new CacheWithOnceLoadHelper<>(this);
         }
@@ -202,13 +261,16 @@ public class CacheWithOnceLoadHelper<K, V> {
 
     public static class OnceLoadHolder<T> {
         private static final Logger log = LoggerFactory.getLogger(OnceLoadHolder.class);
-        private volatile CompletableFuture<T> future;
+        private CompletableFuture<T> future;
+        private volatile long lastFailTs;
         private final DataLoader0<T> loader;
         private final int maxRetry;
         private final long retrySleepMs;
         private final long loadTimeoutMs;
         private final boolean enableFallback;
         private final T fallbackValue;
+        private final long failCoolDownMs;
+        private final ExecutorService executor;
 
         @FunctionalInterface
         public interface DataLoader0<T> {
@@ -222,33 +284,46 @@ public class CacheWithOnceLoadHelper<K, V> {
             this.loadTimeoutMs = builder.loadTimeoutMs;
             this.enableFallback = builder.enableFallback;
             this.fallbackValue = builder.fallbackValue;
+            this.failCoolDownMs = builder.failCoolDownMs;
+            this.executor = builder.executor;
+            this.lastFailTs = 0;
         }
 
         public T get(long apiAwaitTimeoutMs) throws Exception {
-            CompletableFuture<T> f = future;
-            if (f == null) {
-                synchronized (this) {
+            CompletableFuture<T> f;
+            synchronized (this) {
+                long now = System.currentTimeMillis();
+                if (failCoolDownMs > 0 && lastFailTs > 0 && (now - lastFailTs) < failCoolDownMs) {
+                    String msg = String.format("处于失败冷却窗口，剩余冷却 %d ms", failCoolDownMs - (now - lastFailTs));
+                    if (enableFallback) {
+                        log.warn("[OnceLoad] {}，直接返回降级值", msg);
+                        return fallbackValue;
+                    } else {
+                        throw new Exception(msg);
+                    }
+                }
+
+                if (future == null || (future.isDone() && future.isCompletedExceptionally())) {
+                    future = new CompletableFuture<>();
                     f = future;
-                    if (f == null) {
-                        f = new CompletableFuture<>();
-                        future = f;
+                    // 提交一轮single-flight加载任务，只占用一条executor线程
+                    executor.submit(() -> {
                         T result = null;
                         boolean success = false;
                         Throwable lastEx = null;
                         try {
                             for (int attempt = 0; attempt <= maxRetry; attempt++) {
                                 try {
-//                                    log.debug("[OnceLoad] 开始加载，第{}次尝试", attempt + 1);
+                                    // Runnable::run：在当前这条线程直接执行，不向executor提交新任务
                                     CompletableFuture<T> task = CompletableFuture.supplyAsync(() -> {
                                         try {
                                             return loader.load();
                                         } catch (Exception e) {
-                                            throw new RuntimeException(e);
+                                            throw new CompletionException(e);
                                         }
-                                    });
+                                    }, Runnable::run);
                                     result = task.get(loadTimeoutMs, TimeUnit.MILLISECONDS);
                                     success = true;
-//                                    log.debug("[OnceLoad] 加载成功，尝试次数:{}", attempt + 1);
                                     break;
                                 } catch (TimeoutException e) {
                                     lastEx = new Exception("单次加载超时", e);
@@ -263,26 +338,33 @@ public class CacheWithOnceLoadHelper<K, V> {
                             }
                             if (success) {
                                 f.complete(result);
+                                lastFailTs = 0;
                             } else {
+                                lastFailTs = System.currentTimeMillis();
                                 if (enableFallback) {
-                                    log.error("[OnceLoad] 全部重试失败，返回降级数据", lastEx);
+                                    log.error("[OnceLoad] 全部重试失败，记录冷却时间，返回降级数据", lastEx);
                                     f.complete(fallbackValue);
                                 } else {
-                                    log.error("[OnceLoad] 全部重试失败，抛出异常", lastEx);
+                                    log.error("[OnceLoad] 全部重试失败，记录冷却时间，抛出异常", lastEx);
                                     f.completeExceptionally(lastEx);
                                 }
                             }
                         } catch (InterruptedException e) {
+                            lastFailTs = System.currentTimeMillis();
                             log.error("[OnceLoad] 加载中断", e);
                             f.completeExceptionally(e);
                             Thread.currentThread().interrupt();
                         } catch (Throwable e) {
+                            lastFailTs = System.currentTimeMillis();
                             log.error("[OnceLoad] 加载未知异常", e);
                             f.completeExceptionally(e);
                         }
-                    }
+                    });
+                } else {
+                    f = future;
                 }
             }
+            // 所有并发请求在这里等待同一个future，实现合并查询（single-flight核心）
             return f.get(apiAwaitTimeoutMs, TimeUnit.MILLISECONDS);
         }
 
@@ -291,7 +373,8 @@ public class CacheWithOnceLoadHelper<K, V> {
                 future.cancel(true);
             }
             future = null;
-            log.info("[OnceLoad] holder重置");
+            lastFailTs = 0;
+            log.info("[OnceLoad] holder重置，清空冷却时间");
         }
 
         public static <T> Builder0<T> builder(DataLoader0<T> loader) {
@@ -305,6 +388,8 @@ public class CacheWithOnceLoadHelper<K, V> {
             private long loadTimeoutMs = 1500;
             private boolean enableFallback = false;
             private T fallbackValue = null;
+            private long failCoolDownMs = 0;
+            private ExecutorService executor;
 
             public Builder0(DataLoader0<T> loader) {
                 this.loader = loader;
@@ -331,9 +416,38 @@ public class CacheWithOnceLoadHelper<K, V> {
                 return this;
             }
 
+            public Builder0<T> failCoolDownMs(long ms) {
+                this.failCoolDownMs = Math.max(0, ms);
+                return this;
+            }
+
+            public Builder0<T> executor(ExecutorService executor) {
+                this.executor = executor;
+                return this;
+            }
+
             public OnceLoadHolder<T> build() {
                 return new OnceLoadHolder<>(this);
             }
+        }
+    }
+
+    /**
+     * 命名线程工厂
+     */
+    static class LoadThreadFactory implements ThreadFactory {
+        private final String prefix;
+        private final AtomicInteger seq = new AtomicInteger(0);
+
+        public LoadThreadFactory(String prefix) {
+            this.prefix = prefix;
+        }
+
+        @Override
+        public Thread newThread(Runnable r) {
+            Thread t = new Thread(r,  prefix + "-" + seq.getAndIncrement());
+            t.setDaemon(false);
+            return t;
         }
     }
 }

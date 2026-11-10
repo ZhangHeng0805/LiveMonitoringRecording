@@ -37,7 +37,8 @@ public class TrayIconUtil {
     @Getter
     private JPopupMenu pop;//创建弹出式菜单
     @Getter
-    private JMenuItem titleItem, startRecordMenu, stopRecordMenu, closeMenu, openRoomMenu, playFlvVideo, openMonitorMenu;
+    private JMenuItem startRecordMenu, stopRecordMenu, closeMenu, openRoomMenu, playFlvVideo, openMonitorMenu, douyinVideoParseVideoMenu;
+    private JLabel titleItem;
     @Setter
     @Getter
     private ClickListener clickListener;
@@ -294,13 +295,19 @@ public class TrayIconUtil {
         }
     }
 
-    public void setPoPTitle(String title) {
-        String text = "<html><center><font color='#000000'>" + title + "</font></center></html>";
+    public void setPoPTitle(String... title) {
+        String text = "<html><center>" + String.join("<br>", title) + "</center></html>";
         if (titleItem == null) {
-            titleItem = createMenuItem(text, Color.BLACK, new Font(null, Font.BOLD, 15));
-            titleItem.setBorderPainted(false);
-            titleItem.setOpaque(false);
-            titleItem.setArmed(false);
+            titleItem = new JLabel(text);
+            titleItem.setFont(new Font(null, Font.BOLD, 15));
+            // 关键：标签内部文字居中
+            titleItem.setHorizontalAlignment(SwingConstants.CENTER);
+            titleItem.setForeground(new Color(0, 0, 200));
+            titleItem.setBackground(new Color(130, 230, 250));
+            titleItem.setOpaque(true); // 一定要开，否则背景灰色不生效！
+            // 这里不要加 left/right 边距！
+//            titleItem.setBorder(BorderFactory.createEmptyBorder(0,0,0,0));
+
             pop.add(titleItem, 0);
             pop.add(new JPopupMenu.Separator(), 1);
         } else {
@@ -310,6 +317,7 @@ public class TrayIconUtil {
 
     private JMenuItem createMenuItem(String text, Color hoverColor, Font font) {
         JMenuItem item = new JMenuItem(text);
+        item.setBorder(BorderFactory.createEmptyBorder(4, 6, 4, 0));
         if (font != null) {
             item.setFont(font);
         }
@@ -347,6 +355,7 @@ public class TrayIconUtil {
         openRoomMenu = createMenuItem("进入直播间", Color.BLUE, null);
         playFlvVideo = createMenuItem("FLV播放器", Color.BLUE, null);
         openMonitorMenu = createMenuItem("监控界面", Color.BLUE, boldFont);
+        douyinVideoParseVideoMenu = createMenuItem("抖音作品解析", Color.BLUE, null);
 
 
         pop.add(openMonitorMenu);
@@ -354,41 +363,19 @@ public class TrayIconUtil {
         pop.addSeparator();
         pop.add(openRoomMenu);
         pop.add(playFlvVideo);
+        pop.add(douyinVideoParseVideoMenu);
 
-//        pop.addPopupMenuListener(new PopupMenuListener() {
-//            @Override
-//            public void popupMenuWillBecomeVisible(PopupMenuEvent e) {
-//                JPopupMenu menu = (JPopupMenu) e.getSource();
-//                // 等布局渲染完成，再拿宽
-//                SwingUtilities.invokeLater(() -> {
-//                    int menuW = menu.getWidth();
-//                    if (menuW <= 0) return;
-//
-//                    for (Component comp : menu.getComponents()) {
-//                        if (!(comp instanceof JMenuItem)) continue;
-//                        JMenuItem item = (JMenuItem) comp;
-//                        String text = item.getText();
-//                        if (text.startsWith("<html>")) continue;
-//                        // 注意：这个方案不支持html文本，只能普通纯文本
-//                        FontMetrics fm = item.getFontMetrics(item.getFont());
-//                        int textW = fm.stringWidth(text);
-//
-//                        item.setBorder(null);
-//                        int padLeft = Math.max(2, (menuW - textW) / 2);
-//                        item.setBorder(BorderFactory.createEmptyBorder(2, padLeft, 2, padLeft));
-//                    }
-//                });
-//            }
-//
-//            @Override
-//            public void popupMenuWillBecomeInvisible(PopupMenuEvent e) {
-//            }
-//
-//            @Override
-//            public void popupMenuCanceled(PopupMenuEvent e) {
-//            }
-//        });
-
+        douyinVideoParseVideoMenu.addActionListener(e -> {
+            debouncer.debounce(() -> {
+                if (clickListener != null) {
+                    String url = clickListener.openDouYinVideoParse(e);
+                    if (url != null) {
+                        log.debug("点击事件: 打开网页>" + url);
+                        openWebpage(url);
+                    }
+                }
+            });
+        });
         openMonitorMenu.addActionListener(e -> {
             debouncer.debounce(() -> {
                 if (clickListener != null) {
@@ -574,6 +561,10 @@ public class TrayIconUtil {
         }
 
         default String openMonitor(ActionEvent e) {
+            return null;
+        }
+
+        default String openDouYinVideoParse(ActionEvent e) {
             return null;
         }
 

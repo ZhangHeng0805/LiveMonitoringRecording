@@ -53,6 +53,10 @@ public class DouYinVideoParse {
                 .cacheExpireMs(10 * 60_000)
                 .loadTimeoutMs(60_000)
                 .cacheMaxSize(10)
+                .retrySleepMs(1000)
+                .pool(2,10,20)
+                .holderMapMaxSize(10)
+                .failCoolDownMs(1000)
                 .build();
     }
 
