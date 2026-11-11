@@ -3,6 +3,8 @@ package cn.zhangheng.cpolar;
 import cn.hutool.core.map.MapUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
+import cn.zhangheng.common.task.AsyncTaskQueue;
+import cn.zhangheng.common.task.TaskCallback;
 import cn.zhangheng.cpolar.git.GitUtil;
 import com.zhangheng.bean.Debouncer;
 import com.zhangheng.file.TxtOperation;
@@ -12,6 +14,8 @@ import com.zhangheng.util.ThrowableUtil;
 import com.zhangheng.util.TimeUtil;
 import com.zhangheng.util.UserAgentUtil;
 import lombok.Getter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -21,8 +25,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * 利用cpolar端口映射工具实现内网穿透，
@@ -30,9 +32,10 @@ import java.util.concurrent.Executors;
  * 实现实时获取最新的映射外网URL地址
  */
 public class CpolarStarter {
+    private static final Logger log = LoggerFactory.getLogger(CpolarStarter.class);
     private Process process = null;
     private AsyncBatchLogger logger = null;
-    ;
+
     private CpolarSetting setting = null;
     private final Debouncer debouncer = new Debouncer(1000);
     //    private static final String gitRepoDir = "F:\\Git Project\\LiveMonitoringRecordingPage";
@@ -49,13 +52,13 @@ public class CpolarStarter {
     @Getter
     private volatile long updateGitTime;
     // 单独业务线程池执行git操作
-    private final ExecutorService gitExecutor = Executors.newSingleThreadExecutor();
-    private volatile boolean isGitRunning = false;
+    private final AsyncTaskQueue gitTask = new AsyncTaskQueue(1, 10, 10, 10_000, "CpolarStarter-GitTask");
+    private volatile boolean isGitRunning = false;//git操作是否正在运行
 
     public CpolarStarter() {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             stop(true);
-            gitExecutor.shutdownNow();
+            gitTask.forceShutdown();
         }));
     }
 
@@ -66,6 +69,7 @@ public class CpolarStarter {
 
     public void start(int port) throws RuntimeException {
         try {
+            gitTask.start();
             logger = new AsyncBatchLogger(Paths.get("./logs/cpolar-run.log"));
             setting = CpolarSetting.getInstance(true);
             localCommand[1] = String.valueOf(port);
@@ -198,14 +202,21 @@ public class CpolarStarter {
         if (isGitRunning) {
             return;
         }
-        gitExecutor.submit(() -> {
-            try {
-                isGitRunning = true;
-                updateGitURLFile();
-            } catch (Exception e) {
-                highLog("更新GitURL文件失败:" + ThrowableUtil.getAllCauseMessage(e), "error");
-            } finally {
+        isGitRunning = true;
+        gitTask.submit(() -> {
+            updateGitURLFile();
+            return null;
+        }, new TaskCallback<Object>() {
+            @Override
+            public void onSuccess(Object result) {
+                log.debug("成功更新提交Git文件！");
                 isGitRunning = false;
+            }
+
+            @Override
+            public void onFailure(Throwable e) {
+                isGitRunning = false;
+                highLog("更新提交Git文件失败:" + ThrowableUtil.getAllCauseMessage(e), "error");
             }
         });
     }

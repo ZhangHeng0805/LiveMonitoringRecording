@@ -1,12 +1,14 @@
-package cn.zhangheng.record.task;
+package cn.zhangheng.common.task;
 
+import cn.zhangheng.common.jmx.JmxAttribute;
+import cn.zhangheng.common.jmx.JmxOperation;
+import cn.zhangheng.common.jmx.JmxRegisterUtil;
+import com.zhangheng.util.TimeUtil;
 import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.management.MBeanServer;
 import javax.management.ObjectName;
-import java.lang.management.ManagementFactory;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.*;
@@ -21,14 +23,22 @@ import java.util.concurrent.atomic.AtomicLong;
  * @version: 1.0
  * @description:
  */
-public class AsyncTaskQueue implements AsyncTaskQueueMBean {
+public class AsyncTaskQueue {
     protected final Logger log = LoggerFactory.getLogger(this.getClass());
 
     // ========== 配置参数 ==========
+    @JmxAttribute(desc = "核心线程数")
+    @Getter
     private final int corePoolSize;
+    @Getter
+    @JmxAttribute(desc = "任务队列容量")
     private final int queueCapacity;
     // 重试配置
+    @Getter
+    @JmxAttribute(desc = "最大重试次数")
     private final int maxRetryTimes;
+    @Getter
+    @JmxAttribute(desc = "重试间隔时间")
     private final long retryIntervalMs;
 
     // ========== 线程池核心组件 ==========
@@ -46,17 +56,7 @@ public class AsyncTaskQueue implements AsyncTaskQueueMBean {
     private final AtomicLong maxCostTimeMs = new AtomicLong(0);
 
     // 全局线程命名计数器
-    private static final AtomicInteger GLOBAL_THREAD_COUNTER = new AtomicInteger(0);
-
-    // 线程工厂
-    private static final ThreadFactory CUSTOM_THREAD_FACTORY = r -> {
-        Thread thread = new Thread(r, "async-task-thread-" + GLOBAL_THREAD_COUNTER.getAndIncrement());
-        thread.setDaemon(false);
-        thread.setUncaughtExceptionHandler((t, e) ->
-                LoggerFactory.getLogger(AsyncTaskQueue.class).error("线程[" + t.getName() + "]未捕获异常", e)
-        );
-        return thread;
-    };
+    private final AtomicInteger GLOBAL_THREAD_COUNTER = new AtomicInteger(0);
 
     // 拒绝策略
     private static final RejectedExecutionHandler QUEUE_FULL_HANDLER = (r, executor) -> {
@@ -72,11 +72,11 @@ public class AsyncTaskQueue implements AsyncTaskQueueMBean {
     //--------------------------------------------------------------------------
     // 构造器 1：无重试默认配置
     public AsyncTaskQueue(int corePoolSize, int queueCapacity) {
-        this(corePoolSize, queueCapacity, 0, 0);
+        this(corePoolSize, queueCapacity, 0, 0, "async-task-thread");
     }
 
     // 构造器2：自定义重试参数
-    public AsyncTaskQueue(int corePoolSize, int queueCapacity, int maxRetryTimes, long retryIntervalMs) {
+    public AsyncTaskQueue(int corePoolSize, int queueCapacity, int maxRetryTimes, long retryIntervalMs, String taskName) {
         // 参数校验
         if (corePoolSize <= 0) throw new IllegalArgumentException("核心线程必须>0");
         if (queueCapacity <= 0) throw new IllegalArgumentException("队列容量必须>0");
@@ -97,19 +97,34 @@ public class AsyncTaskQueue implements AsyncTaskQueueMBean {
         // 优先级队列：容量限制 + 优先级倒序（数字越大优先级越高）
         this.taskQueue = new PriorityBlockingQueue<>(queueCapacity, priorityComparator);
 
+        // 线程工厂
+        ThreadFactory threadFactory = new ThreadFactory() {
+            private final AtomicInteger seq = new AtomicInteger(0);
+
+            @Override
+            public Thread newThread(Runnable r) {
+                Thread thread = new Thread(r, taskName + "-" + seq.incrementAndGet());
+                thread.setDaemon(false);
+                thread.setUncaughtExceptionHandler((t, e) ->
+                        LoggerFactory.getLogger(AsyncTaskQueue.class).error("线程[" + t.getName() + "]未捕获异常", e)
+                );
+                return thread;
+            }
+        };
+
         // 初始化线程池
         this.executorService = new ThreadPoolExecutor(
                 corePoolSize,
                 corePoolSize,
                 0L, TimeUnit.MILLISECONDS,
                 taskQueue,
-                CUSTOM_THREAD_FACTORY,
+                threadFactory,
                 QUEUE_FULL_HANDLER
         );
         executorService.prestartAllCoreThreads();
 
         // 注册JMX MBean
-        registerMBean();
+        registerMBean(taskName);
     }
 
     //--------------------------------------------------------------------------
@@ -197,33 +212,32 @@ public class AsyncTaskQueue implements AsyncTaskQueueMBean {
 
     //--------------------------------------------------------------------------
     // 获取队列大小
+    @JmxAttribute(name = "taskQueueSize", desc = "任务队列大小")
     public int getQueueSize() {
         return taskQueue.size();
     }
 
     //获取排队剩余容量
+    @JmxAttribute(name = "queueRemainingCapacity", desc = "排队剩余容量")
     public int getQueueRemainingCapacity() {
         return queueCapacity - taskQueue.size();
     }
 
+    @JmxAttribute(desc = "是否运行")
     public boolean isRunning() {
         return isRunning.get();
     }
 
+    @JmxAttribute(desc = "是否终止")
     public boolean isTerminated() {
         return executorService.isTerminated();
     }
 
     //--------------------------------------------------------------------------
     // JMX MBean 注册
-    private void registerMBean() {
+    private void registerMBean(String name) {
         try {
-            MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-            String mbeanName = "AsyncTaskQueue:type=AsyncTaskQueueMonitor,instance=" + System.identityHashCode(this);
-            mbeanObjectName = new ObjectName(mbeanName);
-            if (!mbs.isRegistered(mbeanObjectName)) {
-                mbs.registerMBean(this, mbeanObjectName);
-            }
+            mbeanObjectName = JmxRegisterUtil.register(this, "AsyncTaskQueueMonitor", "name", name, "instance", String.valueOf(System.identityHashCode(this)));
         } catch (Exception e) {
             log.error("JMX MBean注册失败", e);
         }
@@ -231,14 +245,8 @@ public class AsyncTaskQueue implements AsyncTaskQueueMBean {
 
     // JMX注销（销毁时调用）
     private void unregisterMBean() {
-        if (mbeanObjectName == null) {
-            return;
-        }
         try {
-            MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-            if (mbs.isRegistered(mbeanObjectName)) {
-                mbs.unregisterMBean(mbeanObjectName);
-            }
+            JmxRegisterUtil.unregister(mbeanObjectName);
         } catch (Exception e) {
             log.error("JMX注销异常", e);
         }
@@ -303,59 +311,44 @@ public class AsyncTaskQueue implements AsyncTaskQueueMBean {
 
     //==========================================================================
     // 实现 MBean 接口所有指标（供JMX读取）
-    @Override
+    @JmxAttribute(name = "totalTaskCount", desc = "任务总数")
     public long getTotalTaskCount() {
         return totalTaskCount.get();
     }
 
-    @Override
+    @JmxAttribute(name = "successTaskCount", desc = "成功任务数")
     public long getSuccessTaskCount() {
         return successTaskCount.get();
     }
 
-    @Override
+    @JmxAttribute(name = "failTaskCount", desc = "失败任务数")
     public long getFailTaskCount() {
         return failTaskCount.get();
     }
 
-    @Override
+    @JmxAttribute(name = "waitingQueueSize", desc = "等待任务数")
     public int getWaitingQueueSize() {
         return getQueueSize();
     }
 
-    @Override
-    public long getTotalCostTimeMs() {
-        return totalCostTimeMs.get();
+    @JmxAttribute(name = "totalCostTimeMs", desc = "总耗时")
+    public String getTotalCostTimeMs() {
+        return TimeUtil.formatMSToCn((int) totalCostTimeMs.get());
     }
 
-    @Override
-    public long getMaxCostTimeMs() {
-        return maxCostTimeMs.get();
+    @JmxAttribute(name = "maxCostTimeMs", desc = "最长耗时")
+    public String getMaxCostTimeMs() {
+        return TimeUtil.formatMSToCn((int) maxCostTimeMs.get());
     }
 
-    @Override
+    @JmxAttribute(name = "avgCostTimeMs", desc = "平均耗时(ms)")
     public double getAvgCostTimeMs() {
         long suc = successTaskCount.get();
         if (suc == 0) return 0.0;
         return (double) totalCostTimeMs.get() / suc;
     }
 
-    @Override
-    public int getCorePoolSize() {
-        return corePoolSize;
-    }
-
-    @Override
-    public int getMaxRetryTimes() {
-        return maxRetryTimes;
-    }
-
-    @Override
-    public boolean getIsRunning() {
-        return isRunning.get();
-    }
-
-    @Override
+    @JmxOperation(desc = "重置监控指标")
     public void resetMonitorMetrics() {
         // JMX支持一键重置监控指标
         totalTaskCount.set(0);

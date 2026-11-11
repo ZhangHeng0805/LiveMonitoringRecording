@@ -1,4 +1,4 @@
-package cn.zhangheng.record.task;
+package cn.zhangheng.common.task;
 
 /**
  * @author: ZhangHeng

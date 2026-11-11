@@ -3,8 +3,8 @@ package cn.zhangheng.record.record;
 import cn.zhangheng.record.bean.Room;
 import cn.zhangheng.record.bean.Setting;
 import cn.zhangheng.record.bean.enums.RecordType;
-import cn.zhangheng.record.task.AsyncTaskQueue;
-import cn.zhangheng.record.task.TaskCallback;
+import cn.zhangheng.common.task.AsyncTaskQueue;
+import cn.zhangheng.common.task.TaskCallback;
 import cn.zhangheng.record.util.LogUtil;
 import com.zhangheng.file.FileUtil;
 import com.zhangheng.util.TimeUtil;
@@ -33,7 +33,7 @@ public class RecorderTask {
     private ActionListener actionListener;
 
     public RecorderTask(Setting setting) {
-        this.asyncTaskQueue = new AsyncTaskQueue(1, 10, 3, 0);
+        this.asyncTaskQueue = new AsyncTaskQueue(1, 10, 3, 500,"RecorderTask");
         asyncTaskQueue.start();
         this.setting = setting;
     }

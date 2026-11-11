@@ -34,6 +34,7 @@ public class CpolarToolStarter extends Starter {
     }
 
     @Override
+    @JmxOperation(desc = "启动服务")
     public void start() {
         if (thread != null && isRunning()) throw new RuntimeException("cpolar已运行！");
         thread = new Thread(() -> {
@@ -59,6 +60,7 @@ public class CpolarToolStarter extends Starter {
     }
 
     @Override
+    @JmxOperation(desc = "停止服务")
     public void stop() {
         if (thread == null && !isRunning()) throw new RuntimeException("cpolar未运行！");
         try {
@@ -97,16 +99,6 @@ public class CpolarToolStarter extends Starter {
         }
         // 置空，防止重复注销
         mbeanObjectName = null;
-    }
-
-    @JmxOperation(desc = "启动服务")
-    public void startServer() {
-        start();
-    }
-
-    @JmxOperation(desc = "停止服务")
-    public void stopServer() {
-        stop();
     }
 
     @JmxOperation(desc = "更新Git文件")
