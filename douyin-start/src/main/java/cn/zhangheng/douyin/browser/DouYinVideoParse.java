@@ -54,16 +54,17 @@ public class DouYinVideoParse {
                 .loadTimeoutMs(60_000)
                 .cacheMaxSize(10)
                 .retrySleepMs(1000)
-                .pool(2,10,20)
+                .maxRetry(0)
+                .pool(2, 10, 20)
                 .holderMapMaxSize(10)
                 .failCoolDownMs(1000)
                 .build();
     }
 
     public static void main(String[] args) throws Exception {
-//        String s = "1.76 复制打开抖音，看看【小兰花的作品】自我救赎的路上本就光怪陆离# 感觉至上  https://v.douyin.com/jvzZf1jio5w/ 10/01 t@R.xS hBT:/ ";
+        String s = "5.87 复制打开抖音，看看【兰小美的作品】真的可以Kiss的吗？# 感觉至上  https://v.douyin.com/DmvoYc86eQc/ :6pm Iip:/ 01/04 a@n.qr ";
 //        String s = "0.28 Z@z.Ty :1pm 03/22 xsR:/ 那个……可以认识一下吗# 感觉至上 # 男生  https://v.douyin.com/HFnMsnbv_yI/ 复制此链接，打开Dou音搜索，直接观看视频！";
-        String s = "5.87 素衫自有凌云气 锐目全无畏世心   https://v.douyin.com/ksjaDSGgWrg/ 复制此链接，打开抖音搜索，直接观看视频！ M@W.mQ :0pm dAg:/ 03/12 ";
+//        String s = "5.87 素衫自有凌云气 锐目全无畏世心   https://v.douyin.com/ksjaDSGgWrg/ 复制此链接，打开抖音搜索，直接观看视频！ M@W.mQ :0pm dAg:/ 03/12 ";
 //        String s = "6.12 复制打开抖音，看看【总掉萌萌泪的图文作品】便利店后面吸烟的两人。# 短发 # 日系 # 社畜... https://v.douyin.com/gi6Twv6Zb60/ H@v.FH 06/10 Rxs:/ :7pm ";
 //        String s = "3.33 复制打开抖音，看看【吃不胖鸭丫的图文作品】旅行者，樱花瓣落得轻，风里裹着甜香～——我刚理完璃... https://v.douyin.com/T_5owcnkwak/ 10/27 BTL:/ q@R.KW ";
 //        String s = "7.64 kCU:/ 09/28 i@p.QK 一起来看日出吧@小兰花 # 小兰花 # 看日出 # 直播截图  https://v.douyin.com/sX4ZhOA7M3Q/ 复制此链接，打开Dou音搜索，直接观看视频！";
@@ -73,9 +74,9 @@ public class DouYinVideoParse {
         long sta = System.currentTimeMillis();
         String link = DouYinUtil.extractDouyinLink(s);
         System.out.println(link);
-//        String finalUrl = DouYinUtil.getFinalUrl(link);
-//        System.out.println(finalUrl);
-//        System.out.println(DouYinUtil.extractNoteId(finalUrl));
+        String finalUrl = DouYinUtil.getFinalUrl(link);
+        System.out.println(finalUrl);
+        System.out.println(DouYinUtil.extractNoteId(finalUrl));
         System.out.println(JSONUtil.parseObj(
                 parse(s, false)).toStringPretty());
 //        queryHelper.destroy();
@@ -87,8 +88,14 @@ public class DouYinVideoParse {
         if (link == null) {
             return null;
         }
-        if (isRefresh) queryHelper.invalidate(link);
-        return queryHelper.get(link, 120_000);
+        String key;
+        try {
+            key = DouYinUtil.getFinalUrl(link).substring(0, link.indexOf("/?"));
+        } catch (Exception e) {
+            key = link;
+        }
+        if (isRefresh) queryHelper.invalidate(key);
+        return queryHelper.get(key, 120_000);
     }
 
     public static DouYinWork parse(String shareUrl) {
@@ -97,7 +104,6 @@ public class DouYinVideoParse {
         if (link == null) {
             return null;
         }
-
         BrowserAPI browserApi = new BrowserAPI(null);
         JSONObject htmlJson = null;
         MyBrowser myBrowser = PlaywrightBrowserFactory.getBrowser(DouYinVideoParse.class.getName(), 60_000, false);

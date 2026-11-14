@@ -163,9 +163,10 @@ public class ApiHandler extends JSONHandler {
             DouYinWork parse = DouYinVideoParse.parse(url, "true".equals(isRefresh));
             msg.setData(parse);
             msg.setMessage("解析成功！");
-        } catch (Exception e) {
+        } catch (Throwable e) {
             msg.setCode(1);
-            msg.setMessage(e.getMessage());
+            msg.setMessage(ThrowableUtil.getRootCause(e).getMessage());
+            msg.setData(ThrowableUtil.getAllCauseMessage(e));
         }
     }
 

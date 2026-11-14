@@ -21,7 +21,7 @@ import java.util.zip.GZIPInputStream;
  */
 public class RequestUtils {
     private final static int connectTimeout = 15_000;
-    private final static int readTimeout = 30_000;
+    private final static int readTimeout = 60_000;
 
     public static HttpURLConnection getRequest(String urlString, Map<String, String> headers) throws IOException {
         URL url = new URL(urlString);

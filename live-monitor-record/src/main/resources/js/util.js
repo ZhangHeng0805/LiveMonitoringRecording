@@ -243,3 +243,27 @@ function debounce(func, wait, immediate) {
 
     return debounced;
 }
+
+/**
+ * 复制文本到剪贴板
+ * @param {string} text
+ * @returns {Promise<boolean>}
+ */
+async function copyToClipboard(text) {
+    if (!text) return false;
+    try {
+        await navigator.clipboard.writeText(text);
+        console.log("已复制：", text);
+        return true;
+    } catch (err) {
+        console.error("复制失败", err);
+        // 降级方案，兼容老浏览器
+        const input = document.createElement('input');
+        input.value = text;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+        return true;
+    }
+}

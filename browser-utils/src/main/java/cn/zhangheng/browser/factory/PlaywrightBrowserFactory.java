@@ -316,7 +316,6 @@ public class PlaywrightBrowserFactory {
         idleScheduler.shutdownNow();
         browsersCache = null;
         userAgentUtil = null;
-        count.set(0);
 //        JmxRegisterUtil.unregister(objectName);
 //        objectName = null;
         log.info("销毁Chromium浏览器进程");

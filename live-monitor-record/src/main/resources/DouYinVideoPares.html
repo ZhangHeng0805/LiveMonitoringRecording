@@ -467,7 +467,7 @@
                         videoEl.style.display = 'none';
                         div.classList.add('opacity-40');
                     }
-                    console.log(scrollWrap.offsetWidth, allVideoWidth)
+                    // console.log(scrollWrap.offsetWidth, allVideoWidth)
                     if (scrollWrap.offsetWidth > allVideoWidth) {
                         scrollWrap.classList.add('justify-center');
                         scrollWrap.classList.remove('justify-start');
@@ -527,7 +527,13 @@
             alert('请先选择一个视频');
             return;
         }
-        downloadFile(selectedVideoSrc);
+        let fileName = null;
+        try {
+            fileName = currentVideoData.author.nickname + " " + currentVideoData.createTime.substring(0, 10) + ".mp4"
+        } catch (e) {
+            console.error(e)
+        }
+        downloadFile(selectedVideoSrc, fileName);
     });
 
     // 解析链接并获取数据
@@ -646,6 +652,16 @@
             });
         });
 
+
+        const urlParams = new URLSearchParams(window.location.search);
+        let shared = urlParams.get("shared");
+        if (shared) {
+            shared = shared.startsWith("http")
+                ? decodeURIComponent(shared)
+                : atob(shared);
+            shareLinkInput.value = shared;
+            parseBtn.click();
+        }
         // 视频加载状态处理
         // const video = document.getElementById('videoPlayer');
         // video.addEventListener('loadedmetadata', () => {
@@ -668,7 +684,13 @@
             if (currentVideoData) {
                 // alert('正在准备下载音频文件...');
                 // 实际项目中实现音频下载逻辑
-                downloadFile(currentVideoData.audioUrl);
+                let fileName = null;
+                try {
+                    fileName = currentVideoData.author.nickname + " " + currentVideoData.createTime.substring(0, 10) + ".mp3"
+                } catch (e) {
+                    console.error(e)
+                }
+                downloadFile(currentVideoData.audioUrl, fileName);
             }
         });
     });
@@ -683,12 +705,14 @@
         // 指定文件名（可选，部分浏览器可能忽略）
         if (fileName) {
             link.download = fileName; // 文件名（不含路径，仅文件名+扩展名）
+            copyToClipboard(fileName);
+            alert("下载文件名已复制到剪切板");
         }
 
         // 触发点击
         document.body.appendChild(link);
         link.click();
-
+        console.log("文件下载", url, fileName)
         // 清理
         document.body.removeChild(link);
     }

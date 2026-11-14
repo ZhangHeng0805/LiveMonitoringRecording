@@ -1,18 +1,10 @@
 package cn.zhangheng.douyin.util;
 
-import cn.hutool.core.util.StrUtil;
-import cn.zhangheng.browser.util.BrowserUtil;
-import cn.zhangheng.douyin.bean.DouYinRoom;
-import com.microsoft.playwright.Browser;
-import com.microsoft.playwright.BrowserContext;
-import com.microsoft.playwright.Page;
-import com.zhangheng.util.RandomUtil;
+import com.zhangheng.util.UserAgentUtil;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -64,7 +56,7 @@ public class DouYinUtil {
             conn.setConnectTimeout(10000);
             conn.setReadTimeout(10000);
             // 手机UA，非常重要
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1");
+            conn.setRequestProperty("User-Agent", UserAgentUtil.getRandomMobile());
 
             int status = conn.getResponseCode();
             if (status >= 300 && status < 400) {
@@ -83,7 +75,7 @@ public class DouYinUtil {
     }
 
     public static String extractNoteId(String reflowUrl) {
-        Pattern pattern = Pattern.compile("note/(\\d+)");
+        Pattern pattern = Pattern.compile("/(\\d+)/?");
         Matcher matcher = pattern.matcher(reflowUrl);
         if (matcher.find()) {
             return matcher.group(1);
