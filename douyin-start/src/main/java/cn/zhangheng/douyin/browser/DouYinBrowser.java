@@ -7,6 +7,7 @@ import cn.zhangheng.browser.exception.PlaywrightErrorInfo;
 import cn.zhangheng.browser.exception.PlaywrightExceptionParser;
 import cn.zhangheng.browser.util.AutoClearContextThreadListener;
 import cn.zhangheng.browser.util.BrowserUtil;
+import cn.zhangheng.common.setting.ConfigKit;
 import cn.zhangheng.douyin.util.DouYinUtil;
 import cn.zhangheng.record.bean.Room;
 import cn.zhangheng.record.bean.Setting;
@@ -269,7 +270,7 @@ public class DouYinBrowser implements Closeable {
     }
 
     private PlaywrightBrowser createBrowser() {
-        Setting setting = Setting.getInstance();
+        Setting setting = ConfigKit.get(Setting.class);
         boolean headless = !Objects.equals(setting.getBrowserHeadless(), Boolean.FALSE);
         PlaywrightBrowser browser = new PlaywrightBrowser(headless);
         browser.setIsPageClear(setting.getBrowserIsPageClear());

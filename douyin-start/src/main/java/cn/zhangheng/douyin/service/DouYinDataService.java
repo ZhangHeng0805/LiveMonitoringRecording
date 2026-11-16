@@ -4,6 +4,7 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
+import cn.zhangheng.common.setting.ConfigKit;
 import cn.zhangheng.douyin.bean.DouYinRoom;
 import cn.zhangheng.douyin.browser.DouYinBrowserFactory;
 import cn.zhangheng.douyin.browser.DouyinPlaywright;
@@ -39,7 +40,7 @@ public class DouYinDataService {
     }
     public static void main(String[] args) {
         long sta = System.currentTimeMillis();
-        Setting setting = Setting.getInstance();
+        Setting setting = ConfigKit.get(Setting.class);
         DouYinRoom info = new DouYinRoom("541976200890");
 //        DouYinRoom info = new DouYinRoom("兰小美认证信息.txt");
 //        DouYinRoom info = new DouYinRoom("870887192950-7547373102502578971");

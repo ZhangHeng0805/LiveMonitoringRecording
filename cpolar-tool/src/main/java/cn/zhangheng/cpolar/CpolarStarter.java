@@ -3,6 +3,7 @@ package cn.zhangheng.cpolar;
 import cn.hutool.core.map.MapUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
+import cn.zhangheng.common.setting.ConfigKit;
 import cn.zhangheng.common.task.AsyncTaskQueue;
 import cn.zhangheng.common.task.TaskCallback;
 import cn.zhangheng.cpolar.git.GitUtil;
@@ -37,7 +38,7 @@ public class CpolarStarter {
     private AsyncBatchLogger logger = null;
 
     private CpolarSetting setting = null;
-    private final Debouncer debouncer = new Debouncer(1000);
+    private Debouncer debouncer;
     //    private static final String gitRepoDir = "F:\\Git Project\\LiveMonitoringRecordingPage";
 //    private static final String gitFileRelativePath = "redirect/json/config.json";
 //    private static final String exePath = "./bin/cpolar.exe";
@@ -52,13 +53,12 @@ public class CpolarStarter {
     @Getter
     private volatile long updateGitTime;
     // 单独业务线程池执行git操作
-    private final AsyncTaskQueue gitTask = new AsyncTaskQueue(1, 10, 10, 10_000, "CpolarStarter-GitTask");
+    private AsyncTaskQueue gitTask;
     private volatile boolean isGitRunning = false;//git操作是否正在运行
 
     public CpolarStarter() {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             stop(true);
-            gitTask.forceShutdown();
         }));
     }
 
@@ -67,11 +67,17 @@ public class CpolarStarter {
         new CpolarStarter().start(Integer.parseInt(mapping));
     }
 
+    private void init(){
+        debouncer = new Debouncer(1000);
+        gitTask = new AsyncTaskQueue(1, 10, 10, 10_000, "CpolarStarter-GitTask");
+        gitTask.start();
+        logger = new AsyncBatchLogger(Paths.get("./logs/cpolar-run.log"));
+        setting = ConfigKit.get(CpolarSetting.class, true);
+    }
+
     public void start(int port) throws RuntimeException {
         try {
-            gitTask.start();
-            logger = new AsyncBatchLogger(Paths.get("./logs/cpolar-run.log"));
-            setting = CpolarSetting.getInstance(true);
+            init();
             localCommand[1] = String.valueOf(port);
             System.out.println("=====启动HTTP端口映射 " + port + "=====");
             highLog("运行命令: " + String.join(" ", localCommand), "info");
@@ -106,6 +112,12 @@ public class CpolarStarter {
 
     public void stop(boolean force) {
         isRunning = false;
+        if (gitTask != null) {
+            gitTask.forceShutdown();
+        }
+        if (debouncer!=null){
+            debouncer.destroy();
+        }
         if (logger != null) {
             logger.shutdown();
         }

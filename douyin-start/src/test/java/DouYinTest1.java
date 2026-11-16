@@ -1,3 +1,4 @@
+import cn.zhangheng.common.setting.ConfigKit;
 import cn.zhangheng.record.bean.Setting;
 import cn.zhangheng.douyin.service.DouYinMain;
 import cn.zhangheng.douyin.bean.DouYinRoom;
@@ -11,7 +12,7 @@ import cn.zhangheng.douyin.bean.DouYinRoom;
  */
 public class DouYinTest1 {
     public static void main(String[] args) {
-        Setting setting=Setting.getInstance();
+        Setting setting= ConfigKit.get(Setting.class);
 
         DouYinMain douYinMain = new DouYinMain(setting);
 

@@ -3,6 +3,7 @@ package cn.zhangheng.record.service;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.log.Log;
 import cn.hutool.log.LogFactory;
+import cn.zhangheng.common.setting.ConfigKit;
 import cn.zhangheng.record.activation.ActivationUtil;
 import cn.zhangheng.record.activation.ErrorException;
 import cn.zhangheng.record.activation.WarnException;
@@ -57,7 +58,7 @@ public abstract class ApplicationMain<R extends Room> {
     public void start(Setting setting, String[] args) {
         System.out.println(getBanner());
         try {
-            ActivationUtil.verifyActivationCodeFile(Constant.deviceUniqueId, Setting.getInstance().getActivateVoucherPath());
+            ActivationUtil.verifyActivationCodeFile(Constant.deviceUniqueId, ConfigKit.get(Setting.class).getActivateVoucherPath());
         } catch (ErrorException errorException) {
             String message = ThrowableUtil.getAllCauseMessage(errorException);
             log.error(message, errorException);
@@ -172,7 +173,7 @@ public abstract class ApplicationMain<R extends Room> {
             do {
                 if (setting == null) {
                     try {
-                        setting = Setting.getInstance(true);
+                        setting = ConfigKit.get(Setting.class, true);
                     } catch (Exception e) {
                         log.warn("读取配置文件异常：" + ThrowableUtil.getAllCauseMessage(e));
                     }

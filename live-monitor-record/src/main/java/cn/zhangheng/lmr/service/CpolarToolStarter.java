@@ -3,6 +3,7 @@ package cn.zhangheng.lmr.service;
 import cn.zhangheng.common.jmx.JmxAttribute;
 import cn.zhangheng.common.jmx.JmxOperation;
 import cn.zhangheng.common.jmx.JmxRegisterUtil;
+import cn.zhangheng.common.setting.ConfigKit;
 import cn.zhangheng.cpolar.CpolarSetting;
 import cn.zhangheng.cpolar.CpolarStarter;
 import cn.zhangheng.record.bean.Setting;
@@ -45,7 +46,7 @@ public class CpolarToolStarter extends Starter {
                     } catch (InterruptedException ignored) {
                     }
                 }
-                int port = System.getProperty("monitor.port") != null ? Integer.parseInt(System.getProperty("monitor.port")) : Setting.getInstance().getMonitorServerPort();
+                int port = System.getProperty("monitor.port") != null ? Integer.parseInt(System.getProperty("monitor.port")) : ConfigKit.get(Setting.class).getMonitorServerPort();
                 thread.setName("CpolarToolStarter-" + port);
                 setRunning(true);
                 cpolarStarter.start(port);
@@ -147,6 +148,6 @@ public class CpolarToolStarter extends Starter {
 
     @JmxAttribute(name = "setting", desc = "设置")
     public CpolarSetting getSetting() {
-        return CpolarSetting.getInstance();
+        return ConfigKit.get(CpolarSetting.class);
     }
 }

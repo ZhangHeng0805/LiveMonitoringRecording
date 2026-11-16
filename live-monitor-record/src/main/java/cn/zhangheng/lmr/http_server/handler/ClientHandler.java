@@ -1,6 +1,7 @@
 package cn.zhangheng.lmr.http_server.handler;
 
 import cn.hutool.core.map.MapUtil;
+import cn.zhangheng.common.setting.ConfigKit;
 import cn.zhangheng.record.bean.Setting;
 import cn.zhangheng.record.httpServer.handle.MyHandler;
 import cn.zhangheng.record.httpServer.util.JWTUtil;
@@ -30,7 +31,6 @@ public class ClientHandler extends MyHandler {
     private final String prefix;
 
 
-
     public ClientHandler(String prefix) {
         this.prefix = prefix;
     }
@@ -55,15 +55,16 @@ public class ClientHandler extends MyHandler {
             Map<String, String> query = parseQuery(exchange);
             String cid = query.getOrDefault("cid", "cid");
             String sid = getRequestCookie(exchange, "_sid", null);
+            Setting setting = ConfigKit.get(Setting.class);
             if (sid == null) {
                 sid = getSessionID();
-                setResponseCookie(exchange, "_sid", sid, Setting.getInstance().getApiExpireSec());
+                setResponseCookie(exchange, "_sid", sid, setting.getApiExpireSec());
             }
-            setResponseCookie(exchange, "_cid", cid, Setting.getInstance().getApiExpireSec());
-            String token = JWTUtil.generateToken(MapUtil.of(cid, sid), Setting.getInstance().getApiExpireSec());
-            setResponseCookie(exchange, "_token", token, Setting.getInstance().getApiExpireSec());
+            setResponseCookie(exchange, "_cid", cid, setting.getApiExpireSec());
+            String token = JWTUtil.generateToken(MapUtil.of(cid, sid), setting.getApiExpireSec());
+            setResponseCookie(exchange, "_token", token, setting.getApiExpireSec());
             log.info("client刷新Token: {} - {}，mainURL: {}，Origin: {}",
-                    clientIP,cid,query.get("mainUrl"),exchange.getRequestHeaders().getFirst("Origin"));
+                    clientIP, cid, query.get("mainUrl"), exchange.getRequestHeaders().getFirst("Origin"));
         } else {
             String requestBodyStr = parseRequestBodyStr(exchange, charset);
             Object userAgent = exchange.getAttribute("User-Agent");

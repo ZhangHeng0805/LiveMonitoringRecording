@@ -9,13 +9,19 @@ package cn.zhangheng.common.setting;
  */
 
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONArray;
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.*;
 import java.lang.reflect.Field;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.function.Function;
@@ -137,6 +143,34 @@ public class ConfigLoader {
      * 转换配置值为字段所需类型
      */
     private static Object convertValue(Field field, Class<?> fieldType, String valueStr) {
+        Type genericType = field.getGenericType();
+
+        // ===================== Map 分支 =====================
+        if (Map.class.isAssignableFrom(fieldType)) {
+            if (!(genericType instanceof ParameterizedType)) {
+                throw new UnsupportedOperationException("Map必须声明泛型，原始Map不支持，字段：" + field.getName());
+            }
+            ParameterizedType pt = (ParameterizedType) genericType;
+            JSONObject jsonObj = JSONUtil.parseObj(valueStr);
+            // 直接把泛型Type丢进去，自动识别 Map<String,Object> / Map<String,UserDTO>
+            return jsonObj.toBean(pt);
+        }
+        // ===================== List 分支 =====================
+        if (List.class.isAssignableFrom(fieldType)) {
+            if (!(genericType instanceof ParameterizedType)) {
+                throw new UnsupportedOperationException("List必须声明泛型，原始List不支持，字段：" + field.getName());
+            }
+            ParameterizedType pt = (ParameterizedType) genericType;
+            JSONArray jsonArr = JSONUtil.parseArray(valueStr);
+            // List<Map<String,Object>> / List<UserDTO> / List<String> / List<Integer> 全部走这里
+            return jsonArr.toBean(pt);
+        }
+
+        // ===================== 普通POJO对象（非集合） =====================
+        if (!TYPE_CONVERTERS.containsKey(fieldType) && !fieldType.isEnum()) {
+            return JSONUtil.parseObj(valueStr).toBean(fieldType);
+        }
+
         // 处理枚举类型（单独处理，因为枚举是动态类型）
         if (fieldType.isEnum()) {
             return convertEnum(fieldType, valueStr);

@@ -6,6 +6,7 @@ import cn.zhangheng.browser.exception.PlaywrightExceptionParser;
 import cn.zhangheng.browser.factory.MyBrowser;
 import cn.zhangheng.browser.factory.PlaywrightBrowserFactory;
 import cn.zhangheng.browser.util.BrowserUtil;
+import cn.zhangheng.common.setting.ConfigKit;
 import cn.zhangheng.record.bean.Setting;
 import cn.zhangheng.record.util.LogUtil;
 import cn.zhangheng.douyin.bean.DouYinRoomCounter;
@@ -58,7 +59,7 @@ public class DouYinWebcast {
         }
         System.out.print("请输入抖音cookie(选填): ");
         String cookie = scanner.nextLine();
-        Setting setting = Setting.getInstance();
+        Setting setting = ConfigKit.get(Setting.class);
         if (StrUtil.isNotBlank(cookie)) {
             setting.setCookieDouYin(cookie);
         }

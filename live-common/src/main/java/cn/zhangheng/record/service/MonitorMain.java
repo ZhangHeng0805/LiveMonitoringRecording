@@ -536,9 +536,11 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         }
 //            content += "\t\n ![直播封面](data:image/jpeg;base64," + Base64Encoder.encode(HttpUtil.downloadBytes(room.getCover())) + ")";
         String footer = "\t\n------\t\n"
-                + "\t\n **个人链接:**\t [微信公众号](" + Constant.WeChatOfficialAccount + ") / [Bilibili](https://b23.tv/fmqmfNv)"
-//                    + " / [抖音](https://v.douyin.com/cubL5sg7sNE/)"
-                + " / [程序项目](https://github.com/ZhangHeng0805/LiveMonitoringRecording)";
+                + "\t\n **个人链接:**\t " +
+                "[微信公众号](" + Constant.WeChatOfficialAccount + ")" +
+                " / [Bilibili](https://b23.tv/fmqmfNv)"
+                    + " / [直播监控平台](https://zhangheng0805.github.io/LiveMonitoringRecordingPage/?redirect=redirect/json/config.json)"
+                + " / [程序源码](https://github.com/ZhangHeng0805/LiveMonitoringRecording)";
 
         String msg = title + content + footer;
 

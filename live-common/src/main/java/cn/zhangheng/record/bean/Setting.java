@@ -24,31 +24,8 @@ import java.nio.charset.StandardCharsets;
 @Data
 @PropertiesConfig(path = Constant.Setting_Name)
 public class Setting {
-    private static volatile Setting setting;
 
     private Setting() {
-
-    }
-    private void loadConfig() {
-        //自动加载配置
-        ConfigLoader.load(this);
-    }
-
-    public static Setting getInstance() {
-        return getInstance(false);
-    }
-
-    public static synchronized Setting getInstance(boolean isRefresh) {
-        // 第一次创建实例
-        if (setting == null) {
-            setting = new Setting();
-            setting.loadConfig();
-        }
-        // 复用对象重新加载配置（不新建实例，避免多对象）
-        if (isRefresh) {
-            setting.loadConfig();
-        }
-        return setting;
     }
 
     /**

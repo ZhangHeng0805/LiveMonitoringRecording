@@ -16,32 +16,8 @@ import lombok.Data;
 @Data
 @PropertiesConfig(path = "cpolar.setting")
 public class CpolarSetting {
-    private static volatile CpolarSetting setting;
 
     private CpolarSetting() {
-
-    }
-
-    private void loadConfig() {
-        //自动加载配置
-        ConfigLoader.load(this);
-    }
-
-    public static CpolarSetting getInstance() {
-        return getInstance(false);
-    }
-
-    public static synchronized CpolarSetting getInstance(boolean isRefresh) {
-        // 第一次创建实例
-        if (setting == null) {
-            setting = new CpolarSetting();
-            setting.loadConfig();
-        }
-        // 复用对象重新加载配置（不新建实例，避免多对象）
-        if (isRefresh) {
-            setting.loadConfig();
-        }
-        return setting;
     }
 
     @JmxAttribute(desc = "程序路径")

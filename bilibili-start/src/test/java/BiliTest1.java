@@ -1,5 +1,6 @@
 import cn.zhangheng.bilibili.BiliMain;
 import cn.zhangheng.bilibili.bean.BiliRoom;
+import cn.zhangheng.common.setting.ConfigKit;
 import cn.zhangheng.record.bean.Setting;
 
 /**
@@ -12,7 +13,7 @@ import cn.zhangheng.record.bean.Setting;
 public class BiliTest1 {
     public static void main(String[] args) throws Exception {
 
-        BiliMain biliMain = new BiliMain(Setting.getInstance());
+        BiliMain biliMain = new BiliMain(ConfigKit.get(Setting.class));
 
         //小兰花2号-1842356262
         //哔哩哔哩王者荣耀赛事-55

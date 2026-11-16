@@ -4,6 +4,7 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
+import cn.zhangheng.common.setting.ConfigKit;
 import cn.zhangheng.lmr.service.CpolarToolStarter;
 import cn.zhangheng.lmr.service.LocalHttpServerStarter;
 import cn.zhangheng.lmr.service.ServerStarterManager;
@@ -62,7 +63,7 @@ public class FileModeMain {
     private static final ConcurrentHashMap<Room.Platform, Integer> platformMap = new ConcurrentHashMap<>();
     private static final ServerStarterManager starterManager = new ServerStarterManager();
     private static final AtomicInteger runCount = new AtomicInteger(0);
-    private static final Setting setting = Setting.getInstance();
+    private static final Setting setting = ConfigKit.get(Setting.class);
 
     public static void main(String[] args) throws Exception {
         try {
