@@ -184,7 +184,7 @@ public class BrowserUtil {
             // 1. 定义响应匹配规则：Predicate<Request>
             Predicate<Response> requestPredicate = response -> {
                 for (String prefix : target_request_prefix) {
-                    if (response.url().startsWith(prefix) && StrUtil.isNotBlank(response.text())) {
+                    if (response.url().startsWith(prefix)) {
                         return true;
                     }
                 }

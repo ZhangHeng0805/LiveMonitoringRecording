@@ -1,9 +1,6 @@
 package cn.zhangheng.record.util;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.Charset;
@@ -42,14 +39,15 @@ public class RequestUtils {
     public static String responseAsString(HttpURLConnection connection, Charset charset) throws IOException {
         String encoding = connection.getContentEncoding();
         try (InputStream inputStream = connection.getResponseCode() == HttpURLConnection.HTTP_OK ? connection.getInputStream() : connection.getErrorStream();
-             InputStream in = "gzip".equalsIgnoreCase(encoding) ? new GZIPInputStream(inputStream) : inputStream;
-             BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(in, charset))) {
-            StringBuilder result = new StringBuilder(4096);
-            String line;
-            while ((line = bufferedReader.readLine()) != null) {
-                result.append(line);
+             InputStream in = "gzip".equalsIgnoreCase(encoding) ? new GZIPInputStream(inputStream) : inputStream) {
+
+            ByteArrayOutputStream bos = new ByteArrayOutputStream(4096);
+            byte[] buf = new byte[4096];
+            int len;
+            while ((len = in.read(buf)) != -1) {
+                bos.write(buf, 0, len);
             }
-            return result.toString();
+            return bos.toString(charset.name());
         }
     }
 
