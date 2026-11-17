@@ -5,18 +5,14 @@ import cn.hutool.core.util.RandomUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import cn.zhangheng.common.util.UserAgentUtil;
-import cn.zhangheng.record.util.RequestUtils;
-import com.zhangheng.util.HttpURLConnectionUtil;
+import cn.zhangheng.record.okhttp.OkHttpUtil;
+import cn.zhangheng.record.util.HttpHeaderUtil;
 import com.zhangheng.util.ThrowableUtil;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import okhttp3.Response;
 
-import java.net.HttpURLConnection;
-import java.util.HashMap;
-import java.util.Map;
+import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * @author: ZhangHeng
@@ -27,58 +23,40 @@ import java.util.regex.Pattern;
  */
 @Slf4j
 public class DouYinAPITools {
-    @Getter
-    private String cookie, userAgent;
-    private final String domain;
+    private String cookie;
+    private final HttpHeaderUtil headerUtil;
     private final AtomicInteger count = new AtomicInteger(0);
     private static final UserAgentUtil userAgentUtil = UserAgentUtil.create(true);
-    private final Map<String, String> headers = new HashMap<>();
     private int refreshCount;
-    private final Pattern CHROME_VER_PATTERN = Pattern.compile("Chrome/(\\d+)");
 
     public int getCount() {
         return count.get();
     }
 
     public DouYinAPITools(String domain) {
-        this.domain = domain;
-        headers.put("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8");
-        headers.put("Accept-Language", "zh-CN,zh;q=0.9");
-        headers.put("cache-control", "max-age=0");
-        headers.put("Referer", domain);
+        this.headerUtil = new HttpHeaderUtil(domain);
         refresh();
     }
 
     public String fetchCookie() {
-        HttpURLConnection connection = null;
-        try {
-            headers.remove("Cookie");
-            connection = RequestUtils.getRequest(domain, headers);
-            return HttpURLConnectionUtil.parseCookie(connection.getHeaderFields());
+        headerUtil.removeCookie();
+        try (Response response = OkHttpUtil.getResponse(headerUtil.getDomain(), headerUtil.getHeaders())) {
+            return OkHttpUtil.parseResponseCookie(response);
         } catch (Exception e) {
             log.error("刷新cookie错误:{}", ThrowableUtil.getAllCauseMessage(e));
-        } finally {
-            if (connection != null) {
-                connection.disconnect();
-            }
         }
         return null;
     }
 
     public String fetchBody(String url) {
-        String cookie = getCookie() + "; __ac_nonce=0123407cc00a9e438deb4; msToken=" + msToken();
-        headers.put("Cookie", cookie);
-        HttpURLConnection connection = null;
+        String cookieStr = cookie + "; __ac_nonce=0123407cc00a9e438deb4; msToken=" + msToken();
+        headerUtil.setCookie(cookieStr);
         try {
-            connection = RequestUtils.getRequest(url, headers);
-            return RequestUtils.responseAsString(connection);
-        } catch (Exception e) {
+            return OkHttpUtil.getResponseBody(url, headerUtil.getHeaders());
+        } catch (IOException e) {
             log.error("请求失败！{}", ThrowableUtil.getAllCauseMessage(e));
         } finally {
             count.incrementAndGet();
-            if (connection != null) {
-                connection.disconnect();
-            }
             if (getCount() % refreshCount == 0) {
                 refresh();
             }
@@ -88,9 +66,8 @@ public class DouYinAPITools {
 
     private void refresh() {
         refreshCount = RandomUtil.randomInt(50, 100);
-        userAgent = userAgentUtil.get();
-        headers.put("User-Agent", userAgent);
-        refreshSecHeader(userAgent);
+        headerUtil.setUserAgent(userAgentUtil.get());
+        headerUtil.setSecHeader();
         String fetchCookie = fetchCookie();
         if (fetchCookie != null) {
             cookie = fetchCookie;
@@ -99,27 +76,6 @@ public class DouYinAPITools {
         }
     }
 
-    private void refreshSecHeader(String ua) {
-        Matcher m = CHROME_VER_PATTERN.matcher(ua);
-        String majorVer = "140";
-        if (m.find()) {
-            majorVer = m.group(1);
-        }
-        boolean isEdge = ua.contains("Edg/");
-        boolean isMac = ua.contains("Macintosh");
-
-        String secChUa;
-        if (isEdge) {
-            secChUa = "\"Chromium\";v=\"" + majorVer + "\", \"Not-A.Brand\";v=\"99\", \"Microsoft Edge\";v=\"" + majorVer + "\"";
-        } else {
-            secChUa = "\"Chromium\";v=\"" + majorVer + "\", \"Not-A.Brand\";v=\"99\", \"Google Chrome\";v=\"" + majorVer + "\"";
-        }
-        String platform = isMac ? "\"macOS\"" : "\"Windows\"";
-        String secChUaMobile = "?0";
-        headers.put("sec-ch-ua", secChUa);
-        headers.put("sec-ch-ua-platform", platform);
-        headers.put("sec-ch-ua-mobile", secChUaMobile);
-    }
 
     public static JSONObject extractRoomJson(String pageBody) {
         String sub1 = pageBody.substring(pageBody.lastIndexOf("\\\"roomStore\\\":") + 14);
@@ -141,7 +97,7 @@ public class DouYinAPITools {
 //        String url = "https://www.douyin.com/note/7694202898867991537";
         String url = "https://live.douyin.com/381351302222";
         DouYinAPITools utils = new DouYinAPITools(domain);
-        System.out.println(utils.getCookie());
+        System.out.println(utils.cookie);
 //        System.out.println(utils.headers);
         String x = utils.fetchBody(url);
         System.out.println(x);

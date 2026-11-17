@@ -8,8 +8,6 @@ import java.net.URL;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static cn.zhangheng.common.util.UserAgentUtil.PC_VIEWPORTS;
-
 
 /**
  * @author: ZhangHeng
@@ -19,6 +17,8 @@ import static cn.zhangheng.common.util.UserAgentUtil.PC_VIEWPORTS;
  * @description:
  */
 public class DouYinUtil {
+    private static final Pattern DouyinLinkPattern = Pattern.compile("https://[a-zA-Z0-9.]+douyin\\.com/[^\\s]+");
+
     /**
      * 从字符串中提取抖音链接
      *
@@ -27,13 +27,7 @@ public class DouYinUtil {
      */
     public static String extractDouyinLink(String input) {
         if (input == null || input.isEmpty()) return null;
-        // 正则表达式：匹配以https://v.douyin.com/开头，后面跟非空白字符的链接
-//        String regex = "https://v\\.douyin\\.com/[\\w\\-]+/?";
-        String regex = "https://[\\w\\.]+douyin\\.com/[\\w\\-/?&=]+";
-
-        // 编译正则表达式
-        Pattern pattern = Pattern.compile(regex);
-        Matcher matcher = pattern.matcher(input);
+        Matcher matcher = DouyinLinkPattern.matcher(input);
 
         // 查找匹配的链接
         if (matcher.find()) {
@@ -82,7 +76,6 @@ public class DouYinUtil {
         }
         return null;
     }
-
 
 
 }

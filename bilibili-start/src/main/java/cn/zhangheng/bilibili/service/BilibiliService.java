@@ -3,8 +3,8 @@ package cn.zhangheng.bilibili.service;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import cn.zhangheng.bilibili.bean.BiliRoom;
+import cn.zhangheng.record.okhttp.OkHttpUtil;
 import cn.zhangheng.record.service.RoomService;
-import cn.zhangheng.record.util.HttpUtils;
 import com.zhangheng.util.TimeUtil;
 import com.zhangheng.util.UserAgentUtil;
 
@@ -97,8 +97,7 @@ public class BilibiliService extends RoomService<BiliRoom> {
     public void room_init_living() {
         String url = "https://api.live.bilibili.com/room/v1/Room/room_init?id=" + room.getId();
         try {
-            HttpUtils.HttpResponse response = HttpUtils.get(url, header);
-            String body = response.getBody();
+            String body = OkHttpUtil.getResponseBody(url, header);
             if (JSONUtil.isTypeJSON(body)) {
                 JSONObject entries = JSONUtil.parseObj(body);
                 Integer code = entries.getInt("code");
@@ -116,7 +115,7 @@ public class BilibiliService extends RoomService<BiliRoom> {
                     throw new RuntimeException(room.getPlatform().getName() + " [" + room.getId() + "]刷新异常：" + msg);
                 }
             } else {
-                log.warn("room_init_living<{}>请求失败：{}", room.getId(), response);
+                log.warn("room_init_living<{}>请求失败：{}", room.getId(), body);
             }
         } catch (Exception e) {
             throw new RuntimeException("room_init_living", e);
@@ -126,8 +125,7 @@ public class BilibiliService extends RoomService<BiliRoom> {
     private void room_info() {
         String url = "https://api.live.bilibili.com/room/v1/Room/get_info?id=" + room.getId();
         try {
-            HttpUtils.HttpResponse response = HttpUtils.get(url, header);
-            String body = response.getBody();
+            String body = OkHttpUtil.getResponseBody(url, header);
             if (JSONUtil.isTypeJSON(body)) {
                 JSONObject entries = JSONUtil.parseObj(body);
                 if (entries.getInt("code") == 0) {
@@ -152,7 +150,7 @@ public class BilibiliService extends RoomService<BiliRoom> {
                     log.warn("room_info失败：{}", entries.getStr("message"));
                 }
             } else {
-                log.warn("room_info<{}>请求失败：{}", room.getId(), response);
+                log.warn("room_info<{}>请求失败：{}", room.getId(), body);
             }
         } catch (Exception e) {
             throw new RuntimeException("room_info", e);
@@ -162,8 +160,7 @@ public class BilibiliService extends RoomService<BiliRoom> {
     private void user_info() {
         String url = "https://api.live.bilibili.com/live_user/v1/Master/info?uid=" + room.getUid();
         try {
-            HttpUtils.HttpResponse response = HttpUtils.get(url, header);
-            String body = response.getBody();
+            String body = OkHttpUtil.getResponseBody(url, header);
             if (JSONUtil.isTypeJSON(body)) {
                 JSONObject entries = JSONUtil.parseObj(body);
                 if (entries.getInt("code") == 0) {
@@ -176,7 +173,7 @@ public class BilibiliService extends RoomService<BiliRoom> {
                     log.warn("user_info失败：{}", entries.getStr("message"));
                 }
             } else {
-                log.warn("user_info<{}>请求失败：{}", room.getId(), response);
+                log.warn("user_info<{}>请求失败：{}", room.getId(), body);
             }
         } catch (Exception e) {
             throw new RuntimeException("user_info", e);
@@ -187,8 +184,7 @@ public class BilibiliService extends RoomService<BiliRoom> {
     private void room_stream() {
         String url = "https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo?protocol=0&format=0&codec=0&qn=30000&room_id=" + room.getRoom_id();
         try {
-            HttpUtils.HttpResponse response = HttpUtils.get(url, header);
-            String body = response.getBody();
+            String body = OkHttpUtil.getResponseBody(url, header);
             if (JSONUtil.isTypeJSON(body)) {
                 JSONObject entries = JSONUtil.parseObj(body);
                 if (entries.getInt("code") == 0) {
@@ -206,7 +202,7 @@ public class BilibiliService extends RoomService<BiliRoom> {
                     log.warn("room_stream失败：{}", entries.getStr("message"));
                 }
             } else {
-                log.warn("room_stream<{}>请求失败：{}", room.getId(), response);
+                log.warn("room_stream<{}>请求失败：{}", room.getId(), body);
             }
         } catch (Exception e) {
             throw new RuntimeException("room_stream", e);

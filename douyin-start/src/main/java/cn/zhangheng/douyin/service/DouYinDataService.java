@@ -11,14 +11,15 @@ import cn.zhangheng.douyin.browser.DouyinPlaywright;
 import cn.zhangheng.douyin.browser.factory.DouYinDataHandler;
 import cn.zhangheng.record.bean.Setting;
 import cn.zhangheng.record.bean.enums.RunMode;
-import cn.zhangheng.record.util.RequestUtils;
+import cn.zhangheng.record.okhttp.OkHttpUtil;
 import com.zhangheng.util.ThrowableUtil;
 import lombok.extern.slf4j.Slf4j;
+import okhttp3.Response;
 
-import java.net.HttpURLConnection;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * @author: ZhangHeng
@@ -99,10 +100,8 @@ public class DouYinDataService {
         if (url == null) {
             init();
         }
-        HttpURLConnection connection = null;
-        try {
-            connection = RequestUtils.getRequest(url, headers);
-            String body = RequestUtils.responseAsString(connection);
+        try (Response response = OkHttpUtil.getResponse(url, headers)){
+            String body = Objects.requireNonNull(response.body()).string();
             if (JSONUtil.isTypeJSON(body)) {
                 JSONObject entries = JSONUtil.parseObj(body);
                 JSONObject data = entries.getJSONObject("data");
@@ -158,16 +157,11 @@ public class DouYinDataService {
                     }
                 }
             } else {
-                int responseCode = -1;
-                responseCode = connection.getResponseCode();
+                int responseCode = response.code();
                 System.err.println(Thread.currentThread().getName() + "-" + responseCode + ": " + body);
             }
         } catch (Exception e) {
             log.error("请求刷新失败！{}", ThrowableUtil.getAllCauseMessage(e));
-        } finally {
-            if (connection != null) {
-                connection.disconnect();
-            }
         }
     }
 

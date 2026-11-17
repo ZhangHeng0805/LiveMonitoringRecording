@@ -13,20 +13,14 @@ import cn.zhangheng.common.cache.CacheWithOnceLoadHelper;
 import cn.zhangheng.douyin.bean.work.DouYinWork;
 import cn.zhangheng.douyin.bean.work.DouYinWorkCounter;
 import cn.zhangheng.douyin.util.DouYinUtil;
-import cn.zhangheng.record.bean.Setting;
 import cn.zhangheng.record.bean.work.Author;
 import cn.zhangheng.record.bean.work.Work;
-import cn.zhangheng.record.util.RequestUtils;
-import cn.zhangheng.common.util.UserAgentUtil;
+import cn.zhangheng.record.okhttp.OkHttpShortLinkUtil;
 import com.microsoft.playwright.*;
-import com.microsoft.playwright.options.WaitForSelectorState;
 import com.microsoft.playwright.options.WaitUntilState;
-import com.zhangheng.util.ThrowableUtil;
 import com.zhangheng.util.TimeUtil;
 import lombok.extern.slf4j.Slf4j;
 
-import java.io.IOException;
-import java.net.HttpURLConnection;
 import java.util.*;
 
 /**
@@ -42,13 +36,10 @@ public class DouYinVideoParse {
     private static final String urlVideoPrefix = "https://www.douyin.com/aweme/v1/web/aweme/detail/";
     private static final String urlImagePrefix = "https://www.douyin.com/aweme/v1/web/mix/aweme/";
     private static final String urlImagePrefix2 = "https://www.douyin.com/aweme/v1/web/aweme/post/";
-//    private static final TimedCache<String, DouYinWork> timedCache = CacheUtil.newTimedCache(1000 * 60 * 10);
 
     private static final CacheWithOnceLoadHelper<String, DouYinWork> queryHelper;
 
     static {
-        //每5min后台扫描清理过期
-//        timedCache.schedulePrune(60_000 * 5);
         queryHelper = CacheWithOnceLoadHelper.<String, DouYinWork>builder(DouYinVideoParse::parse)
                 .cacheExpireMs(10 * 60_000)
                 .loadTimeoutMs(60_000)
@@ -90,7 +81,7 @@ public class DouYinVideoParse {
         }
         String key;
         try {
-            key = DouYinUtil.getFinalUrl(link).substring(0, link.indexOf("/?"));
+            key = OkHttpShortLinkUtil.resolveShortUrl(link).substring(0, link.indexOf("/?"));
         } catch (Exception e) {
             key = link;
         }
@@ -142,48 +133,6 @@ public class DouYinVideoParse {
         } else {
             throw new RuntimeException("未解析到作品信息");
         }
-    }
-
-
-    public static String request(BrowserAPI browserAPI) {
-        HttpURLConnection connection = null;
-        try {
-            connection = RequestUtils.getRequest(browserAPI.getDataUrl(), browserAPI.getHeaders());
-            return RequestUtils.responseAsString(connection);
-        } catch (Exception e) {
-            log.error("请求失败！{}", ThrowableUtil.getAllCauseMessage(e));
-        } finally {
-            if (connection != null) {
-                connection.disconnect();
-            }
-        }
-        return "";
-    }
-
-    public static DouYinWork parse2(String shareUrl, String userAgent) {
-        String link = DouYinUtil.extractDouyinLink(shareUrl);
-        if (link == null) {
-            return null;
-        }
-        if (userAgent == null) {
-            userAgent = UserAgentUtil.getRandomPc();
-        }
-        try (Playwright playwright = Playwright.create();
-             Browser browser = playwright.chromium().launch(BrowserUtil.getLaunchOptions(true))
-        ) {
-            BrowserContext context = browser.newContext(DouYinBrowserUtil.buildDouyinPcContextOptions(userAgent));
-            Page page = context.newPage();
-            page.addInitScript(DouYinBrowserUtil.getDouyinFingerprintScript());
-            BrowserUtil.navigatePage(link, page, WaitUntilState.LOAD);
-            String content = page.content();
-//            System.out.println(content);
-            JSONObject entries = extractHtmlJson(content);
-            System.out.println(entries);
-            return handleImageData(entries);
-        } catch (Exception e) {
-            log.error("获取抖音作品信息失败！{}", e.getMessage());
-        }
-        return null;
     }
 
 
@@ -247,46 +196,6 @@ public class DouYinVideoParse {
             }
         }
         return work;
-    }
-
-    private static void checkVideoSelectors(Page page) {
-        // 抖音直播间核心元素（优先级从高到低，可根据实际情况调整）
-        String[] liveSelectors = {
-                ".xg-video-container",
-        };
-        for (String selector : liveSelectors) {
-            try {
-//                    System.out.println("等待核心元素加载：" + selector);
-                page.waitForSelector(selector, new Page.WaitForSelectorOptions()
-                        .setState(WaitForSelectorState.VISIBLE) // 必须可见，而非仅存在
-                        .setTimeout(5_000));
-                break; // 找到任意一个核心元素即可
-            } catch (TimeoutError e) {
-                log.warn("元素 " + selector + " 加载超时，尝试下一个...");
-            }
-        }
-    }
-
-    private static String getData(BrowserAPI browserApi) {
-        String dataUrl = browserApi.getDataUrl();
-        if (dataUrl != null) {
-            Map<String, String> headers = browserApi.getHeaders();
-            headers.remove("accept-encoding");
-//            System.out.println(dataUrl);
-//            System.out.println(JSONUtil.parseObj(headers).toStringPretty());
-            HttpURLConnection connection = null;
-            try {
-                connection = RequestUtils.getRequest(dataUrl, headers);
-                return RequestUtils.responseAsString(connection);
-            } catch (IOException e) {
-                log.error(ThrowableUtil.getAllCauseMessage(e));
-            } finally {
-                if (connection != null) {
-                    connection.disconnect();
-                }
-            }
-        }
-        return null;
     }
 
     private static DouYinWork handleVideoData(String data) {

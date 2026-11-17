@@ -17,27 +17,11 @@
             <artifactId>common-libs</artifactId>
             <version>${xxxr.version}</version>
         </dependency>
-<!--        <dependency>-->
-<!--            <groupId>org.seleniumhq.selenium</groupId>-->
-<!--            <artifactId>selenium-java</artifactId>-->
-<!--            <version>4.12.0</version>-->
-<!--        </dependency>-->
-<!--        <dependency>-->
-<!--            <groupId>uk.co.caprica</groupId>-->
-<!--            <artifactId>vlcj</artifactId>-->
-<!--            <version>3.10.1</version>-->
-<!--        </dependency>-->
-<!--        <dependency>-->
-<!--            <groupId>org.openjfx</groupId>-->
-<!--            <artifactId>javafx-web</artifactId>-->
-<!--            <version>17.0.2</version>-->
-<!--        </dependency>-->
-        <!-- Java-WebSocket 客户端依赖 -->
-<!--        <dependency>-->
-<!--            <groupId>org.java-websocket</groupId>-->
-<!--            <artifactId>Java-WebSocket</artifactId>-->
-<!--            <version>1.5.4</version>-->
-<!--        </dependency>-->
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>okhttp</artifactId>
+            <version>3.14.9</version>
+        </dependency>
     </dependencies>
 
     <properties>

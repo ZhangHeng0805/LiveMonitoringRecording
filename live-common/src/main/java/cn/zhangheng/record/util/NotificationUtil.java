@@ -1,11 +1,14 @@
 package cn.zhangheng.record.util;
 
+import cn.hutool.core.map.MapUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import cn.hutool.log.Log;
 import cn.hutool.log.LogFactory;
+import cn.zhangheng.record.bean.Constant;
 import cn.zhangheng.record.bean.Setting;
+import cn.zhangheng.record.okhttp.OkHttpUtil;
 import com.zhangheng.util.ThrowableUtil;
 
 import java.awt.*;
@@ -41,18 +44,19 @@ public class NotificationUtil {
             return;
         }
         String[] urls = xiZhiUrl.split(",");
-        for (String u : urls) {
+        HashMap<String, String> headers = MapUtil.of("User-Agent", Constant.User_Agent);
+        for (int i = 0; i < urls.length; i++) {
+            String u = urls[i];
             String url = StrUtil.isBlank(u) ? null : u.trim();
             if (StrUtil.isBlank(url)) {
                 continue;
             }
-            new Thread(() -> {
+            Thread thread = new Thread(() -> {
                 HashMap<String, String> param = new HashMap<>();
                 param.put("title", title);
                 param.put("content", content);
                 try {
-                    HttpUtils.HttpResponse response = HttpUtils.postForm(url, param);
-                    String body = response.getBody();
+                    String body = OkHttpUtil.postForm(url, param, headers);
                     log.debug("息知API通知响应: {} - {}", url, body);
                     if (JSONUtil.isTypeJSON(body)) {
                         JSONObject object = JSONUtil.parseObj(body);
@@ -60,12 +64,14 @@ public class NotificationUtil {
                             log.warn("息知API消息发送异常：{} - {}", url, body);
                         }
                     } else {
-                        log.error("息知API通知错误：{} - [{}] {}", url, response.getCode(), body);
+                        log.error("息知API通知错误：{} - {}", url,  body);
                     }
                 } catch (Exception e) {
                     log.error("息知API通知失败：{} - {}", url, ThrowableUtil.getAllCauseMessage(e));
                 }
-            }).start();
+            });
+            thread.setName("XiZhiSendMsg-" + i);
+            thread.start();
         }
     }
 

@@ -4,12 +4,10 @@ import cn.zhangheng.browser.factory.MyBrowser;
 import cn.zhangheng.browser.factory.PlaywrightBrowserFactory;
 import cn.zhangheng.browser.util.BrowserUtil;
 import cn.zhangheng.douyin.util.DouYinUtil;
-import cn.zhangheng.common.util.UserAgentUtil;
-import com.microsoft.playwright.Browser;
-import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.Page;
-import com.microsoft.playwright.Playwright;
 import com.microsoft.playwright.options.WaitUntilState;
+
+import java.io.IOException;
 
 /**
  * @author: ZhangHeng
@@ -20,9 +18,10 @@ import com.microsoft.playwright.options.WaitUntilState;
  */
 public class DouYinUrlParse {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         String s = "9- #在抖音，记录美好生活#【央视纪录片频道直播】直播中 。复制下方链接，打开【抖音】，直接观看节目！ https://v.douyin.com/KmPe69CGQ1A/ 4@0.com :5pm";
-        System.out.println(DouYinUtil.extractDouyinLink(null));
+        String link = DouYinUtil.extractDouyinLink(s);
+        System.out.println(link);
         long sta = System.currentTimeMillis();
         System.out.println(parseDouyinShareLink(s));
         System.out.println("耗时：" + (System.currentTimeMillis() - sta));

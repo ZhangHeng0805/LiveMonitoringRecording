@@ -19,10 +19,14 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
+import static cn.zhangheng.record.util.RequestUtils.buildParams;
+import static cn.zhangheng.record.util.RequestUtils.setHeaders;
+
 /**
  * HttpURLConnection 封装工具类
  * 支持 GET/POST（表单/JSON）、获取响应头、响应体、响应码
  */
+@Deprecated
 public class HttpUtils {
 
     // 超时时间（毫秒）
@@ -106,31 +110,7 @@ public class HttpUtils {
 
     // ==================== 工具方法 ====================
 
-    /**
-     * 设置请求头
-     */
-    private static void setHeaders(HttpURLConnection conn, Map<String, String> headers) {
-        if (headers != null && !headers.isEmpty()) {
-            for (Map.Entry<String, String> entry : headers.entrySet()) {
-                conn.setRequestProperty(entry.getKey(), entry.getValue());
-            }
-        }
-    }
 
-    /**
-     * 拼接表单参数
-     */
-    private static String buildParams(Map<String, String> params) throws Exception {
-        if (params == null || params.isEmpty()) return "";
-        StringBuilder sb = new StringBuilder();
-        for (Map.Entry<String, String> entry : params.entrySet()) {
-            sb.append(URLEncoder.encode(entry.getKey(), charset.name()))
-                    .append("=")
-                    .append(URLEncoder.encode(entry.getValue(), charset.name()))
-                    .append("&");
-        }
-        return sb.substring(0, sb.length() - 1);
-    }
 
     /**
      * 获取响应（状态码 + 响应头 + 响应体）

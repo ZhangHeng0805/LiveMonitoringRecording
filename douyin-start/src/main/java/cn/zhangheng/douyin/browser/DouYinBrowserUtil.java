@@ -134,17 +134,21 @@ public class DouYinBrowserUtil {
             log.warn("pageSource未获取到有效内容");
             return null;
         }
-        // 提取直播状态
+        // 正则提取直播状态
         room.setLiving(extractLivingStatus(pageSource));
 
-        // 提取昵称（避免重复提取）
+        // 正则提取昵称（避免重复提取）
         if (room.getNickname() == null) {
             String nickname = extractNickname(pageSource);
             room.setNickname(nickname);
         }
         if (room.getAvatar() == null) {
-            String avatar = UnicodeUtil.toString(extractStr(pageSource, AVATAR_PATTERN, null));
-            room.setAvatar(avatar);
+            String avatarStr = extractStr(pageSource, AVATAR_PATTERN, null);
+            if (avatarStr.contains("\\u")) {
+                room.setAvatar(UnicodeUtil.toString(avatarStr.trim()));
+            } else {
+                room.setAvatar(avatarStr.trim());
+            }
         }
         return true;
     }
