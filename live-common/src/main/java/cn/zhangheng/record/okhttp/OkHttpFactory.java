@@ -24,7 +24,7 @@ public class OkHttpFactory {
                 .connectTimeout(10, TimeUnit.SECONDS)
                 .readTimeout(60, TimeUnit.SECONDS)
                 .writeTimeout(15, TimeUnit.SECONDS)
-                .callTimeout(15, TimeUnit.SECONDS)
+                .callTimeout(0, TimeUnit.SECONDS)//流式读取不要callTimeout
                 // 连接池：最大空闲5个，空闲连接保留300s
                 .connectionPool(new ConnectionPool(Constant.maxMonitorThreads, 300, TimeUnit.SECONDS))
                 // 自动跟随重定向

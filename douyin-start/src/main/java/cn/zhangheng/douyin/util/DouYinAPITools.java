@@ -51,8 +51,12 @@ public class DouYinAPITools {
     public String fetchBody(String url) {
         String cookieStr = cookie + "; __ac_nonce=0123407cc00a9e438deb4; msToken=" + msToken();
         headerUtil.setCookie(cookieStr);
-        try {
-            return OkHttpUtil.getResponseBody(url, headerUtil.getHeaders());
+        try (Response response = OkHttpUtil.getResponse(url, headerUtil.getHeaders())) {
+            return OkHttpUtil.streamSubstringByFlag(response, "\\\"homeStore\\\":", ",\\\"emojiList\\\":", 2);
+//            if (!response.isSuccessful()) {
+//                throw new IOException("http code:" + response.code());
+//            }
+//            return response.body() != null ? response.body().string() : null;
         } catch (IOException e) {
             log.error("请求失败！{}", ThrowableUtil.getAllCauseMessage(e));
         } finally {
@@ -79,7 +83,8 @@ public class DouYinAPITools {
 
     public static JSONObject extractRoomJson(String pageBody) {
         String sub1 = pageBody.substring(pageBody.lastIndexOf("\\\"roomStore\\\":") + 14);
-        String sub2 = sub1.substring(0, sub1.indexOf(",\\\"emojiList\\\":"));
+        int endIndex = sub1.indexOf(",\\\"emojiList\\\":");
+        String sub2 = sub1.substring(0, endIndex > 0 ? endIndex : sub1.length());
         String rep = sub2.replace("\\\"", "\"").replace("\\\"", "\"");
         String json = UnicodeUtil.toString(rep) + "}";
         return JSONUtil.parseObj(json);
@@ -100,7 +105,9 @@ public class DouYinAPITools {
         System.out.println(utils.cookie);
 //        System.out.println(utils.headers);
         String x = utils.fetchBody(url);
+        System.out.println(x.length());
         System.out.println(x);
+        System.out.println(DouYinAPITools.extractRoomJson(x).toStringPretty());
 //        System.out.println(extractRoomJson(x).toStringPretty());
 //        utils.refresh();
 //        System.out.println(utils.getCookie());

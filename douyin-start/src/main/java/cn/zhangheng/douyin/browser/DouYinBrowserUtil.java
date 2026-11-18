@@ -123,7 +123,7 @@ public class DouYinBrowserUtil {
             log.warn("页面源码为空，无法提取房间信息");
             return false;
         }
-        int index = pageSource.lastIndexOf("\\\"homeStore\\\":");
+        int index = pageSource.lastIndexOf("\\\"roomStore\\\":");
         if (index > 0) {
             pageSource = pageSource.substring(index);
         } else {

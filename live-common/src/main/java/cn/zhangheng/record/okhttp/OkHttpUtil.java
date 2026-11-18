@@ -2,8 +2,7 @@ package cn.zhangheng.record.okhttp;
 
 import okhttp3.*;
 
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.CharsetDecoder;
@@ -40,7 +39,7 @@ public class OkHttpUtil {
         }
     }
 
-    public static String postJson(String url, String jsonBody,Map<String, String> headers) throws IOException {
+    public static String postJson(String url, String jsonBody, Map<String, String> headers) throws IOException {
         MediaType JSON = MediaType.parse("application/json; charset=utf-8");
         RequestBody body = RequestBody.create(JSON, jsonBody);
 
@@ -59,7 +58,8 @@ public class OkHttpUtil {
             return resp.body() != null ? resp.body().string() : null;
         }
     }
-    public static String postForm(String url, Map<String, String> params,Map<String, String> headers) throws IOException {
+
+    public static String postForm(String url, Map<String, String> params, Map<String, String> headers) throws IOException {
         FormBody.Builder formBuilder = new FormBody.Builder();
         for (Map.Entry<String, String> entry : params.entrySet()) {
             formBuilder.add(entry.getKey(), entry.getValue());
@@ -110,77 +110,110 @@ public class OkHttpUtil {
     private static final int BUF_SIZE = 4096;
 
     /**
-     * 流式读取，支持提前终止，找到homeStore标记就停止读取
+     * OkHttp流式读取，取【第 matchIndex 次匹配到 startFlag】之后，直到 stopFlag
      *
-     * @param call      目标请求
-     * @param stopFlag 终止标记：\"homeStore\":
-     * @return 拼接的片段
+     * @param response        okhttp响应
+     * @param startFlag       开始标记，可为空（为空时 matchIndex 强制=1，从开头收集）
+     * @param stopFlag        结束标记，可为空
+     * @param matchStartIndex 第几次匹配，从1开始；startFlag为空时忽略该参数
+     * @param bufferSize      缓冲区大小
+     * @param maxCollectSize  收集上限，0=不限制
+     * @return 截取文本，匹配不到返回null
+     * @throws IOException IO异常
      */
-    public static String streamGetUntilFlag(Call call, String stopFlag) throws IOException {
-        try (Response resp = call.execute()) {
-            if (!resp.isSuccessful()) {
-                throw new IOException("status=" + resp.code());
-            }
-            ResponseBody body = resp.body();
-            if (body == null) {
-                return null;
-            }
-            try (InputStream in = body.byteStream()) {
-                byte[] buf = new byte[BUF_SIZE];
-                ByteBuffer byteBuffer = ByteBuffer.allocate(BUF_SIZE);
-                CharBuffer charBuffer = CharBuffer.allocate(BUF_SIZE);
-                CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder()
-                        .onMalformedInput(CodingErrorAction.REPLACE)
-                        .onUnmappableCharacter(CodingErrorAction.REPLACE);
-                StringBuilder sb = new StringBuilder();
-                int readLen;
-                while ((readLen = in.read(buf)) != -1) {
-                    byteBuffer.clear();
-                    byteBuffer.put(buf, 0, readLen);
-                    byteBuffer.flip();
-                    while (byteBuffer.hasRemaining()) {
-                        CoderResult cr = decoder.decode(byteBuffer, charBuffer, false);
-                        if (cr.isOverflow()) {
-                            charBuffer.flip();
-                            sb.append(charBuffer);
-                            charBuffer.clear();
-                        } else if (cr.isUnderflow()) {
+    public static String streamExtractByNthMatch(Response response,
+                                                 String startFlag,
+                                                 String stopFlag,
+                                                 int matchIndex,
+                                                 int bufferSize,
+                                                 int maxCollectSize) throws IOException {
+        ResponseBody body = response.body();
+        if (body == null) return null;
+        startFlag = startFlag == null ? "" : startFlag;
+        stopFlag = stopFlag == null ? "" : stopFlag;
+        int startLen = startFlag.length();
+        int stopLen = stopFlag.length();
+        if (matchIndex < 1) throw new IllegalArgumentException("matchIndex >= 1");
+
+        KMPMatcher startMatcher = startLen > 0 ? new KMPMatcher(startFlag) : null;
+        KMPMatcher stopMatcher = stopLen > 0 ? new KMPMatcher(stopFlag) : null;
+
+        // 窗口大小：buffer + 最大标记长度，保证跨块标记可以完整容纳
+        int windowSize = bufferSize + Math.max(startLen, stopLen);
+        char[] windowBuf = new char[windowSize];
+        int windowUsed = 0;
+
+        StringBuilder collectBuf = new StringBuilder();
+        int matchedCount = 0;
+        boolean inCollect = (startLen == 0);
+
+        try (Reader reader = new InputStreamReader(body.byteStream(), StandardCharsets.UTF_8)) {
+            char[] readBuf = new char[bufferSize];
+            int readLen;
+            while ((readLen = reader.read(readBuf)) != -1) {
+                // 把新数据追加到窗口尾部（窗口里前面是上一轮残留）
+                // 残留数据在windowBuf[0, windowUsed)
+                System.arraycopy(readBuf, 0, windowBuf, windowUsed, readLen);
+                windowUsed += readLen;
+
+                int scanPos = 0;
+                if (!inCollect && startMatcher != null) {
+                    while (scanPos <= windowUsed - startLen) {
+                        int pos = startMatcher.search(windowBuf, scanPos, windowUsed);
+                        if (pos == -1) break;
+                        matchedCount++;
+                        scanPos = pos + startLen;
+                        if (matchedCount == matchIndex) {
+                            inCollect = true;
                             break;
-                        } else {
-                            cr.throwException();
                         }
                     }
-                    // 【核心】读到标记就停止，不再继续read
-                    if (sb.indexOf(stopFlag) >= 0) {
-                        break;
+                }
+
+                if (inCollect && stopMatcher != null) {
+                    int stopPos = stopMatcher.search(windowBuf, scanPos, windowUsed);
+                    if (stopPos != -1) {
+                        collectBuf.append(windowBuf, scanPos, stopPos - scanPos);
+                        drainBody(body);
+                        return collectBuf.toString();
+                    } else {
+                        collectBuf.append(windowBuf, scanPos, windowUsed - scanPos);
+                        checkMaxLimit(collectBuf, maxCollectSize);
                     }
                 }
-                // 收尾解码
-                CoderResult cr;
-                do {
-                    cr = decoder.decode(byteBuffer, charBuffer, true);
-                    if (cr.isOverflow()) {
-                        charBuffer.flip();
-                        sb.append(charBuffer);
-                        charBuffer.clear();
-                    }
-                } while (cr.isOverflow());
-                cr = decoder.flush(charBuffer);
-                if (!cr.isUnderflow()) {
-                    cr.throwException();
+
+                // 保留窗口末尾 N-1 字符作为下一轮残留，覆盖到窗口头部
+                int keep = Math.min(windowUsed, Math.max(startLen, stopLen) - 1);
+                if (keep > 0) {
+                    System.arraycopy(windowBuf, windowUsed - keep, windowBuf, 0, keep);
                 }
-                charBuffer.flip();
-                sb.append(charBuffer);
-                return sb.toString();
+                windowUsed = keep;
             }
-        } finally {
-            // 如果提前break，取消call，关闭socket，不再接收剩余数据
-            if (!call.isExecuted()) {
-                call.cancel();
-            }
+            drainBody(body);
         }
+        return inCollect && collectBuf.length() > 0 ? collectBuf.toString() : null;
     }
-    /** 清洗header值，去掉okhttp不允许的特殊字符 */
+    private static void drainBody(ResponseBody body) {
+        if (body == null) return;
+        try {
+            body.source().close();
+        } catch (IOException ignored) {}
+    }
+
+    private static void checkMaxLimit(StringBuilder sb, int max) {
+        if (max <= 0) return;
+        if (sb.length() > max) throw new IllegalStateException("收集内容超过最大限制：" + max);
+    }
+
+    public static String streamSubstringByFlag(Response response, String startFlag, String stopFlag, int matchStartIndex) throws IOException {
+        if (!response.isSuccessful()) throw new IOException("http code=" + response.code());
+        if (matchStartIndex < 1) matchStartIndex = 1;
+        return streamExtractByNthMatch(response, startFlag, stopFlag, matchStartIndex, 2048, 0);
+    }
+
+    /**
+     * 清洗header值，去掉okhttp不允许的特殊字符
+     */
     public static String cleanHeaderValue(String val) {
         if (val == null) return null;
         // 替换长破折号，还有其他容易踩坑的特殊横线
@@ -192,4 +225,33 @@ public class OkHttpUtil {
         return val;
     }
 
+    static class KMPMatcher {
+        private final char[] pattern;
+        private final int[] next;
+
+        public KMPMatcher(String pat) {
+            this.pattern = pat.toCharArray();
+            int m = pattern.length;
+            next = new int[m];
+            int j = 0;
+            for (int i = 1; i < m; i++) {
+                j = next[i - 1];
+                while (j > 0 && pattern[i] != pattern[j]) j = next[j - 1];
+                if (pattern[i] == pattern[j]) j++;
+                next[i] = j;
+            }
+        }
+
+        int search(char[] src, int start, int end) {
+            int j = 0;
+            for (int i = start; i < end; i++) {
+                while (j > 0 && src[i] != pattern[j]) j = next[j - 1];
+                if (src[i] == pattern[j]) j++;
+                if (j == pattern.length) {
+                    return i - pattern.length + 1;
+                }
+            }
+            return -1;
+        }
+    }
 }
