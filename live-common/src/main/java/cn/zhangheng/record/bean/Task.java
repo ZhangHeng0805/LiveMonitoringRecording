@@ -60,11 +60,13 @@ public abstract class Task {
     public abstract void run(boolean isAsync) throws ExecutionException;
 
     public void stop(boolean force) {
-        isRunning.set(false);
-        if (force) {
-            mainExecutors.shutdownNow();
-        } else {
-            mainExecutors.shutdown();
+        if (isRunning.compareAndSet(true, false)) {
+            if (force) {
+                mainExecutors.shutdownNow();
+            } else {
+                mainExecutors.shutdown();
+            }
+            mainExecutors = null;
         }
     }
 

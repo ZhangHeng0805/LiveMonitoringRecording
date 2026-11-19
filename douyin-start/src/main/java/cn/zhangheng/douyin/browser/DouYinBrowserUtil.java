@@ -190,14 +190,14 @@ public class DouYinBrowserUtil {
                 int count = browser.getContent().getPageCount();
                 if (count % 10 == 0) {
                     PlaywrightBrowserFactory.setHeadless(true);
-                    PlaywrightBrowserFactory.destroy();
+                    PlaywrightBrowserFactory.closeBrowser();
                 }
             }
         } else {
             //为了应对手动验证码
             if (PlaywrightBrowserFactory.isHeadless()) {
                 PlaywrightBrowserFactory.setHeadless(false);
-                PlaywrightBrowserFactory.destroy();
+                PlaywrightBrowserFactory.closeBrowser();
             } else {
                 page.waitForFunction("keyword => document.title.includes(keyword)",
                         "抖音直播间",

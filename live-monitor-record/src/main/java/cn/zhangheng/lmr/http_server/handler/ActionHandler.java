@@ -182,7 +182,7 @@ public class ActionHandler extends JSONHandler {
             msg.setMessage("监听启动成功！");
         } else {
             monitorMain.setIsForceStop(true);
-            monitorMain.stop();
+            monitorMain.exit();
             msg.setMessage("标识[" + key + "]的直播监听已关闭！");
         }
 

@@ -196,7 +196,7 @@ public class PlaywrightBrowserFactory {
         if (browser == null || !browser.isConnected()) {
             // 再初始化浏览器（若失败，需关闭已创建的Playwright）
             browser = playwright.chromium().launch(BrowserUtil.getLaunchOptions(headless));
-            log.info("Chromium浏览器进程启动成功");
+            log.info("浏览器进程启动成功");
         }
         if (idleScheduler == null || idleScheduler.isShutdown()) {
             idleScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
@@ -253,13 +253,13 @@ public class PlaywrightBrowserFactory {
             // 已有倒计时，不重复创建
             return;
         }
-        log.info("所有上下文已回收，{}ms后关闭Chromium浏览器进程", BROWSER_IDLE_DELAY_MS);
+        log.info("所有上下文已回收，{}ms后关闭Browser浏览器", BROWSER_IDLE_DELAY_MS);
         idleCloseTask = idleScheduler.schedule(() -> {
             synchronized (PlaywrightBrowserFactory.class) {
                 // 二次校验：防止在等待期间又来了新任务
                 if (browsersCache != null && browsersCache.isEmpty()) {
-                    log.info("浏览器空闲超时，关闭Chromium进程");
-                    destroy();
+                    log.info("浏览器空闲超时，关闭Browser");
+                    closeBrowser();
                 }
             }
         }, BROWSER_IDLE_DELAY_MS, TimeUnit.MILLISECONDS);
@@ -275,12 +275,17 @@ public class PlaywrightBrowserFactory {
 //            log.debug("收到新任务，取消浏览器空闲关闭计时");
         }
     }
-
-    private static void closeBrowser() {
+    @JmxOperation(desc = "关闭浏览器")
+    public static void closeBrowser() {
+        if (browser == null && browsersCache == null) {
+            return;
+        }
+        cancelIdleCloseTask();
         // 先关闭浏览器（会自动关闭所有页面和上下文）
         if (isRunning()) {
             try {
                 browser.close();
+                log.info("关闭浏览器");
             } catch (Throwable e) {
                 if (e instanceof NegativeArraySizeException) {
                     log.warn("关闭浏览器失败:{}", ThrowableUtil.getAllCauseMessage(e));//忽略异常
@@ -292,17 +297,20 @@ public class PlaywrightBrowserFactory {
             }
         }
         browsersCache.clear();
+        browsersCache.cancelPruneSchedule();
+        browsersCache = null;
+        idleScheduler.shutdownNow();
+        userAgentUtil = null;
     }
 
-    @JmxOperation(desc = "销毁关闭浏览器")
+    @JmxOperation(desc = "销毁浏览器进程")
     public static synchronized void destroy() {
         if (playwright == null && browser == null && browsersCache == null) {
             return;
         }
-        cancelIdleCloseTask();
         // 先关闭浏览器（会自动关闭所有页面和上下文）
         closeBrowser();
-        // 再关闭Playwright
+        // 最后关闭Playwright
         if (playwright != null) {
             try {
                 playwright.close();
@@ -312,12 +320,6 @@ public class PlaywrightBrowserFactory {
                 playwright = null; // 标记为null
             }
         }
-        browsersCache.cancelPruneSchedule();
-        idleScheduler.shutdownNow();
-        browsersCache = null;
-        userAgentUtil = null;
-//        JmxRegisterUtil.unregister(objectName);
-//        objectName = null;
         log.info("销毁Chromium浏览器进程");
     }
 

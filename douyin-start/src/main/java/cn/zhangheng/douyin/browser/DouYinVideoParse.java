@@ -81,7 +81,8 @@ public class DouYinVideoParse {
         }
         String key;
         try {
-            key = OkHttpShortLinkUtil.resolveShortUrl(link).substring(0, link.indexOf("/?"));
+            String finalUrl = OkHttpShortLinkUtil.resolveShortUrl(link);
+            key = finalUrl.substring(0,finalUrl.indexOf("/?"));
         } catch (Exception e) {
             key = link;
         }

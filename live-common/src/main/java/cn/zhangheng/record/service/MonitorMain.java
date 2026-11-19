@@ -1,6 +1,7 @@
 package cn.zhangheng.record.service;
 
 import cn.hutool.json.JSONUtil;
+import cn.zhangheng.common.util.FileTrashUtil;
 import cn.zhangheng.record.bean.Constant;
 import cn.zhangheng.record.bean.Room;
 import cn.zhangheng.record.bean.Setting;
@@ -84,7 +85,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
     }
 
     public void stop() {
-        if (isRunning.get()) {
+        if (isRunning.compareAndSet(true,false)) {
             roomMonitor.stop(true);
         }
     }
@@ -145,7 +146,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
     private M.RoomListener<R> getRoomListener(R room) {
         NotificationUtil notificationUtil = new NotificationUtil(setting);
         String owner = room.getPlatform().getName() + "直播间: " + room.getNickname() + " [" + room.getId() + "]";
-        trayIconUtil.setPoPTitle(room.getPlatform().getName(),room.getNickname());
+        trayIconUtil.setPoPTitle(room.getPlatform().getName(), room.getNickname());
         isFliestStart = true;
         return new M.RoomListener<R>() {
             @Override
@@ -313,8 +314,8 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                 if (convert) {
                     Thread.currentThread().setName(room.getNickname() + "-FlvToMp4-" + room.getPlatform().name());
                     try {
-                        log.debug("FlvToMp4视频转换完成！删除源文件：" + path);
-                        Files.deleteIfExists(srcPath);
+                        log.debug("FlvToMp4视频转换完成！源文件：{} 放入回收站", path);
+                        FileTrashUtil.deleteOrMoveToTrash(srcPath);
                         trayIconUtil.notifyMessage("录制文件保存路径：" + output);
                     } catch (IOException e) {
                         log.error("FlvToMp4视频转换完成后删除源文件失败！" + ThrowableUtil.getAllCauseMessage(e));
@@ -466,7 +467,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             @Override
             public String openDouYinVideoParse(ActionEvent e) {
                 String mUrl = System.getProperty("monitor.url");
-                return mUrl.replace("/?","/DouYinVideoPares.html?");
+                return mUrl.replace("/?", "/DouYinVideoPares.html?");
             }
         };
     }
@@ -494,19 +495,23 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
 
     public void exit() {
         stop();
-        isRunning.set(false);
         if (recorder != null && recorder.isRunning()) {
             recordFlag.set(false);
             recorder.stop(false);
+            recorder = null;
         }
         if (recorderTask != null) {
             recorderTask.shutdown();
+            recorderTask = null;
         }
-        while (flvToMp4 != null && flvToMp4.isRunning()) {
-            try {
-                TimeUnit.SECONDS.sleep(1);
-            } catch (InterruptedException ignored) {
+        if (flvToMp4 != null) {
+            while (flvToMp4.isRunning()) {
+                try {
+                    TimeUnit.SECONDS.sleep(1);
+                } catch (InterruptedException ignored) {
+                }
             }
+            flvToMp4 = null;
         }
     }
 
@@ -539,7 +544,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                 + "\t\n **个人链接:**\t " +
                 "[微信公众号](" + Constant.WeChatOfficialAccount + ")" +
                 " / [Bilibili](https://b23.tv/fmqmfNv)"
-                    + " / [直播监控平台](https://zhangheng0805.github.io/LiveMonitoringRecordingPage/?redirect=redirect/json/config.json)"
+                + " / [直播监控平台](https://zhangheng0805.github.io/LiveMonitoringRecordingPage/?redirect=redirect/json/config.json)"
                 + " / [程序源码](https://github.com/ZhangHeng0805/LiveMonitoringRecording)";
 
         String msg = title + content + footer;
