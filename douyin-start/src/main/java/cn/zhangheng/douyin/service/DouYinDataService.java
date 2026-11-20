@@ -6,11 +6,8 @@ import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import cn.zhangheng.common.setting.ConfigKit;
 import cn.zhangheng.douyin.bean.DouYinRoom;
-import cn.zhangheng.douyin.browser.DouYinBrowserFactory;
-import cn.zhangheng.douyin.browser.DouyinPlaywright;
-import cn.zhangheng.douyin.browser.factory.DouYinDataHandler;
+import cn.zhangheng.douyin.browser.DouYinDataHandler;
 import cn.zhangheng.record.bean.Setting;
-import cn.zhangheng.record.bean.enums.RunMode;
 import cn.zhangheng.record.okhttp.OkHttpUtil;
 import com.zhangheng.util.ThrowableUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -64,23 +61,23 @@ public class DouYinDataService {
         return success;
     }
 
-    public boolean refresh2(boolean force) {
-        boolean success = false;
-        if (!room.isLiving() || room.getBrowserApi().getDataUrl() == null) {
-            if (RunMode.FILE.equals(room.getSetting().getRunMode())) {
-                success = DouYinBrowserFactory.getBrowser().request(room);
-            } else {
-                success = DouyinPlaywright.request(room);
-            }
-        }
-        if (room.isLiving() && room.getBrowserApi().getDataUrl() != null) {
-            if (RunMode.FILE.equals(room.getSetting().getRunMode())) {
-                DouYinBrowserFactory.getBrowser().closeContext();
-            }
-            getData(force);
-        }
-        return success;
-    }
+//    public boolean refresh2(boolean force) {
+//        boolean success = false;
+//        if (!room.isLiving() || room.getBrowserApi().getDataUrl() == null) {
+//            if (RunMode.FILE.equals(room.getSetting().getRunMode())) {
+//                success = DouYinBrowserFactory.getBrowser().request(room);
+//            } else {
+//                success = DouyinPlaywright.request(room);
+//            }
+//        }
+//        if (room.isLiving() && room.getBrowserApi().getDataUrl() != null) {
+//            if (RunMode.FILE.equals(room.getSetting().getRunMode())) {
+//                DouYinBrowserFactory.getBrowser().closeContext();
+//            }
+//            getData(force);
+//        }
+//        return success;
+//    }
 
 
     private void init() {

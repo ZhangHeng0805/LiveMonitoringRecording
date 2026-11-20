@@ -2,6 +2,7 @@ package cn.zhangheng.lmr.http_server.handler;
 
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
+import cn.zhangheng.browser.factory.PlaywrightBrowserFactory;
 import cn.zhangheng.douyin.browser.DouYinUrlParse;
 import cn.zhangheng.record.bean.Setting;
 import cn.zhangheng.record.httpServer.handle.JSONHandler;
@@ -9,12 +10,10 @@ import cn.zhangheng.record.service.MonitorMain;
 import cn.zhangheng.record.bean.Room;
 import cn.zhangheng.record.bean.enums.MonitorStatus;
 import cn.zhangheng.record.record.Recorder;
-import cn.zhangheng.douyin.browser.DouYinBrowserFactory;
 import cn.zhangheng.lmr.FileModeMain;
 import cn.zhangheng.lmr.Main;
 import cn.zhangheng.lmr.bean.RoomFileModel;
 import cn.zhangheng.lmr.bean.RoomJson;
-import cn.zhangheng.common.util.UserAgentUtil;
 import com.sun.net.httpserver.HttpExchange;
 import com.zhangheng.bean.Message;
 import com.zhangheng.util.ThrowableUtil;
@@ -101,20 +100,19 @@ public class ActionHandler extends JSONHandler {
                 } else {
                     msg.setCode(1);
                 }
-            } else if (indexPath.startsWith("clear")) {
+            } else if (indexPath.startsWith("destroyBrowser")) {
                 Map<String, String> query = parseQuery(httpExchange);
                 if (checkActionKey(query, msg)) {
-                    DouYinBrowserFactory.getBrowser().threadLocalClear();
-                    msg.setMessage("清理成功！");
+                    PlaywrightBrowserFactory.destroy();
+                    msg.setMessage("浏览器销毁成功！");
                 } else {
                     msg.setCode(1);
                 }
-            } else if (indexPath.startsWith("close")) {
+            } else if (indexPath.startsWith("closeBrowser")) {
                 Map<String, String> query = parseQuery(httpExchange);
                 if (checkActionKey(query, msg)) {
-                    boolean b = DouYinBrowserFactory.closeBrowser();
-                    msg.setCode(b ? 0 : 1);
-                    msg.setMessage("浏览器重启" + (b ? "成功" : "失败"));
+                    PlaywrightBrowserFactory.closeBrowser();
+                    msg.setMessage("浏览器关闭成功！");
                 } else {
                     msg.setCode(1);
                 }

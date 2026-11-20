@@ -13,7 +13,6 @@ import lombok.Setter;
 
 import javax.management.ObjectName;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
@@ -96,10 +95,8 @@ public abstract class RoomMonitor<R extends Room, S extends RoomService<R>> exte
 
     @Override
     public void run(boolean isAsync) throws ExecutionException {
-        if (mainExecutors.isShutdown() || mainExecutors.isTerminated()) {
-            mainExecutors = Executors.newFixedThreadPool(1);
-        }
-        Future<?> future = mainExecutors.submit(() -> {
+        //取池与提交在 Task 内原子完成；池已关闭时按原始工厂重建，不丢失线程命名与异常处理器
+        Future<?> future = submit(() -> {
             Thread.currentThread().setName(room.getNickname() + "-monitor-" + room.getPlatform().name());
             workerThread = Thread.currentThread();
             isRunning.set(true);
@@ -168,7 +165,8 @@ public abstract class RoomMonitor<R extends Room, S extends RoomService<R>> exte
                 isRunning.set(false);
             }
         }
-        mainExecutors.shutdown();
+        //此处不释放线程池：监听循环下一轮 run() 会复用同一条 worker 线程，
+        //池只在 stop() 中释放，避免旧线程还没退出就新建池导致同一直播间双线程刷新
     }
 
     @JmxOperation(desc = "直播间立即刷新")

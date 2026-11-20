@@ -17,13 +17,15 @@ import com.zhangheng.util.ThrowableUtil;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.*;
-import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
@@ -138,30 +140,27 @@ public class FileResourcesHandler extends JSONHandler {
 
     // 限速：字节/毫秒，0=不限速，例如 100 代表 100KB/s
     private static final long LIMIT_BYTE_PER_MS = 0;
-    private static final SimpleDateFormat GMT_DATE_FORMAT;
+    //RFC 1123 线程安全格式化器；SimpleDateFormat 非线程安全，多线程响应下会解析错乱
+    private static final DateTimeFormatter GMT_DATE_FORMAT =
+            DateTimeFormatter.RFC_1123_DATE_TIME.withLocale(Locale.US).withZone(ZoneOffset.UTC);
     private static final int BUFFER_SIZE = 1024 * 8; //缓冲区，优化大文件IO
-    static {
-        GMT_DATE_FORMAT = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
-        GMT_DATE_FORMAT.setTimeZone(TimeZone.getTimeZone("GMT"));
-    }
     public void responseFile(HttpExchange httpExchange, File file) throws IOException {
         Path filePath = file.toPath();
         Headers reqHeaders = httpExchange.getRequestHeaders();
         Headers respHeaders = httpExchange.getResponseHeaders();
-        String uriPath = URLDecoder.decode(httpExchange.getRequestURI().toString(),charset.name());
         String ua = reqHeaders.getFirst("User-Agent");
-        log.debug("{} 请求[{}]:{}", getClientIP(httpExchange), uriPath, ua);
+        log.debug("{} 文件请求[{}]:{}", getClientIP(httpExchange), filePath, ua);
 
         if (!file.exists() || file.isDirectory()) {
+            //交换对象由 MyHandler.handle() 的 finally 统一关闭，此处不再重复 close
             httpExchange.sendResponseHeaders(404, -1);
-            httpExchange.close();
             return;
         }
 
         long totalSize = file.length();
         BasicFileAttributes attr = Files.readAttributes(filePath, BasicFileAttributes.class);
         long lastModifyTime = attr.lastModifiedTime().toMillis();
-        String lastModifyGMT = GMT_DATE_FORMAT.format(new Date(lastModifyTime));
+        String lastModifyGMT = GMT_DATE_FORMAT.format(Instant.ofEpochMilli(lastModifyTime));
         String etag = "\"" + totalSize + "-" + lastModifyTime + "\"";
 
         // 协商缓存：304 无需返回文件
@@ -172,18 +171,19 @@ public class FileResourcesHandler extends JSONHandler {
             cacheHit = true;
         } else if (StrUtil.isNotBlank(ifModifiedSince)) {
             try {
-                Date reqDate = GMT_DATE_FORMAT.parse(ifModifiedSince);
-                if (reqDate.getTime() >= lastModifyTime) {
+                //HTTP 日期只精确到秒，按秒比较，避免毫秒误差让 304 失效
+                long reqSecond = ZonedDateTime.parse(ifModifiedSince, GMT_DATE_FORMAT).toInstant().getEpochSecond();
+                if (reqSecond >= lastModifyTime / 1000) {
                     cacheHit = true;
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
         }
         if (cacheHit) {
             respHeaders.set("ETag", etag);
             respHeaders.set("Last-Modified", lastModifyGMT);
             respHeaders.set("Cache-Control", "public, max-age=86400");
             httpExchange.sendResponseHeaders(304, -1);
-            httpExchange.close();
             return;
         }
 
@@ -215,17 +215,26 @@ public class FileResourcesHandler extends JSONHandler {
         boolean isRangeRequest = false;
         if (StrUtil.isNotBlank(rangeHeader) && rangeHeader.startsWith("bytes=")) {
             try {
-                String rangeVal = rangeHeader.substring(6);
-                String[] parts = rangeVal.split("-");
-                start = Long.parseLong(parts[0]);
-                if (parts.length > 1 && StrUtil.isNotBlank(parts[1])) {
-                    end = Long.parseLong(parts[1]);
+                String rangeVal = rangeHeader.substring(6).trim();
+                // 多段 Range 暂不支持，按全量返回
+                if (rangeVal.contains(",")) throw new IllegalArgumentException("不支持多段Range");
+                String[] parts = rangeVal.split("-", -1);
+                if (parts.length > 1 && StrUtil.isBlank(parts[0]) && StrUtil.isNotBlank(parts[1])) {
+                    // 后缀范围：bytes=-500 表示最后 500 字节
+                    long suffixLen = Long.parseLong(parts[1].trim());
+                    start = Math.max(0, totalSize - suffixLen);
+                } else if (StrUtil.isNotBlank(parts[0])) {
+                    start = Long.parseLong(parts[0].trim());
+                    if (parts.length > 1 && StrUtil.isNotBlank(parts[1])) {
+                        end = Long.parseLong(parts[1].trim());
+                    }
+                } else {
+                    throw new IllegalArgumentException("Range格式不合法");
                 }
                 // 边界校验
                 if (start > totalSize - 1) {
                     // 范围超出文件，返回416
                     httpExchange.sendResponseHeaders(416, -1);
-                    httpExchange.close();
                     return;
                 }
                 end = Math.min(end, totalSize - 1);
@@ -249,9 +258,13 @@ public class FileResourcesHandler extends JSONHandler {
         }
 
         // 分片读取输出，不会一次性加载整个文件
+        // 客户端拖拽进度条/暂停/关闭连接导致的 IOException 属正常现象，不按错误上报
         try (RandomAccessFile raf = new RandomAccessFile(filePath.toFile(), "r")) {
             raf.seek(start);
             copyWithLimit(raf, httpExchange.getResponseBody(), start, end);
+        } catch (IOException e) {
+            if (httpExchange.getResponseCode() == -1) throw e;
+            log.debug("{} 下载中断{}[{}-{}]:{}", getClientIP(httpExchange),filePath, start, end, e.getMessage());
         }
 
     }

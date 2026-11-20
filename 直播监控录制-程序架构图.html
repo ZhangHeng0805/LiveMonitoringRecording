@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LiveMonitoringRecording · 程序架构图</title>
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap">
+<style>
+  :root{
+    --ink:#14181f; --ink2:#4a5563; --ink3:#7b8794; --line:#e3e8ef; --bg:#f5f7fa; --card:#ffffff;
+    --l0:#b26a00; --l0bg:#fdf3e3;
+    --l1:#1d4ed8; --l1bg:#e8efff;
+    --l2:#0f766e; --l2bg:#e6f6f3;
+    --l3:#6d28d9; --l3bg:#f1ebff;
+    --l4:#be123c; --l4bg:#fdecef;
+    --l5:#475569; --l5bg:#eef1f5;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei","Segoe UI",system-ui,sans-serif;
+    font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1320px;margin:0 auto;padding:36px 28px 64px}
+
+  header{border-bottom:1px solid var(--line);padding-bottom:22px;margin-bottom:28px}
+  h1{margin:0 0 8px;font-size:27px;font-weight:700;letter-spacing:-.3px}
+  .sub{color:var(--ink2);font-size:14.5px;margin:0 0 14px}
+  .badges{display:flex;flex-wrap:wrap;gap:8px}
+  .badge{font-size:12px;padding:3px 9px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--ink2)}
+  .badge b{color:var(--ink);font-weight:600}
+
+  h2{font-size:17px;margin:38px 0 14px;padding-left:11px;border-left:3px solid var(--ink);line-height:1.2}
+  h2 small{font-weight:400;color:var(--ink3);font-size:12.5px;margin-left:8px}
+
+  /* ===== 分层图 ===== */
+  .flowcol{position:relative}
+  .layer{display:grid;grid-template-columns:150px 1fr;gap:16px;align-items:stretch}
+  .rail{border-radius:10px;padding:14px 14px 14px 16px;display:flex;flex-direction:column;justify-content:center;position:relative}
+  .rail .code{font-size:11px;letter-spacing:.16em;opacity:.85;font-weight:600}
+  .rail .name{font-size:15.5px;font-weight:700;line-height:1.35;margin-top:3px}
+  .rail .note{font-size:11.5px;opacity:.9;margin-top:6px;line-height:1.45}
+  .body{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:13px 13px 9px;
+    display:flex;flex-wrap:wrap;gap:9px;align-content:flex-start;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+  .node{flex:1 1 232px;min-width:210px;max-width:100%;border:1px solid var(--line);border-left:3px solid var(--ink3);
+    border-radius:7px;padding:8px 11px 9px;background:#fff}
+  .node .t{font-weight:600;font-size:13.2px;line-height:1.4}
+  .node .d{color:var(--ink2);font-size:12px;line-height:1.5;margin-top:3px}
+  .node .m{color:var(--ink3);font-size:11px;margin-top:4px;font-family:ui-monospace,Consolas,monospace}
+
+  .l0 .rail{background:var(--l0bg);color:var(--l0);border:1px solid #f1d5a8}
+  .l0 .node{border-left-color:var(--l0)}
+  .l1 .rail{background:var(--l1bg);color:var(--l1);border:1px solid #c5d4ff}
+  .l1 .node{border-left-color:var(--l1)}
+  .l2 .rail{background:var(--l2bg);color:var(--l2);border:1px solid #b6e0d8}
+  .l2 .node{border-left-color:var(--l2)}
+  .l3 .rail{background:var(--l3bg);color:var(--l3);border:1px solid #d8cafa}
+  .l3 .node{border-left-color:var(--l3)}
+  .l4 .rail{background:var(--l4bg);color:var(--l4);border:1px solid #f8c6d0}
+  .l4 .node{border-left-color:var(--l4)}
+  .l5 .rail{background:var(--l5bg);color:var(--l5);border:1px solid #d3dae3}
+  .l5 .node{border-left-color:var(--l5)}
+
+  /* 层间连接条 */
+  .link{display:grid;grid-template-columns:150px 1fr;gap:16px;align-items:center;height:38px}
+  .link .arrow{grid-column:2;display:flex;align-items:center;gap:10px;color:var(--ink3);font-size:12px}
+  .link .arrow .bar{width:1px;height:38px;background:linear-gradient(180deg,transparent,var(--line) 30%,var(--line) 70%,transparent);position:relative;flex:0 0 auto}
+  .link .arrow .bar::after{content:"";position:absolute;left:-3px;bottom:6px;width:7px;height:7px;
+    border-right:1.5px solid var(--line);border-bottom:1.5px solid var(--line);transform:rotate(45deg)}
+  .link .arrow span{background:#fff;border:1px dashed var(--line);border-radius:999px;padding:1px 9px}
+
+  /* 外部依赖 */
+  .ext{display:flex;flex-wrap:wrap;gap:9px}
+  .ext .e{background:#fff;border:1px solid var(--line);border-radius:7px;padding:7px 11px;font-size:12.2px;color:var(--ink2)}
+  .ext .e b{color:var(--ink);font-weight:600}
+
+  /* ===== 链路 ===== */
+  .flows{display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:14px}
+  .flow{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+  .flow h3{margin:0 0 4px;font-size:13.6px;display:flex;gap:9px;align-items:baseline}
+  .num{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;border-radius:5px;
+    background:var(--ink);color:#fff;font-size:11px;font-weight:700;flex:0 0 auto}
+  .flow .why{color:var(--ink3);font-size:11.6px;margin:0 0 9px}
+  .chain{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12.1px}
+  .chain i{color:var(--ink3);font-style:normal}
+  .step{background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:2px 7px;color:var(--ink)}
+  .step b{font-weight:600}
+  .step.em{background:#fff7ea;border-color:#f0d8ac}
+
+  /* ===== 表 ===== */
+  table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:12.8px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:#f8fafc;font-weight:600;font-size:12px;color:var(--ink2)}
+  tr:last-child td{border-bottom:0}
+  td .mono{font-family:ui-monospace,Consolas,monospace;font-size:11.6px;color:var(--ink2)}
+  .tag{font-size:10.8px;padding:1px 6px;border-radius:4px;border:1px solid var(--line);color:var(--ink2);margin-left:6px;white-space:nowrap}
+  .tag.run{background:#eaf7ee;border-color:#bfe3ca;color:#166534}
+  .tag.lib{background:#eef1f5;border-color:#d5dbe4;color:#475569}
+
+  .risk{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+  .rk{background:#fff;border:1px solid var(--line);border-left:3px solid #d97706;border-radius:8px;padding:11px 13px}
+  .rk .t{font-weight:600;font-size:13px;margin-bottom:3px}
+  .rk .d{color:var(--ink2);font-size:12.2px}
+
+  footer{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);color:var(--ink3);font-size:11.6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>LiveMonitoringRecording · 程序架构图</h1>
+  <p class="sub">多平台（抖音 / B站 / 快手）直播间监控 · 自动录制 · 弹幕字幕 · 本地可视化控制台 —— 单进程、多直播间、单机部署的 Java 桌面/后台常驻程序</p>
+  <div class="badges">
+    <span class="badge"><b>JDK</b> 1.8</span>
+    <span class="badge"><b>构建</b> Maven 多模块 + shade 单 jar</span>
+    <span class="badge"><b>入口</b> FileModeMain（目录批处理） / Main（命令行）</span>
+    <span class="badge"><b>形态</b> 托盘常驻 + 本地 HTTP 控制台</span>
+    <span class="badge"><b>外部进程</b> Chromium(Playwright) · ffmpeg · cpolar</span>
+  </div>
+</header>
+
+<h2>一、分层架构 <small>自上而下：入口 → 调度 → 取数 → 采集 → 服务 → 基础设施</small></h2>
+
+<div class="flowcol">
+
+  <!-- L0 -->
+  <div class="layer l0">
+    <div class="rail">
+      <div class="code">L0</div>
+      <div class="name">入口 / 启动层</div>
+      <div class="note">授权校验 + 监听来源解析 + 服务注册</div>
+    </div>
+    <div class="body">
+      <div class="node">
+        <div class="t">FileModeMain <span class="tag run">当前运行</span></div>
+        <div class="d">目录批处理入口：扫描 <b>./room/*.room.json</b>，逐房间提交监听任务；并发上限 <b>maxMonitorThreads</b>；全部结束即 <b>System.exit</b>。</div>
+        <div class="m">cn.zhangheng.lmr.FileModeMain</div>
+      </div>
+      <div class="node">
+        <div class="t">Main / ApplicationMain</div>
+        <div class="d">命令行入口：交互输入或参数 <b>[房间ID] [是否录制] [平台]</b>；单房间、支持循环监听；<b>RunMode=TASK</b>。</div>
+        <div class="m">lmr.Main · record.service.ApplicationMain</div>
+      </div>
+      <div class="node">
+        <div class="t">授权与配置前置</div>
+        <div class="d"><b>ActivationUtil</b> 校验设备指纹 + <b>xxxr-activation.lic</b>；<b>ConfigKit</b> 读 <b>xxxr.setting</b>，失败即退出。</div>
+        <div class="m">record.activation · common.setting</div>
+      </div>
+      <div class="node">
+        <div class="t">服务注册器</div>
+        <div class="d"><b>ServerStarterManager</b> 统一编排 <b>Starter</b>：本地 API 服务、cpolar 隧道，支持延迟启动与整体停止。</div>
+        <div class="m">lmr.service</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="link"><div class="arrow"><div class="bar"></div><span>每个 .room.json → 一条监听线程（线程 × 房间）</span></div></div>
+
+  <!-- L1 -->
+  <div class="layer l1">
+    <div class="rail">
+      <div class="code">L1</div>
+      <div class="name">调度与监听层</div>
+      <div class="note">状态机 + 轮询 + 生命周期回调，业务主干</div>
+    </div>
+    <div class="body">
+      <div class="node">
+        <div class="t">MonitorMain（抽象）</div>
+        <div class="d">单房间监听的编排者：托盘图标、状态机 <b>READY→RUNNING→ERROR→END</b>、循环监听、<b>onStart/onChange/onProgress/onStop</b> 回调。</div>
+        <div class="m">DouYinMain · BiliMain · KuaiShouMain</div>
+      </div>
+      <div class="node">
+        <div class="t">RoomMonitor（抽象）</div>
+        <div class="d">监听心跳：<b>Task</b> 线程池内死循环，按 <b>delayIntervalSec(30s)</b> 调 refresh；开播后 <b>onProgress</b> 汇报；注册 JMX MBean。</div>
+        <div class="m">DouYinRoomMonitor 等</div>
+      </div>
+      <div class="node">
+        <div class="t">RoomService（抽象）</div>
+        <div class="d">平台取数抽象：<b>refresh(force)</b> + 弹幕开关；子类决定走浏览器、HTTP 还是本地解析。</div>
+        <div class="m">DouYinRoomService · BilibiliService · KuaiShouService</div>
+      </div>
+      <div class="node">
+        <div class="t">Room 领域模型</div>
+        <div class="d">直播间状态载体：昵称、是否开播、<b>streams</b>（清晰度→FLV 地址）、观众/点赞/礼物计数、封面、Cookie。</div>
+        <div class="m">DouYinRoom · BiliRoom · KuaiShouRoom · RoomJson</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="link"><div class="arrow"><div class="bar"></div><span>refresh：拉取直播间实时数据 / 换取 FLV 流地址</span></div></div>
+
+  <!-- L2 -->
+  <div class="layer l2">
+    <div class="rail">
+      <div class="code">L2</div>
+      <div class="name">数据获取层</div>
+      <div class="note">浏览器模拟 + HTTP 双通道，Cookie/UA 池</div>
+    </div>
+    <div class="body">
+      <div class="node">
+        <div class="t">DouYinDataService / DouYinDataHandler</div>
+        <div class="d">抖音取数主路径：先取 <b>dataUrl</b>，再 <b>getData(force)</b>；分「未开播走浏览器」「已开播走接口」两段。</div>
+        <div class="m">douyin.service · douyin.browser.factory</div>
+      </div>
+      <div class="node">
+        <div class="t">Playwright 浏览器封装</div>
+        <div class="d">浏览器池与页面上下文：<b>PlaywrightBrowserFactory</b> / <b>MyBrowser</b> / <b>BrowserContent</b>；上下文定时清理、异常解析、可无头。</div>
+        <div class="m">browser-utils · DouYinBrowserFactory · DouyinPlaywright</div>
+      </div>
+      <div class="node">
+        <div class="t">OkHttp 客户端</div>
+        <div class="d">全局单例 + 连接池（共 10 空闲、300s）；统一超时、Cookie、UA、短链解析；常驻调度线程避免频繁建线程。</div>
+        <div class="m">OkHttpFactory · OkHttpUtil · HttpUtils</div>
+      </div>
+      <div class="node">
+        <div class="t">B站 / 快手取数</div>
+        <div class="d">B站走接口 + 登录态 Cookie；快手从页面 <b>InitialState</b> 提取直播信息，均不依赖长驻浏览器。</div>
+        <div class="m">BilibiliService · KuaiShouService · InitialStateExtractor</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="link"><div class="arrow"><div class="bar"></div><span>开播 / streams 就绪 → 触发录制与弹幕；未开播 → 继续轮询</span></div></div>
+
+  <!-- L3 -->
+  <div class="layer l3">
+    <div class="rail">
+      <div class="code">L3</div>
+      <div class="name">采集与产出层</div>
+      <div class="note">录制落盘 / 转码 / 弹幕持久化 / 字幕生成</div>
+    </div>
+    <div class="body">
+      <div class="node">
+        <div class="t">RecorderTask → AsyncTaskQueue</div>
+        <div class="d">录制调度：优先级队列 + 重试 + 指标统计；异常按 <b>tryRecordSec</b> 退避重录，支持 JMX 观测。</div>
+        <div class="m">record.RecorderTask · common.task.AsyncTaskQueue</div>
+      </div>
+      <div class="node">
+        <div class="t">Recorder（抽象）<span class="tag">两实现</span></div>
+        <div class="d"><b>FlvStreamRecorder</b>：Java 直连 FLV 拉流写文件（无 ffmpeg 依赖）；<b>FFmpegFlvRecorder</b>：子进程录制，可读进度。</div>
+        <div class="m">record.record · video.ffmpeg.FFmpegService</div>
+      </div>
+      <div class="node">
+        <div class="t">FlvToMp4 / 文件收尾</div>
+        <div class="d">录制结束转 MP4、源 FLV 进回收站；单文件超 15G 或清晰度切换自动分段；失败文件清理。</div>
+        <div class="m">video.FlvToMp4 · common.util.FileTrashUtil</div>
+      </div>
+      <div class="node">
+        <div class="t">弹幕链路</div>
+        <div class="d"><b>DouYinWebcast</b> → <b>DouYinWebSocket</b>（protobuf 解码）→ <b>MessageListener</b>：聊天/进场/礼物/点赞/关注/统计。</div>
+        <div class="m">douyin-fetcher · DouyinLiveDecoder</div>
+      </div>
+      <div class="node">
+        <div class="t">弹幕落盘与字幕</div>
+        <div class="d"><b>LogUtil + AsyncBatchLogger</b> 分批异步写日志；<b>AssGenerator / SrtGenerator</b> 生成顶部飘动 ASS 字幕。</div>
+        <div class="m">douyin.subtitle · record.util</div>
+      </div>
+      <div class="node">
+        <div class="t">附加产出</div>
+        <div class="d">统计表生成 <b>MonitorDataTableGenerate</b>、直播间封面/短链解析、快捷键触发 <b>ShortcutExecutor</b>。</div>
+        <div class="m">douyin.util · record.util</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="link"><div class="arrow"><div class="bar"></div><span>录制目录 / 弹幕日志对外暴露；状态与计数回写 Room</span></div></div>
+
+  <!-- L4 -->
+  <div class="layer l4">
+    <div class="rail">
+      <div class="code">L4</div>
+      <div class="name">对外服务层</div>
+      <div class="note">控制面 + 文件面 + 通知 + 常驻交互</div>
+    </div>
+    <div class="body">
+      <div class="node">
+        <div class="t">LocalMonitorHttpServer</div>
+        <div class="d">JDK 内置 HttpServer，双栈 <b>::</b>、端口 8005 占用自动 +1、128 线程池 + <b>信号量限流</b>；统一 <b>MyHandler</b> 关闭与异常兜底。</div>
+        <div class="m">/ · /api · /action · /fileRes · /room-recycle · /info · /client-info · /proxy</div>
+      </div>
+      <div class="node">
+        <div class="t">控制面处理器</div>
+        <div class="d"><b>ApiHandler</b> 查询计数；<b>ActionHandler</b> 启动/停止/新增/删除/恢复监听；<b>RoomRecycleHandler</b> 回收站；<b>CheckUtils</b> 设备密钥/Cookie 鉴权。</div>
+        <div class="m">lmr.http_server.handler</div>
+      </div>
+      <div class="node">
+        <div class="t">文件面处理器</div>
+        <div class="d"><b>FileResourcesHandler</b>：目录分页 + <b>Range/206</b> 分片 + ETag/304，支持视频拖拽；<b>ProxyHandler</b> 代理预览。</div>
+        <div class="m">lmr.http_server.handler · util.FilePageUtils</div>
+      </div>
+      <div class="node">
+        <div class="t">本地 FLV 播放服务</div>
+        <div class="d"><b>LocalServerFlvPlayer</b>（端口 8000）：按 URL/文件把直播源直出给内置播放页，含 <b>FlvFileHandler</b>。</div>
+        <div class="m">video.player</div>
+      </div>
+      <div class="node">
+        <div class="t">隧道与远程访问</div>
+        <div class="d"><b>CpolarToolStarter</b> 拉起 <b>bin/cpolar.exe</b> 映射本地端口，解析日志取公网地址；<b>GitCmdUpload</b> 回传配置。</div>
+        <div class="m">cpolar-tool</div>
+      </div>
+      <div class="node">
+        <div class="t">桌面交互与通知</div>
+        <div class="d"><b>TrayIconUtil</b>（AWT 托盘/右键菜单）承载启停录制；<b>NotificationUtil</b> 走息知/微信推送开播下播。</div>
+        <div class="m">record.util</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="link"><div class="arrow"><div class="bar"></div><span>横切能力：配置 / JMX / 缓存 / 队列 / 工具，被上面各层复用</span></div></div>
+
+  <!-- L5 -->
+  <div class="layer l5">
+    <div class="rail">
+      <div class="code">L5</div>
+      <div class="name">基础设施层</div>
+      <div class="note">common-libs：与业务无关的通用能力</div>
+    </div>
+    <div class="body">
+      <div class="node">
+        <div class="t">配置体系</div>
+        <div class="d"><b>ConfigLoader / PropertiesConfig</b> 反射注入 <b>@PropertyValue</b>，带正则校验与默认值；房间级配置覆盖全局。</div>
+        <div class="m">common.setting</div>
+      </div>
+      <div class="node">
+        <div class="t">JMX 运维体系</div>
+        <div class="d"><b>JmxRegisterUtil + AnnotationBasedDynamicMBean</b>：把房间/监听/队列/录制暴露为 MBean，<b>@JmxAttribute / @JmxOperation</b> 即可远程读写。</div>
+        <div class="m">common.jmx</div>
+      </div>
+      <div class="node">
+        <div class="t">缓存与单飞加载</div>
+        <div class="d"><b>CacheWithOnceLoadHelper</b>：LRU + single-flight 合并并发请求 + 失败冷却熔断，避免取数被打爆。</div>
+        <div class="m">common.cache</div>
+      </div>
+      <div class="node">
+        <div class="t">任务与线程模型</div>
+        <div class="d">业务侧 <b>record.bean.Task</b>（私有锁 + 原子 submit + 可重建池）；队列侧 <b>common.task.Task/AsyncTaskQueue</b>（优先级 + 重试）。<span class="tag">两套并存</span></div>
+        <div class="m">record.bean.Task · common.task</div>
+      </div>
+      <div class="node">
+        <div class="t">通用工具</div>
+        <div class="d"><b>FileTrashUtil</b> 回收站、<b>ObjectUtil</b> 反射拷贝、<b>UserAgentUtil</b> UA 池、<b>DateTimeUtil</b>。</div>
+        <div class="m">common.util · record.util</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<h2>二、外部依赖与边界 <small>跨进程 / 跨网络的部分</small></h2>
+<div class="ext">
+  <div class="e"><b>Chromium（Playwright node driver）</b> · 独立进程 ~69MB，负责抖音页面取数与 Cookie 注入</div>
+  <div class="e"><b>ffmpeg.exe</b> · 录制 / 转码 / 抽帧，需在 xxxr.setting 配路径</div>
+  <div class="e"><b>cpolar.exe</b> · 内网穿透，把 8005 控制台暴露到公网</div>
+  <div class="e"><b>抖音 / B站 / 快手</b> · HTTP 接口 + WebSocket 弹幕，全部依赖 Cookie 有效性</div>
+  <div class="e"><b>息知 / 微信</b> · 开播下播通知</div>
+  <div class="e"><b>Git 远端</b> · 配置与状态回传</div>
+</div>
+
+<h2>三、核心运行链路 <small>六条主干流程</small></h2>
+<div class="flows">
+
+  <div class="flow">
+    <h3><span class="num">1</span>冷启动与激活</h3>
+    <p class="why">进程起来到开始监听之间的必经路径</p>
+    <div class="chain">
+      <span class="step"><b>xxxr.setting</b></span><i>→</i>
+      <span class="step">ActivationUtil<br>设备ID + lic</span><i>→</i>
+      <span class="step">FileModeMain<br>扫描 ./room</span><i>→</i>
+      <span class="step">ServerStarterManager<br>API + cpolar</span><i>→</i>
+      <span class="step em">每房间一条监听线程</span>
+    </div>
+  </div>
+
+  <div class="flow">
+    <h3><span class="num">2</span>开播探测（30s 心跳）</h3>
+    <p class="why">整个系统的主动作，决定什么时候开始干活</p>
+    <div class="chain">
+      <span class="step">RoomMonitor<br>sleep 30s</span><i>→</i>
+      <span class="step">RoomService<br>refresh(force)</span><i>→</i>
+      <span class="step">取 dataUrl<br>浏览器/接口</span><i>→</i>
+      <span class="step">getData<br>更新 Room</span><i>→</i>
+      <span class="step em">未开播继续 / 开播切态</span><i>→</i>
+      <span class="step">托盘 + 息知通知</span>
+    </div>
+  </div>
+
+  <div class="flow">
+    <h3><span class="num">3</span>自动录制与收尾</h3>
+    <p class="why">开播回调里的一次性长任务，结束即闭环</p>
+    <div class="chain">
+      <span class="step">onChange(LIVING)</span><i>→</i>
+      <span class="step">RecorderTask<br>入优先级队列</span><i>→</i>
+      <span class="step">Flv 拉流 / FFmpeg 子进程</span><i>→</i>
+      <span class="step">.flv 落盘<br>超 15G 或切清晰度分段</span><i>→</i>
+      <span class="step">FlvToMp4 转码</span><i>→</i>
+      <span class="step em">源文件进回收站 + 重新监听</span>
+    </div>
+  </div>
+
+  <div class="flow">
+    <h3><span class="num">4</span>弹幕与字幕</h3>
+    <p class="why">只在抖音开播期间启动，独立于录制</p>
+    <div class="chain">
+      <span class="step">startSubtitle()</span><i>→</i>
+      <span class="step">DouYinWebcast<br>WS 长连接</span><i>→</i>
+      <span class="step">protobuf 解码</span><i>→</i>
+      <span class="step">MessageListener<br>分类回调</span><i>→</i>
+      <span class="step">chatLog / subtitleLog<br>异步批量写</span><i>→</i>
+      <span class="step em">下播后 AssGenerator 出 ASS</span>
+    </div>
+  </div>
+
+  <div class="flow">
+    <h3><span class="num">5</span>控制面：网页改监听</h3>
+    <p class="why">不重启进程就能增删启停直播间</p>
+    <div class="chain">
+      <span class="step">前端 index.html</span><i>→</i>
+      <span class="step">/api 查计数</span><i>→</i>
+      <span class="step">/action<br>CheckUtils 鉴权</span><i>→</i>
+      <span class="step">addMain / restartMain / delMain</span><i>→</i>
+      <span class="step em">写 .room.json + 提交线程池</span>
+    </div>
+  </div>
+
+  <div class="flow">
+    <h3><span class="num">6</span>文件面：看录制回放</h3>
+    <p class="why">大文件拖拽必须靠 Range，否则会整包读</p>
+    <div class="chain">
+      <span class="step">/fileRes?key=&amp;path=</span><i>→</i>
+      <span class="step">目录分页<br>FilePageUtils</span><i>→</i>
+      <span class="step">Range 解析<br>206 + Content-Range</span><i>→</i>
+      <span class="step">RandomAccessFile<br>8K 分块流式</span><i>→</i>
+      <span class="step em">浏览器播放器 / 下载</span>
+    </div>
+  </div>
+
+</div>
+
+<h2>四、模块职责与依赖 <small>11 个 Maven 模块</small></h2>
+<table>
+  <thead>
+    <tr><th style="width:190px">模块</th><th style="width:110px">性质</th><th>职责</th><th style="width:300px">关键类</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><b>live-monitor-record</b></td>
+      <td><span class="tag run">主程序</span></td>
+      <td>集成入口与对外控制面：FileModeMain / Main、本地 API 服务、cpolar 与转载编排。</td>
+      <td class="mono">FileModeMain · LocalMonitorHttpServer · *Handler · CpolarToolStarter</td>
+    </tr>
+    <tr>
+      <td><b>live-common</b></td>
+      <td><span class="tag run">核心</span></td>
+      <td>业务主干：监听生命周期、录制、HTTP 基类、通知、托盘、授权、Room 模型。</td>
+      <td class="mono">MonitorMain · RoomMonitor · RoomService · Recorder · Task</td>
+    </tr>
+    <tr>
+      <td><b>douyin-start</b></td>
+      <td>平台适配</td>
+      <td>抖音：浏览器取数、dataUrl、弹幕服务、ASS/SRT 字幕、统计表。</td>
+      <td class="mono">DouYinMain · DouYinDataService · DouYinSubtitleService</td>
+    </tr>
+    <tr>
+      <td><b>bilibili-start</b></td>
+      <td>平台适配</td>
+      <td>B站：接口取数 + 登录 Cookie，房间信息与流地址解析。</td>
+      <td class="mono">BiliMain · BilibiliService · BiliRoom</td>
+    </tr>
+    <tr>
+      <td><b>kuaishou-start</b></td>
+      <td>平台适配</td>
+      <td>快手：页面 InitialState 提取直播状态与流地址。</td>
+      <td class="mono">KuaiShouMain · KuaiShouService · InitialStateExtractor</td>
+    </tr>
+    <tr>
+      <td><b>browser-utils</b></td>
+      <td>基础能力</td>
+      <td>Playwright 通用封装：浏览器/上下文池、定时清理、异常解析、登录取 Cookie。</td>
+      <td class="mono">PlaywrightBrowserFactory · MyBrowser · BrowserLogin</td>
+    </tr>
+    <tr>
+      <td><b>douyin-fetcher</b></td>
+      <td>基础能力</td>
+      <td>抖音弹幕协议：WebSocket、protobuf 解码、消息模型与监听接口。</td>
+      <td class="mono">DouYinWebSocket · DouyinLiveDecoder · MessageListener</td>
+    </tr>
+    <tr>
+      <td><b>common-libs</b></td>
+      <td>基础设施</td>
+      <td>配置注入、JMX 动态 MBean、single-flight 缓存、优先级任务队列、通用工具。</td>
+      <td class="mono">ConfigKit · JmxRegisterUtil · CacheWithOnceLoadHelper · AsyncTaskQueue</td>
+    </tr>
+    <tr>
+      <td><b>cpolar-tool</b></td>
+      <td>基础能力</td>
+      <td>内网穿透进程管理、日志解析取公网地址、Git 命令上传配置。</td>
+      <td class="mono">CpolarStarter · LogParser · GitCmdUpload</td>
+    </tr>
+    <tr>
+      <td><b>activation-tool</b></td>
+      <td><span class="tag lib">独立</span></td>
+      <td>授权码生成/校验的配套小工具，不参与主流程运行。</td>
+      <td class="mono">activation.Main</td>
+    </tr>
+    <tr>
+      <td><b>smart-video-frame-extractor</b></td>
+      <td><span class="tag lib">独立</span></td>
+      <td>视频抽帧与质量评分：FFmpeg 抽帧、Laplace 清晰度、PHash 去重、YuNet 人脸、OpenCV 增强。当前主程序未依赖。</td>
+      <td class="mono">SmartVideoFrameExtractor · YuNetFaceDetect · SimilarFrameUtil</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>五、业务判断与风险点 <small>从代码里读出来的结构性问题</small></h2>
+<div class="risk">
+  <div class="rk">
+    <div class="t">强依赖第三方页面与 Cookie</div>
+    <div class="d">抖音取数走真实 Chromium，登录态过期即整条链路失效；浏览器进程（~69MB）不随 Java 退出而必然回收，需关注僵尸 node/chromium。</div>
+  </div>
+  <div class="rk">
+    <div class="t">单进程多房间 = 线程 × 房间</div>
+    <div class="d">每个房间一条监听线程 + 一条录制任务 + 弹幕 WS + 异步日志线程；房间数上去后线程与句柄线性增长，受 maxMonitorThreads 约束。</div>
+  </div>
+  <div class="rk">
+    <div class="t">双 Task 体系并存</div>
+    <div class="d">record.bean.Task（业务执行池）与 common.task.Task（队列任务）语义不同、生命周期不同，改动时容易改错一侧。</div>
+  </div>
+  <div class="rk">
+    <div class="t">录制与监听是两条独立闭环</div>
+    <div class="d">录制异常靠 onProgress 里重新入队恢复；监听靠 MonitorMain 的 do-while + 退避重试恢复。二者没有统一事务，可能出现「在录但已判下播」的短窗。</div>
+  </div>
+  <div class="rk">
+    <div class="t">对外暴露靠 cpolar，鉴权只有设备密钥</div>
+    <div class="d">控制面鉴权是设备 ID/Cookie 级，不是账号体系；隧道公网可达时，安全边界实际由这层薄鉴权撑着。</div>
+  </div>
+  <div class="rk">
+    <div class="t">文件面性能取决于 Range 正确性</div>
+    <div class="d">录制文件是大体积 MP4/FLV，拖拽体验完全依赖 206 分片与秒级 304 判断；这两处已在本轮修复，但仍建议对并发下载做限速/连接数约束。</div>
+  </div>
+</div>
+
+<footer>
+  结构依据仓库源码（live-common / live-monitor-record / 三个平台模块 / browser-utils / douyin-fetcher / common-libs / cpolar-tool）实际类与调用关系整理；端口、线程数、缓存参数均取自当前 xxxr.setting 与常量定义。
+</footer>
+
+</div>
+</body>
+</html>

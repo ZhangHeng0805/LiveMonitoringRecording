@@ -100,16 +100,6 @@ public class Setting {
     private volatile Boolean browserHeadless;
 
     /**
-     * 浏览器是否每次打开页面时重置状态，null时默认次数清理
-     */
-    @PropertyValue("monitor.browser.isPageClear")
-    private volatile Boolean browserIsPageClear;
-    /**
-     * 更新BrowserContext的请求次数，请求次数达到时自动更换BrowserContext,最小为10，null或<=0时不更新
-     */
-    @PropertyValue("monitor.browser.updateContextCounts")
-    private volatile Integer updateContextCounts;
-    /**
      * 监听间隔延时（秒）
      */
     @JmxAttribute(desc = "监听间隔延时（秒）")

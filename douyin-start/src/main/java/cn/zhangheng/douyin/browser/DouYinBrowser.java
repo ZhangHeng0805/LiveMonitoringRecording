@@ -8,7 +8,6 @@ import cn.zhangheng.browser.exception.PlaywrightExceptionParser;
 import cn.zhangheng.browser.util.AutoClearContextThreadListener;
 import cn.zhangheng.browser.util.BrowserUtil;
 import cn.zhangheng.common.setting.ConfigKit;
-import cn.zhangheng.douyin.util.DouYinUtil;
 import cn.zhangheng.record.bean.Room;
 import cn.zhangheng.record.bean.Setting;
 import cn.zhangheng.douyin.bean.DouYinRoom;
@@ -25,10 +24,8 @@ import org.slf4j.LoggerFactory;
 import java.io.Closeable;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import static cn.zhangheng.douyin.browser.DouYinBrowserUtil.*;
@@ -41,6 +38,7 @@ import static cn.zhangheng.douyin.browser.DouYinBrowserUtil.*;
  * @description: 抖音直播间信息获取工具类
  * 浏览器对象类，请求重复调用，需手动关闭浏览器
  */
+@Deprecated
 public class DouYinBrowser implements Closeable {
 
     private static final Logger log = LoggerFactory.getLogger(DouYinBrowser.class);
@@ -273,8 +271,8 @@ public class DouYinBrowser implements Closeable {
         Setting setting = ConfigKit.get(Setting.class);
         boolean headless = !Objects.equals(setting.getBrowserHeadless(), Boolean.FALSE);
         PlaywrightBrowser browser = new PlaywrightBrowser(headless);
-        browser.setIsPageClear(setting.getBrowserIsPageClear());
-        browser.setUpdateContextCounts(setting.getUpdateContextCounts());
+        browser.setIsPageClear(false);
+        browser.setUpdateContextCounts(50);
         browser.startAutoClearContextThread(300, new AutoClearContextThreadListener() {
             @Override
             public void triggerCheck(int intervalSec, Map<String, BrowserContent> allContextThread) {

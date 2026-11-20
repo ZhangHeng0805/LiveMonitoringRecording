@@ -1,4 +1,4 @@
-package cn.zhangheng.douyin.browser.factory;
+package cn.zhangheng.douyin.browser;
 
 import cn.zhangheng.browser.exception.PlaywrightErrorInfo;
 import cn.zhangheng.browser.exception.PlaywrightExceptionParser;

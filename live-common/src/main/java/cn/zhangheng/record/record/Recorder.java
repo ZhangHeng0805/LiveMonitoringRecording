@@ -101,10 +101,10 @@ public abstract class Recorder extends Task {
 
     @Override
     public void run(boolean isAsync) throws ExecutionException {
-        if (mainExecutors.isShutdown() || mainExecutors.isTerminated())
+        if (isExecutorShutdown())
             throw new RuntimeException("线程任务已关闭，不能重复运行！");
         initRunnable();
-        Future<?> future = mainExecutors.submit(runnable);
+        Future<?> future = submit(runnable);
         if (!isAsync) {
             try {
                 future.get();
@@ -114,7 +114,7 @@ public abstract class Recorder extends Task {
                 isRunning.set(false);
             }
         }
-        mainExecutors.shutdown();
+        releaseExecutor(false);
     }
 
     @Override

@@ -27,10 +27,11 @@ public class RoomJson {
 
     @Data
     public static class Setting {
-        private int delayIntervalSec;
-        private boolean isLoop;
-        private boolean openSubtitle;
-        private boolean convertFlvToMp4;
+        // 使用包装类型：未填写时为 null，merge 时（ignoreNullValue）跳过，从而沿用全局配置
+        private Integer delayIntervalSec;
+        private Boolean isLoop;
+        private Boolean openSubtitle;
+        private Boolean convertFlvToMp4;
         private String cookie;
         private String xiZhiUrl;
     }

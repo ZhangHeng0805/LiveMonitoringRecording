@@ -51,7 +51,7 @@ public class LocalServerFlvPlayer extends Task {
 
     @Override
     public void run(boolean isAsync) throws ExecutionException {
-        Future<?> future = mainExecutors.submit(() -> {
+        Future<?> future = submit(() -> {
             if (!NetworkUtil.isPortUsed(port)) {
                 try {
                     this.server = HttpServer.create(new java.net.InetSocketAddress(port), 0);
@@ -81,7 +81,7 @@ public class LocalServerFlvPlayer extends Task {
             } catch (InterruptedException ignored) {
             }
         }
-        mainExecutors.shutdown();
+        releaseExecutor(false);
     }
 
     @Override

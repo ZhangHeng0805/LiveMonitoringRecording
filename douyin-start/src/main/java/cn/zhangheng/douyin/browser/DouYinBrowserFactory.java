@@ -23,6 +23,7 @@ import java.util.regex.Pattern;
  * @description:
  */
 @Slf4j
+@Deprecated
 public class DouYinBrowserFactory {
 
     // 1. 必须声明为 null，volatile 保证多线程可见性、禁止指令重排

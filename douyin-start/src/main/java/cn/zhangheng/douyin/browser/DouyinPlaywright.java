@@ -24,6 +24,7 @@ import static cn.zhangheng.douyin.browser.DouYinBrowserUtil.*;
 /**
  * 浏览器静态类，单次请求，请求完成自动关闭浏览器
  */
+@Deprecated
 public class DouyinPlaywright {
 
 
@@ -44,7 +45,7 @@ public class DouyinPlaywright {
             Setting setting = room.getSetting();
             boolean headless = !Objects.equals(setting.getBrowserHeadless(), Boolean.FALSE);
             browser = new PlaywrightBrowser(headless);
-            browser.setIsPageClear(setting.getBrowserIsPageClear());
+            browser.setIsPageClear(false);
 //            browser.setUpdateContextCounts(setting.getUpdateContextCounts());
             Page page = browser.newPage();
             setRoomCookie(room, page);
