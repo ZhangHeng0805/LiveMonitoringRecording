@@ -1,0 +1,204 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="890" viewBox="0 0 1200 890" font-family="'Microsoft YaHei','Noto Sans SC','PingFang SC','Segoe UI',sans-serif">
+<rect x="0" y="0" width="1200" height="890" fill="#ffffff"/>
+<rect x="16" y="16" width="128" height="108" rx="9" fill="#fdf3e3" stroke="#f0d6a8"/>
+<text x="30" y="44" font-size="10.5" font-weight="600" fill="#b26a00" letter-spacing="1.6" opacity="0.9">L0</text>
+<text x="30" y="68" font-size="14.5" font-weight="700" fill="#b26a00">入口 / 启动层</text>
+<text x="30" y="89" font-size="10.2" fill="#b26a00" opacity="0.85">授权 + 房间解析</text>
+<text x="30" y="104" font-size="10.2" fill="#b26a00" opacity="0.85">服务注册编排</text>
+<rect x="158" y="16" width="1026" height="108" rx="9" fill="#ffffff" stroke="#e3e8ef"/>
+<rect x="170.0" y="28.0" width="243.0" height="84" rx="6" fill="#ffffff" stroke="#e7ebf1"/>
+<rect x="170.0" y="28.0" width="3" height="84" fill="#b26a00" opacity="0.85"/>
+<text x="183.0" y="53.0" font-size="13" font-weight="600" fill="#14181f">FileModeMain</text>
+<text x="183.0" y="74.0" font-size="10.8" fill="#4a5563">扫描 ./room/*.room.json</text>
+<text x="183.0" y="91.0" font-size="10.8" fill="#7b8794">每房间一条监听线程</text>
+<rect x="423.0" y="28.0" width="243.0" height="84" rx="6" fill="#ffffff" stroke="#e7ebf1"/>
+<rect x="423.0" y="28.0" width="3" height="84" fill="#b26a00" opacity="0.85"/>
+<text x="436.0" y="53.0" font-size="13" font-weight="600" fill="#14181f">Main / ApplicationMain</text>
+<text x="436.0" y="74.0" font-size="10.8" fill="#4a5563">命令行单房间监听</text>
+<text x="436.0" y="91.0" font-size="10.8" fill="#7b8794">RunMode = TASK</text>
+<rect x="676.0" y="28.0" width="243.0" height="84" rx="6" fill="#ffffff" stroke="#e7ebf1"/>
+<rect x="676.0" y="28.0" width="3" height="84" fill="#b26a00" opacity="0.85"/>
+<text x="689.0" y="53.0" font-size="13" font-weight="600" fill="#14181f">ActivationUtil</text>
+<text x="689.0" y="74.0" font-size="10.8" fill="#4a5563">设备指纹 + lic 校验</text>
+<text x="689.0" y="91.0" font-size="10.8" fill="#7b8794">启动前置，失败即退出</text>
+<rect x="929.0" y="28.0" width="243.0" height="84" rx="6" fill="#ffffff" stroke="#e7ebf1"/>
+<rect x="929.0" y="28.0" width="3" height="84" fill="#b26a00" opacity="0.85"/>
+<text x="942.0" y="53.0" font-size="13" font-weight="600" fill="#14181f">ServerStarterManager</text>
+<text x="942.0" y="74.0" font-size="10.8" fill="#4a5563">编排本地 API 服务</text>
+<text x="942.0" y="91.0" font-size="10.8" fill="#7b8794">与 cpolar 隧道启动</text>
+<text x="158" y="149" font-size="10.8" fill="#8a95a3">扫描房间文件 → 启动监听任务</text>
+<line x1="486.3" y1="132" x2="486.3" y2="157" stroke="#dbe2ea" stroke-width="1.6"/>
+<path d="M 482.3 151 L 486.3 157 L 490.3 151" fill="none" stroke="#b9c4d2" stroke-width="1.6"/>
+<line x1="722.3" y1="132" x2="722.3" y2="157" stroke="#dbe2ea" stroke-width="1.6"/>
+<path d="M 718.3 151 L 722.3 157 L 726.3 151" fill="none" stroke="#b9c4d2" stroke-width="1.6"/>
+<line x1="958.3" y1="132" x2="958.3" y2="157" stroke="#dbe2ea" stroke-width="1.6"/>
+<path d="M 954.3 151 L 958.3 157 L 962.3 151" fill="none" stroke="#b9c4d2" stroke-width="1.6"/>
+<rect x="16" y="166" width="128" height="108" rx="9" fill="#e8efff" stroke="#c5d4ff"/>
+<text x="30" y="194" font-size="10.5" font-weight="600" fill="#1d4ed8" letter-spacing="1.6" opacity="0.9">L1</text>
+<text x="30" y="218" font-size="14.5" font-weight="700" fill="#1d4ed8">调度与监听层</text>
+<text x="30" y="239" font-size="10.2" fill="#1d4ed8" opacity="0.85">状态机 + 心跳轮询</text>
+<text x="30" y="254" font-size="10.2" fill="#1d4ed8" opacity="0.85">生命周期回调</text>
+<rect x="158" y="166" width="1026" height="108" rx="9" fill="#ffffff" stroke="#e3e8ef"/>
+<rect x="170.0" y="178.0" width="243.0" height="84" rx="6" fill="#ffffff" stroke="#e7ebf1"/>
+<rect x="170.0" y="178.0" width="3" height="84" fill="#1d4ed8" opacity="0.85"/>
+<text x="183.0" y="203.0" font-size="13" font-weight="600" fill="#14181f">MonitorMain</text>
+<text x="183.0" y="224.0" font-size="10.8" fill="#4a5563">状态机 + 托盘 + 通知</text>
+<text x="183.0" y="241.0" font-size="10.8" fill="#7b8794">onStart/onChange/onStop</text>
+<rect x="423.0" y="178.0" width="243.0" height="84" rx="6" fill="#ffffff" stroke="#e7ebf1"/>
+<rect x="423.0" y="178.0" width="3" height="84" fill="#1d4ed8" opacity="0.85"/>
+<text x="436.0" y="203.0" font-size="13" font-weight="600" fill="#14181f">RoomMonitor</text>
+<text x="436.0" y="224.0" font-size="10.8" fill="#4a5563">30s 心跳轮询 refresh</text>
+<text x="436.0" y="241.0" font-size="10.8" fill="#7b8794">Task 线程池 + JMX</text>
+<rect x="676.0" y="178.0" width="243.0" height="84" rx="6" fill="#ffffff" stroke="#e7ebf1"/>
+<rect x="676.0" y="178.0" width="3" height="84" fill="#1d4ed8" opacity="0.85"/>
+<text x="689.0" y="203.0" font-size="13" font-weight="600" fill="#14181f">RoomService</text>
+<text x="689.0" y="224.0" font-size="10.8" fill="#4a5563">取数抽象 + 弹幕开关</text>
+<text x="689.0" y="241.0" font-size="10.8" fill="#7b8794">平台子类实现</text>
+<rect x="929.0" y="178.0" width="243.0" height="84" rx="6" fill="#ffffff" stroke="#e7ebf1"/>
+<rect x="929.0" y="178.0" width="3" height="84" fill="#1d4ed8" opacity="0.85"/>
+<text x="942.0" y="203.0" font-size="13" font-weight="600" fill="#14181f">Room 模型</text>
+<text x="942.0" y="224.0" font-size="10.8" fill="#4a5563">开播状态 · 流地址</text>
+<text x="942.0" y="241.0" font-size="10.8" fill="#7b8794">观众 / 点赞 / 礼物计数</text>
+<text x="158" y="299" font-size="10.8" fill="#8a95a3">refresh：取直播状态与 FLV 流地址</text>
+<line x1="486.3" y1="282" x2="486.3" y2="307" stroke="#dbe2ea" stroke-width="1.6"/>
+<path d="M 482.3 301 L 486.3 307 L 490.3 301" fill="none" stroke="#b9c4d2" stroke-width="1.6"/>
+<line x1="722.3" y1="282" x2="722.3" y2="307" stroke="#dbe2ea" stroke-width="1.6"/>
+<path d="M 718.3 301 L 722.3 307 L 726.3 301" fill="none" stroke="#b9c4d2" stroke-width="1.6"/>
+<line x1="958.3" y1="282" x2="958.3" y2="307" stroke="#dbe2ea" stroke-width="1.6"/>
+<path d="M 954.3 301 L 958.3 307 L 962.3 301" fill="none" stroke="#b9c4d2" stroke-width="1.6"/>
+<rect x="16" y="316" width="128" height="108" rx="9" fill="#e6f6f3" stroke="#b6e0d8"/>
+<text x="30" y="344" font-size="10.5" font-weight="600" fill="#0f766e" letter-spacing="1.6" opacity="0.9">L2</text>
+<text x="30" y="368" font-size="14.5" font-weight="700" fill="#0f766e">数据获取层</text>
+<text x="30" y="389" font-size="10.2" fill="#0f766e" opacity="0.85">浏览器 + 接口</text>
+<text x="30" y="404" font-size="10.2" fill="#0f766e" opacity="0.85">双通道取数</text>
+<rect x="158" y="316" width="1026" height="108" rx="9" fill="#ffffff" stroke="#e3e8ef"/>
+<rect x="170.0" y="328.0" width="243.0" height="84" rx="6" fill="#ffffff" stroke="#e7ebf1"/>
+<rect x="170.0" y="328.0" width="3" height="84" fill="#0f766e" opacity="0.85"/>
+<text x="183.0" y="353.0" font-size="13" font-weight="600" fill="#14181f">DouYinDataService</text>
+<text x="183.0" y="374.0" font-size="10.8" fill="#4a5563">dataUrl → getData</text>
+<text x="183.0" y="391.0" font-size="10.8" fill="#7b8794">未开播走浏览器</text>
+<rect x="423.0" y="328.0" width="243.0" height="84" rx="6" fill="#ffffff" stroke="#e7ebf1"/>
+<rect x="423.0" y="328.0" width="3" height="84" fill="#0f766e" opacity="0.85"/>
+<text x="436.0" y="353.0" font-size="13" font-weight="600" fill="#14181f">Playwright 封装</text>
+<text x="436.0" y="374.0" font-size="10.8" fill="#4a5563">浏览器 / 上下文池</text>
+<text x="436.0" y="391.0" font-size="10.8" fill="#7b8794">定时清理，可无头</text>
+<rect x="676.0" y="328.0" width="243.0" height="84" rx="6" fill="#ffffff" stroke="#e7ebf1"/>
+<rect x="676.0" y="328.0" width="3" height="84" fill="#0f766e" opacity="0.85"/>
+<text x="689.0" y="353.0" font-size="13" font-weight="600" fill="#14181f">OkHttpFactory</text>
+<text x="689.0" y="374.0" font-size="10.8" fill="#4a5563">单例客户端 + 连接池</text>
+<text x="689.0" y="391.0" font-size="10.8" fill="#7b8794">Cookie / UA / 短链</text>
+<rect x="929.0" y="328.0" width="243.0" height="84" rx="6" fill="#ffffff" stroke="#e7ebf1"/>
+<rect x="929.0" y="328.0" width="3" height="84" fill="#0f766e" opacity="0.85"/>
+<text x="942.0" y="353.0" font-size="13" font-weight="600" fill="#14181f">B站 / 快手取数</text>
+<text x="942.0" y="374.0" font-size="10.8" fill="#4a5563">接口 Cookie / 页面 State</text>
+<text x="942.0" y="391.0" font-size="10.8" fill="#7b8794">不常驻浏览器</text>
+<text x="158" y="449" font-size="10.8" fill="#8a95a3">开播触发：录制入队 + 弹幕连接</text>
+<line x1="486.3" y1="432" x2="486.3" y2="457" stroke="#dbe2ea" stroke-width="1.6"/>
+<path d="M 482.3 451 L 486.3 457 L 490.3 451" fill="none" stroke="#b9c4d2" stroke-width="1.6"/>
+<line x1="722.3" y1="432" x2="722.3" y2="457" stroke="#dbe2ea" stroke-width="1.6"/>
+<path d="M 718.3 451 L 722.3 457 L 726.3 451" fill="none" stroke="#b9c4d2" stroke-width="1.6"/>
+<line x1="958.3" y1="432" x2="958.3" y2="457" stroke="#dbe2ea" stroke-width="1.6"/>
+<path d="M 954.3 451 L 958.3 457 L 962.3 451" fill="none" stroke="#b9c4d2" stroke-width="1.6"/>
+<rect x="16" y="466" width="128" height="108" rx="9" fill="#f1ebff" stroke="#d8cafa"/>
+<text x="30" y="494" font-size="10.5" font-weight="600" fill="#6d28d9" letter-spacing="1.6" opacity="0.9">L3</text>
+<text x="30" y="518" font-size="14.5" font-weight="700" fill="#6d28d9">采集与产出层</text>
+<text x="30" y="539" font-size="10.2" fill="#6d28d9" opacity="0.85">录制 / 转码</text>
+<text x="30" y="554" font-size="10.2" fill="#6d28d9" opacity="0.85">弹幕 / 字幕</text>
+<rect x="158" y="466" width="1026" height="108" rx="9" fill="#ffffff" stroke="#e3e8ef"/>
+<rect x="170.0" y="478.0" width="192.4" height="84" rx="6" fill="#ffffff" stroke="#e7ebf1"/>
+<rect x="170.0" y="478.0" width="3" height="84" fill="#6d28d9" opacity="0.85"/>
+<text x="183.0" y="503.0" font-size="13" font-weight="600" fill="#14181f">RecorderTask</text>
+<text x="183.0" y="524.0" font-size="10.8" fill="#4a5563">优先级队列 + 重试</text>
+<text x="183.0" y="541.0" font-size="10.8" fill="#7b8794">AsyncTaskQueue</text>
+<rect x="372.4" y="478.0" width="192.4" height="84" rx="6" fill="#ffffff" stroke="#e7ebf1"/>
+<rect x="372.4" y="478.0" width="3" height="84" fill="#6d28d9" opacity="0.85"/>
+<text x="385.4" y="503.0" font-size="13" font-weight="600" fill="#14181f">Recorder</text>
+<text x="385.4" y="524.0" font-size="10.8" fill="#4a5563">Java 拉流 / FFmpeg</text>
+<text x="385.4" y="541.0" font-size="10.8" fill="#7b8794">两种实现可切换</text>
+<rect x="574.8" y="478.0" width="192.4" height="84" rx="6" fill="#ffffff" stroke="#e7ebf1"/>
+<rect x="574.8" y="478.0" width="3" height="84" fill="#6d28d9" opacity="0.85"/>
+<text x="587.8" y="503.0" font-size="13" font-weight="600" fill="#14181f">FlvToMp4</text>
+<text x="587.8" y="524.0" font-size="10.8" fill="#4a5563">转码 + 源文件回收</text>
+<text x="587.8" y="541.0" font-size="10.8" fill="#7b8794">超 15G 自动分段</text>
+<rect x="777.2" y="478.0" width="192.4" height="84" rx="6" fill="#ffffff" stroke="#e7ebf1"/>
+<rect x="777.2" y="478.0" width="3" height="84" fill="#6d28d9" opacity="0.85"/>
+<text x="790.2" y="503.0" font-size="13" font-weight="600" fill="#14181f">弹幕链路</text>
+<text x="790.2" y="524.0" font-size="10.8" fill="#4a5563">WS + protobuf 解码</text>
+<text x="790.2" y="541.0" font-size="10.8" fill="#7b8794">聊天 / 礼物 / 点赞</text>
+<rect x="979.6" y="478.0" width="192.4" height="84" rx="6" fill="#ffffff" stroke="#e7ebf1"/>
+<rect x="979.6" y="478.0" width="3" height="84" fill="#6d28d9" opacity="0.85"/>
+<text x="992.6" y="503.0" font-size="13" font-weight="600" fill="#14181f">字幕生成</text>
+<text x="992.6" y="524.0" font-size="10.8" fill="#4a5563">ASS 顶部飘动</text>
+<text x="992.6" y="541.0" font-size="10.8" fill="#7b8794">SRT 同步输出</text>
+<text x="158" y="599" font-size="10.8" fill="#8a95a3">状态与文件回写，对外提供控制与回放</text>
+<line x1="486.3" y1="582" x2="486.3" y2="607" stroke="#dbe2ea" stroke-width="1.6"/>
+<path d="M 482.3 601 L 486.3 607 L 490.3 601" fill="none" stroke="#b9c4d2" stroke-width="1.6"/>
+<line x1="722.3" y1="582" x2="722.3" y2="607" stroke="#dbe2ea" stroke-width="1.6"/>
+<path d="M 718.3 601 L 722.3 607 L 726.3 601" fill="none" stroke="#b9c4d2" stroke-width="1.6"/>
+<line x1="958.3" y1="582" x2="958.3" y2="607" stroke="#dbe2ea" stroke-width="1.6"/>
+<path d="M 954.3 601 L 958.3 607 L 962.3 601" fill="none" stroke="#b9c4d2" stroke-width="1.6"/>
+<rect x="16" y="616" width="128" height="108" rx="9" fill="#fdecef" stroke="#f8c6d0"/>
+<text x="30" y="644" font-size="10.5" font-weight="600" fill="#be123c" letter-spacing="1.6" opacity="0.9">L4</text>
+<text x="30" y="668" font-size="14.5" font-weight="700" fill="#be123c">对外服务层</text>
+<text x="30" y="689" font-size="10.2" fill="#be123c" opacity="0.85">控制面 + 文件面</text>
+<text x="30" y="704" font-size="10.2" fill="#be123c" opacity="0.85">通知与远程访问</text>
+<rect x="158" y="616" width="1026" height="108" rx="9" fill="#ffffff" stroke="#e3e8ef"/>
+<rect x="170.0" y="628.0" width="192.4" height="84" rx="6" fill="#ffffff" stroke="#e7ebf1"/>
+<rect x="170.0" y="628.0" width="3" height="84" fill="#be123c" opacity="0.85"/>
+<text x="183.0" y="653.0" font-size="13" font-weight="600" fill="#14181f">LocalMonitorHttpServer</text>
+<text x="183.0" y="674.0" font-size="10.8" fill="#4a5563">控制面 + 文件面</text>
+<text x="183.0" y="691.0" font-size="10.8" fill="#7b8794">8005 端口自动累加</text>
+<rect x="372.4" y="628.0" width="192.4" height="84" rx="6" fill="#ffffff" stroke="#e7ebf1"/>
+<rect x="372.4" y="628.0" width="3" height="84" fill="#be123c" opacity="0.85"/>
+<text x="385.4" y="653.0" font-size="13" font-weight="600" fill="#14181f">API / 文件处理器</text>
+<text x="385.4" y="674.0" font-size="10.8" fill="#4a5563">/api /action 管监听</text>
+<text x="385.4" y="691.0" font-size="10.8" fill="#7b8794">/fileRes Range 分片</text>
+<rect x="574.8" y="628.0" width="192.4" height="84" rx="6" fill="#ffffff" stroke="#e7ebf1"/>
+<rect x="574.8" y="628.0" width="3" height="84" fill="#be123c" opacity="0.85"/>
+<text x="587.8" y="653.0" font-size="13" font-weight="600" fill="#14181f">LocalServerFlvPlayer</text>
+<text x="587.8" y="674.0" font-size="10.8" fill="#4a5563">8000 FLV 预览</text>
+<text x="587.8" y="691.0" font-size="10.8" fill="#7b8794">直出直播源</text>
+<rect x="777.2" y="628.0" width="192.4" height="84" rx="6" fill="#ffffff" stroke="#e7ebf1"/>
+<rect x="777.2" y="628.0" width="3" height="84" fill="#be123c" opacity="0.85"/>
+<text x="790.2" y="653.0" font-size="13" font-weight="600" fill="#14181f">CpolarToolStarter</text>
+<text x="790.2" y="674.0" font-size="10.8" fill="#4a5563">内网穿透 cpolar</text>
+<text x="790.2" y="691.0" font-size="10.8" fill="#7b8794">解析公网地址</text>
+<rect x="979.6" y="628.0" width="192.4" height="84" rx="6" fill="#ffffff" stroke="#e7ebf1"/>
+<rect x="979.6" y="628.0" width="3" height="84" fill="#be123c" opacity="0.85"/>
+<text x="992.6" y="653.0" font-size="13" font-weight="600" fill="#14181f">托盘 / 通知</text>
+<text x="992.6" y="674.0" font-size="10.8" fill="#4a5563">启停录制 · 托盘菜单</text>
+<text x="992.6" y="691.0" font-size="10.8" fill="#7b8794">息知微信推送</text>
+<text x="158" y="749" font-size="10.8" fill="#8a95a3">各层复用：配置 / JMX / 缓存 / 队列 / 工具</text>
+<line x1="486.3" y1="732" x2="486.3" y2="757" stroke="#dbe2ea" stroke-width="1.6"/>
+<path d="M 482.3 751 L 486.3 757 L 490.3 751" fill="none" stroke="#b9c4d2" stroke-width="1.6"/>
+<line x1="722.3" y1="732" x2="722.3" y2="757" stroke="#dbe2ea" stroke-width="1.6"/>
+<path d="M 718.3 751 L 722.3 757 L 726.3 751" fill="none" stroke="#b9c4d2" stroke-width="1.6"/>
+<line x1="958.3" y1="732" x2="958.3" y2="757" stroke="#dbe2ea" stroke-width="1.6"/>
+<path d="M 954.3 751 L 958.3 757 L 962.3 751" fill="none" stroke="#b9c4d2" stroke-width="1.6"/>
+<rect x="16" y="766" width="128" height="108" rx="9" fill="#eef1f5" stroke="#d3dae3"/>
+<text x="30" y="794" font-size="10.5" font-weight="600" fill="#475569" letter-spacing="1.6" opacity="0.9">L5</text>
+<text x="30" y="818" font-size="14.5" font-weight="700" fill="#475569">基础设施层</text>
+<text x="30" y="839" font-size="10.2" fill="#475569" opacity="0.85">通用基础能力</text>
+<text x="30" y="854" font-size="10.2" fill="#475569" opacity="0.85">被各层复用</text>
+<rect x="158" y="766" width="1026" height="108" rx="9" fill="#ffffff" stroke="#e3e8ef"/>
+<rect x="170.0" y="778.0" width="243.0" height="84" rx="6" fill="#ffffff" stroke="#e7ebf1"/>
+<rect x="170.0" y="778.0" width="3" height="84" fill="#475569" opacity="0.85"/>
+<text x="183.0" y="803.0" font-size="13" font-weight="600" fill="#14181f">配置注入</text>
+<text x="183.0" y="824.0" font-size="10.8" fill="#4a5563">@PropertyValue 反射</text>
+<text x="183.0" y="841.0" font-size="10.8" fill="#7b8794">带校验与默认值</text>
+<rect x="423.0" y="778.0" width="243.0" height="84" rx="6" fill="#ffffff" stroke="#e7ebf1"/>
+<rect x="423.0" y="778.0" width="3" height="84" fill="#475569" opacity="0.85"/>
+<text x="436.0" y="803.0" font-size="13" font-weight="600" fill="#14181f">JMX 运维</text>
+<text x="436.0" y="824.0" font-size="10.8" fill="#4a5563">动态 MBean 注册</text>
+<text x="436.0" y="841.0" font-size="10.8" fill="#7b8794">属性 / 操作可远程</text>
+<rect x="676.0" y="778.0" width="243.0" height="84" rx="6" fill="#ffffff" stroke="#e7ebf1"/>
+<rect x="676.0" y="778.0" width="3" height="84" fill="#475569" opacity="0.85"/>
+<text x="689.0" y="803.0" font-size="13" font-weight="600" fill="#14181f">单飞缓存</text>
+<text x="689.0" y="824.0" font-size="10.8" fill="#4a5563">single-flight 合并</text>
+<text x="689.0" y="841.0" font-size="10.8" fill="#7b8794">失败冷却熔断</text>
+<rect x="929.0" y="778.0" width="243.0" height="84" rx="6" fill="#ffffff" stroke="#e7ebf1"/>
+<rect x="929.0" y="778.0" width="3" height="84" fill="#475569" opacity="0.85"/>
+<text x="942.0" y="803.0" font-size="13" font-weight="600" fill="#14181f">任务与工具</text>
+<text x="942.0" y="824.0" font-size="10.8" fill="#4a5563">AsyncTaskQueue</text>
+<text x="942.0" y="841.0" font-size="10.8" fill="#7b8794">FileTrash / ObjectUtil</text>
+</svg>
