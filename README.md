@@ -44,11 +44,11 @@
 - **FLV 播放页**：控制台内置 `/FLVPlayer.html` 页面，可直接预览直播源；历史版本使用的独立 8000 端口已合并进控制台服务，无需额外端口。
 - **可视化界面**：实时查看各平台直播状态与录制信息，`默认端口 8005，端口占用时自动向后累加`，操作秘钥为**设备标识 ID**。
 
-## [界面预览](https://zhangheng0805.github.io/LiveMonitoringRecording/%E7%9B%B4%E6%92%AD%E7%9B%91%E6%8E%A7%E5%BD%95%E5%88%B6-%E7%A8%8B%E5%BA%8F%E6%9E%B6%E6%9E%84%E5%9B%BE.html)
+## 界面预览
 
 ![直播监控可视化界面](image/8-10-2025_134650_localhost.jpeg)
 
-## 程序架构
+## [程序架构](https://zhangheng0805.github.io/LiveMonitoringRecording/%E7%9B%B4%E6%92%AD%E7%9B%91%E6%8E%A7%E5%BD%95%E5%88%B6-%E7%A8%8B%E5%BA%8F%E6%9E%B6%E6%9E%84%E5%9B%BE.html)
 
 整体是**单进程常驻的多直播间值守程序**：一个房间一条监听线程，轮询探测是否开播，开播后并行拉起弹幕采集与录制，同时把控制面和录制文件通过本地 HTTP 服务（含内网穿透）对外暴露。
 
