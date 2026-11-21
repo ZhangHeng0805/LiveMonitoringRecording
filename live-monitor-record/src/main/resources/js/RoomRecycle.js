@@ -1,3 +1,7 @@
+/**
+ * 监听回收站弹窗
+ * 结构：列表（每行一个房间，点击展开配置详情）→ 恢复监听 / 彻底删除
+ */
 function roomRecycle() {
     showActionBeforeModal((key) => {
         getRequest("room-recycle/getList", {
@@ -5,197 +9,278 @@ function roomRecycle() {
             pageNum: 1,
             pageSize: 100,
         }).then((msg) => {
-                if (!msg.success) {
-                    showActionAfterModal(msg);
-                } else {
-                    showRoomRecycleModel(key, msg.data)
-                }
-            });
-    })
+            if (!msg.success) {
+                showActionAfterModal(msg);
+            } else {
+                showRoomRecycleModel(key, msg.data);
+            }
+        }).catch(() => {
+            // getRequest 已弹出错误提示，这里只兜住异常避免中断
+        });
+    });
+}
+
+// 回收站标题形如“主播名-DouYin-762166543810”，拆成 名称 / 平台 / 房间ID
+function parseRecycleTitle(title) {
+    const raw = String(title || "").trim();
+    const parts = raw.split("-");
+    if (parts.length >= 3) {
+        return {
+            name: parts.slice(0, parts.length - 2).join("-"),
+            platform: parts[parts.length - 2],
+            id: parts[parts.length - 1],
+        };
+    }
+    return {name: raw, platform: "", id: ""};
+}
+
+// 平台代码转中文，未知时原样显示
+function platformLabel(code) {
+    if (!code) return "未知";
+    return (typeof platformName !== "undefined" && platformName[code]) || code;
 }
 
 async function fetchRecycleContents(pageNum = 1, pageSize = 100) {
+    const rootDom = document.getElementById("roomRecycleList");
+    if (!rootDom) return {list: [], total: 0};
     try {
-        const key = document.getElementById("roomRecycleList").dataset.key;
         const res = await getRequest("room-recycle/getList", {
-            actionKey: key,
+            actionKey: rootDom.dataset.key,
             pageNum: pageNum,
             pageSize: pageSize,
         });
-
-        // 后端返回 FilePageResult
-        return res.data || {files: [], total: 0, pageNum: 1, pageSize: 100};
-
+        return res.data || {list: [], total: 0};
     } catch (error) {
-        alert(`请求失败: ${error}`);
+        return {list: [], total: 0};
     }
-    return {files: [], total: 0, pageNum: 1, pageSize: 100};
 }
 
 function showRoomRecycleModel(key, data) {
+    const total = (data && data.total) || 0;
     setModalContent(
-        `直播监听回收站`,
-        `<div class="bg-white rounded-lg shadow p-5">
-        <!-- 根目录：设置纵向滚动，避免内容溢出撑爆弹窗 -->
-        <div id="roomRecycleList" data-key="${key}" style="overflow-x: auto; white-space: nowrap;"></div>
-    </div>`,
+        "直播监听回收站",
+        `<div class="rounded-lg border border-gray-200 bg-gray-50/60">
+            <div id="roomRecycleList" data-key="${escapeHtml(key)}" class="divide-y divide-gray-200"></div>
+        </div>`,
         [
             {
                 text: "关闭",
-                className:
-                    "bg-primary text-white hover:bg-primary/90 focus:ring-primary",
+                className: "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-gray-300",
                 onClick: closeModal,
             },
-        ]
+        ],
+        {maxWidth: "56rem", hint: total ? `共 ${total} 个` : ""}
     );
-    // 初始化根目录，默认第一页
+    // 初始化列表，默认第一页
     const rootDom = document.getElementById("roomRecycleList");
-    // 挂载分页状态：当前页、每页条数
     rootDom.dataset.currentPage = "1";
     rootDom.dataset.pageSize = "100";
     renderRoomRecycleContent(rootDom, data);
 }
 
 async function renderRoomRecycleContent(rootDom, data, isAppend = false) {
-    // 读取容器上存储的分页状态
     let currentPage = parseInt(rootDom.dataset.currentPage || "1");
     const pageSize = parseInt(rootDom.dataset.pageSize || "100");
-    const key = document.getElementById("roomRecycleList").dataset.key;
-    // 非追加模式先清空+loading
+
     if (!isAppend) {
-        rootDom.innerHTML = `<div class="text-gray-500 text-sm py-1"><i class="fa fa-spinner fa-spin mr-1"></i>加载中...</div>`;
+        rootDom.innerHTML = `<div class="px-4 py-6 text-center text-gray-500 text-sm"><i class="fa fa-spinner fa-spin mr-1"></i>加载中...</div>`;
         currentPage = 1;
         rootDom.dataset.currentPage = currentPage;
     }
-    if (data === null) {
-        data = await fetchRecycleContents(currentPage, pageSize)
+
+    if (!data) {
+        data = await fetchRecycleContents(currentPage, pageSize);
     }
-    const {list, total} = data;
+    const list = data.list || [];
+    const total = data.total || 0;
     const totalPage = Math.ceil(total / pageSize);
-    // 首次渲染且无数据
+
     if (!isAppend) {
         rootDom.innerHTML = "";
-        if (total === 0 || !list || list.length === 0) {
-            rootDom.innerHTML = `<div class="text-gray-400 text-sm py-1">暂无信息</div>`;
-            // 清空残留按钮
-            const oldBtn = rootDom.querySelector(".load-more-btn");
-            if (oldBtn) oldBtn.remove();
+        if (list.length === 0) {
+            rootDom.innerHTML = `<div class="px-4 py-10 text-center text-gray-400 text-sm">
+                <i class="fa fa-inbox text-2xl block mb-2"></i>回收站是空的，删除的监听会出现在这里
+            </div>`;
             return;
         }
     }
 
-    let htmlStr = "";
-    list.forEach((item) => {
-        htmlStr += `
-      <div class="my-1">
-        <div class="flex items-center gap-2 cursor-pointer py-1 hover:text-blue-600 transition-colors recycle-toggle">
-          <i class="fa fa-chevron-right text-xs transition-transform duration-200"></i>
-          <i class="fa fa-recycle text-green-400"></i>
-          <span>${item.title}</span>
-        </div>
-        <div class="recycle-child-wrap pl-2 py-2 hidden bg-gray-200 rounded-xl" data-path="${item.path}"></div>
-      </div>`;
-    });
-
-    // ==========先移除旧按钮，再插入列表内容，避免内容插在按钮后面==========
+    // 先移除旧的“加载更多”，再追加新内容
     const oldBtn = rootDom.querySelector(".load-more-btn");
     if (oldBtn) oldBtn.remove();
-    // 追加当前页列表HTML
-    rootDom.insertAdjacentHTML("beforeend", htmlStr);
 
-    // ==========有下一页则重新创建按钮，追加到容器最末尾==========
+    list.forEach((item) => {
+        const info = parseRecycleTitle(item.title);
+        const card = document.createElement("div");
+        card.className = "recycle-item";
+        card.innerHTML = `
+            <button type="button"
+                    class="recycle-toggle w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white transition-colors">
+                <i class="fa fa-chevron-right text-[10px] text-gray-400 transition-transform duration-200 w-3"></i>
+                <span class="w-7 h-7 rounded-md bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
+                    <i class="fa fa-tv text-xs"></i>
+                </span>
+                <span class="min-w-0 flex-1">
+                    <span class="block text-sm font-medium text-gray-800 truncate">${escapeHtml(info.name || item.title)}</span>
+                    <span class="block text-xs text-gray-400 truncate">${info.id ? "房间ID: " + escapeHtml(info.id) : escapeHtml(item.path)}</span>
+                </span>
+                <span class="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 flex-shrink-0">
+                    ${escapeHtml(platformLabel(info.platform))}
+                </span>
+            </button>
+            <div class="recycle-child-wrap hidden px-4 pb-4 bg-gray-50 border-t border-gray-200"
+                 data-path="${escapeHtml(item.path)}"></div>`;
+        rootDom.appendChild(card);
+    });
+
     if (currentPage < totalPage) {
         const moreBtn = document.createElement("div");
-        moreBtn.className = "load-more-btn text-center py-2 text-blue-500 text-sm cursor-pointer hover:underline";
-        moreBtn.textContent = "加载更多";
+        moreBtn.className = "load-more-btn py-3 text-center";
+        moreBtn.innerHTML = `<button type="button" class="text-sm text-primary hover:underline">加载更多</button>`;
         moreBtn.onclick = async function () {
-            let p = parseInt(rootDom.dataset.currentPage);
+            let p = parseInt(rootDom.dataset.currentPage || "1");
             rootDom.dataset.currentPage = ++p;
             await renderRoomRecycleContent(rootDom, null, true);
         };
         rootDom.appendChild(moreBtn);
     }
-    //绑定点击事件
-    document.querySelectorAll(".recycle-toggle").forEach((item) => {
-        if (item.dataset.loaded) return;
-        item.dataset.loaded = "1";
-        item.onclick = async function () {
+
+    bindRecycleToggle(rootDom);
+}
+
+// 展开/收起详情
+function bindRecycleToggle(rootDom) {
+    rootDom.querySelectorAll(".recycle-toggle").forEach((toggle) => {
+        if (toggle.dataset.bound) return;
+        toggle.dataset.bound = "1";
+        toggle.onclick = async function () {
+            const wrapDom = this.nextElementSibling;
             const arrow = this.querySelector(".fa-chevron-right");
             arrow.classList.toggle("rotate-90");
-            const wrapDom = this.nextElementSibling;
-            const path = wrapDom.dataset.path;
-            if (wrapDom.classList.contains("hidden")) {
-                wrapDom.classList.remove("hidden");
-                // 未初始化过才初次渲染第一页
-                if (wrapDom.innerHTML === "") {
-                    const res = await getRequest("room-recycle/getDetails", {path: path, actionKey: key});
-                    let html;
-                    const room = res.data;
-                    try {
-                        html = `
-                        <div class="flex flex-wrap items-center justify-between gap-2 px-2">
-                        <span><i class="fa fa-id-card mr-1"></i>ID: ${room.id}</span>
-                        <span><i class="fa fa-user mr-1"></i>名称: ${room.name || ""}</span>
-                        <span><i class="fa fa-tag mr-1"></i>平台: ${platformName[room.platform]}</span>
-                        <span><i class="fa fa-hourglass mr-1"></i>频率: <input type="number" class="w-12 delayIntervalSec" value="${room.setting.delayIntervalSec}">秒</span>
-                        <span><i class="fa fa-hourglass mr-1"></i>是否自动录制: <input type="checkbox" class="isAutoRecord" ${room.isAutoRecord ? "checked" : ""}></span>
-                        <span><i class="fa fa-check-square mr-1"></i>开启弹幕记录: <input type="checkbox" class="openSubtitle" ${room.setting.openSubtitle ? "checked" : ""}></span>
-                        <span><i class="fa fa-check-square mr-1"></i>是否循环监听: <input type="checkbox" class="isLoop" ${room.setting.isLoop ? "checked" : ""}></span>
-                        <span><i class="fa fa-edit mr-1"></i>息知通知: <input type="text" class="xiZhiUrl" placeholder="${room.setting.xiZhiUrl || ""}"></span>
-                        <span><i class="fa fa-edit mr-1"></i>Cookie设置: <input type="text" class="cookie" placeholder="${room.setting.cookie || ""}"></span>
-                        </div>
-                        
-                        <div class="pt-2 flex flex-wrap items-center justify-between gap-2 px-2">
-                            <button class="ml-6 text-green-500 recoverRoom-btn"><i class="fa fa-repeat mr-1"></i>恢复监听</button>
-                            <button class="ml-6 text-red-500" onclick="deleteRoom('${path}')"><i class="fa fa-times mr-1"></i>彻底删除</button>
-                        </div>
-                        `;
-                    } catch (e) {
-                        html = `<p class="text-red-600">错误: ${res.message}</p>`
-                    }
+            this.classList.toggle("bg-white");
 
-                    wrapDom.innerHTML = html;
-                    wrapDom.querySelector("button.recoverRoom-btn").addEventListener("click", async function () {
-                        const delayIntervalSec = wrapDom.querySelector("input.delayIntervalSec").value;
-                        if ((delayIntervalSec && (isNaN(delayIntervalSec) || Number(delayIntervalSec) < 10))) {
-                            alert("刷新频率必须是大于等于10的数字");
-                            return;
-                        }
-                        room.setting.delayIntervalSec = delayIntervalSec
-                        room.setting.openSubtitle = wrapDom.querySelector("input.openSubtitle").checked;
-                        room.setting.isLoop = wrapDom.querySelector("input.isLoop").checked;
-                        room.isAutoRecord = wrapDom.querySelector("input.isAutoRecord").checked;
-                        const xiZhiUrl = wrapDom.querySelector("input.xiZhiUrl").value.trim();
-                        room.setting.xiZhiUrl = xiZhiUrl.length > 0 ? xiZhiUrl : null;
-                        const cookie = wrapDom.querySelector("input.cookie").value.trim();
-                        room.setting.cookie = cookie.length > 0 ? cookie : null;
-                        recoverRoom(path, room);
-                    })
-                }
-            } else {
+            if (!wrapDom.classList.contains("hidden")) {
                 wrapDom.classList.add("hidden");
+                return;
             }
+            wrapDom.classList.remove("hidden");
+            if (wrapDom.innerHTML === "") {
+                await renderRecycleDetail(wrapDom);
+            }
+        };
+    });
+}
+
+// 详情面板：字段卡片 + 底部操作
+async function renderRecycleDetail(wrapDom) {
+    const path = wrapDom.dataset.path;
+    const rootDom = document.getElementById("roomRecycleList");
+    const key = rootDom.dataset.key;
+
+    wrapDom.innerHTML = `<div class="py-4 text-center text-gray-500 text-sm"><i class="fa fa-spinner fa-spin mr-1"></i>加载房间配置...</div>`;
+
+    let res;
+    try {
+        res = await getRequest("room-recycle/getDetails", {path: path, actionKey: key});
+    } catch (error) {
+        wrapDom.innerHTML = `<p class="py-3 text-sm text-red-600">读取失败，请重试</p>`;
+        return;
+    }
+    if (!res || !res.data) {
+        wrapDom.innerHTML = `<p class="py-3 text-sm text-red-600">${escapeHtml((res && res.message) || "未获取到房间信息")}</p>`;
+        return;
+    }
+
+    const room = res.data;
+    const setting = room.setting || {};
+    const field = (label, control, spanFull) => `
+        <div class="${spanFull ? "sm:col-span-2" : ""}">
+            <div class="text-xs text-gray-500 mb-1">${label}</div>
+            ${control}
+        </div>`;
+    const inputCls = "w-full px-2.5 py-1.5 text-sm bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary";
+    const check = (cls, checked, text) => `
+        <label class="flex items-center gap-2 cursor-pointer select-none h-[34px]">
+            <input type="checkbox" class="${cls} h-4 w-4 text-primary focus:ring-primary" ${checked ? "checked" : ""}>
+            <span class="text-sm text-gray-700">${text}</span>
+        </label>`;
+
+    wrapDom.innerHTML = `
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4">
+            ${field("房间 ID", `<div class="px-2.5 py-1.5 text-sm bg-white border border-gray-200 rounded-md text-gray-600 truncate" title="${escapeHtml(room.id)}">${escapeHtml(room.id)}</div>`)}
+            ${field("平台", `<div class="px-2.5 py-1.5 text-sm bg-white border border-gray-200 rounded-md text-gray-600">${escapeHtml(platformLabel(room.platform))}</div>`)}
+            ${field("名称", `<input type="text" class="room-name ${inputCls}" value="${escapeHtml(room.name || "")}" placeholder="未命名">`)}
+            ${field("保存路径", `<input type="text" class="savePath ${inputCls}" value="" title="${escapeHtml(room.savePath || "")}" placeholder="${escapeHtml(room.savePath || "未设置，默认存到程序目录")}">`)}
+            ${field("刷新频率（秒）", `<input type="number" min="10" class="delayIntervalSec ${inputCls}" value="${escapeHtml(setting.delayIntervalSec ?? "")}" placeholder="沿用全局配置">`)}
+            ${field("启用状态", `<div class="px-2.5 py-1.5 text-sm bg-light border border-gray-200 rounded-md text-gray-600 flex items-center gap-2" title="恢复后由程序自动置为启用，无需手动设置"><span>${room.isEnable === false ? "已停用（恢复后自动启用）" : "已启用"}</span><span class="text-xs text-gray-400">由程序自动控制</span></div>`)}
+            ${field("自动录制", check("isAutoRecord", room.isAutoRecord, "开播后自动录制"))}
+            ${field("转换 FLV 为 MP4", check("convertFlvToMp4", setting.convertFlvToMp4, "录制结束自动转码"))}
+            ${field("弹幕记录", check("openSubtitle", setting.openSubtitle, "记录弹幕内容"))}
+            ${field("循环监听", check("isLoop", setting.isLoop, "直播结束后继续监听"))}
+            ${field("息知通知", `<input type="text" class="xiZhiUrl ${inputCls}" value="" title="${escapeHtml(setting.xiZhiUrl || "")}" placeholder="${escapeHtml(setting.xiZhiUrl || "未设置，留空表示不通知")}">`)}
+            ${field("Cookie", `<input type="text" class="cookie ${inputCls}" value="" title="${escapeHtml(setting.cookie || "")}" placeholder="${escapeHtml(setting.cookie || "未设置，支持 file:cookie/xxx.txt 引用")}">`, true)}
+        </div>
+        <div class="flex items-center justify-end gap-2 pt-4 mt-1 border-t border-gray-200">
+            <button type="button" class="deleteRoom-btn inline-flex items-center px-3 py-1.5 text-sm text-red-600 bg-white border border-gray-300 rounded-md hover:bg-red-50 transition-colors">
+                <i class="fa fa-trash mr-1"></i>彻底删除
+            </button>
+            <button type="button" class="recoverRoom-btn inline-flex items-center px-3 py-1.5 text-sm text-white bg-success rounded-md hover:brightness-95 transition-all">
+                <i class="fa fa-repeat mr-1"></i>恢复监听
+            </button>
+        </div>`;
+
+    // 彻底删除
+    wrapDom.querySelector("button.deleteRoom-btn").addEventListener("click", function () {
+        deleteRoom(path);
+    });
+
+    // 恢复监听：把面板上的配置写回 room 对象再提交
+    wrapDom.querySelector("button.recoverRoom-btn").addEventListener("click", async function () {
+        const delay = wrapDom.querySelector("input.delayIntervalSec").value.trim();
+        if (delay && (isNaN(delay) || Number(delay) < 10)) {
+            alert("刷新频率必须是大于等于10的数字");
+            return;
         }
+        room.setting = room.setting || {};
+        if (delay) room.setting.delayIntervalSec = Number(delay);
+        room.name = wrapDom.querySelector("input.room-name").value.trim();
+        const savePath = wrapDom.querySelector("input.savePath").value.trim();
+        // savePath 留空按 null 提交，merge 时沿用原来配置
+        room.savePath = savePath.length > 0 ? savePath : null;
+        // isEnable 由后端恢复时统一置为 true，这里不再提交
+        room.setting.convertFlvToMp4 = wrapDom.querySelector("input.convertFlvToMp4").checked;
+        room.setting.openSubtitle = wrapDom.querySelector("input.openSubtitle").checked;
+        room.setting.isLoop = wrapDom.querySelector("input.isLoop").checked;
+        room.isAutoRecord = wrapDom.querySelector("input.isAutoRecord").checked;
+        const xiZhiUrl = wrapDom.querySelector("input.xiZhiUrl").value.trim();
+        room.setting.xiZhiUrl = xiZhiUrl.length > 0 ? xiZhiUrl : null;
+        const cookie = wrapDom.querySelector("input.cookie").value.trim();
+        room.setting.cookie = cookie.length > 0 ? cookie : null;
+        recoverRoom(path, room);
     });
 }
 
 function recoverRoom(path, data) {
     const rootDom = document.getElementById("roomRecycleList");
     const key = rootDom.dataset.key;
-    postRequest(`room-recycle/recover?actionKey=${key}&path=${path}`, data)
+    postRequest(`room-recycle/recover?actionKey=${encodeURIComponent(key)}&path=${encodeURIComponent(path)}`, data)
         .then(msg => {
             if (msg.success) {
                 rootDom.dataset.currentPage = "1";
                 renderRoomRecycleContent(rootDom, null, false);
+                handleManualRefresh();
             } else {
                 alert(msg.message);
             }
         })
+        .catch(() => {
+        });
 }
 
 function deleteRoom(path) {
     const rootDom = document.getElementById("roomRecycleList");
     const key = rootDom.dataset.key;
+    if (!confirm("彻底删除后不可恢复，确定删除这条监听吗？")) return;
     getRequest("room-recycle/delete", {actionKey: key, path: path})
         .then(msg => {
             if (msg.success) {
@@ -205,5 +290,6 @@ function deleteRoom(path) {
                 alert(msg.message);
             }
         })
+        .catch(() => {
+        });
 }
-

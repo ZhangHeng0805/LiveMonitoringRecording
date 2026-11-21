@@ -15,64 +15,573 @@
         })();
     </script>
     <meta name="referrer" content="no-referrer">
-    <!-- 引入Tailwind CSS -->
-    <script src="js/tailwindcss-3.4.17.js"></script>
     <!-- 引入Font Awesome图标 -->
     <link href="css/font-awesome.min-4.7.0.css" rel="stylesheet">
-    <!-- 自定义配置 -->
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#6366F1', // 主色调：靛蓝色
-                        secondary: '#F59E0B', // 辅助色：橙色
-                        neutral: {
-                            100: '#F3F4F6',
-                            200: '#E5E7EB',
-                            300: '#D1D5DB',
-                            800: '#1F2937',
-                            900: '#111827'
-                        }
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'system-ui', 'sans-serif']
-                    },
-                    boxShadow: {
-                        'card': '0 4px 20px rgba(0, 0, 0, 0.08)',
-                        'card-hover': '0 8px 30px rgba(0, 0, 0, 0.12)'
-                    }
-                }
-            }
+    <style>
+        :root {
+            --dyx-primary: #6366f1;
+            --dyx-primary-dark: #4f46e5;
+            --dyx-primary-soft: #eef0ff;
+            --dyx-line: #ecedf1;
+            --dyx-bg: #f4f5f8;
+            --dyx-text: #14171f;
+            --dyx-text-2: #4b5563;
+            --dyx-text-3: #9aa1ad;
         }
-    </script>
-    <style type="text/tailwindcss">
-        @layer utilities {
-            .content-auto {
-                content-visibility: auto;
-            }
 
-            .text-shadow {
-                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            }
+        * { box-sizing: border-box; }
 
-            .transition-custom {
-                transition: all 0.3s ease;
-            }
+        html, body { margin: 0; padding: 0; }
 
-            .skeleton {
-                background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-                background-size: 200% 100%;
-                animation: skeleton-loading 1.5s infinite;
-            }
+        body {
+            background: var(--dyx-bg);
+            color: var(--dyx-text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+            padding: 34px 16px 0;
+        }
 
-            @keyframes skeleton-loading {
-                0% {
-                    background-position: 200% 0;
-                }
-                100% {
-                    background-position: -200% 0;
-                }
+        .hidden { display: none !important; }
+
+        .dyx-wrap { max-width: 880px; margin: 0 auto; }
+
+        /* ---------- 页头 ---------- */
+        .dyx-header {
+            display: flex;
+            align-items: center;
+            gap: .75rem;
+            margin-bottom: 1.1rem;
+            padding: 0 .25rem;
+        }
+
+        .dyx-logo {
+            width: 2.6rem;
+            height: 2.6rem;
+            border-radius: .8rem;
+            background: linear-gradient(135deg, var(--dyx-primary), #8b8cf8);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.15rem;
+            box-shadow: 0 6px 16px rgba(99, 102, 241, .28);
+            flex-shrink: 0;
+        }
+
+        .dyx-header-text { min-width: 0; }
+
+        .dyx-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            letter-spacing: .2px;
+            margin: 0;
+            line-height: 1.35;
+        }
+
+        .dyx-subtitle {
+            font-size: .8rem;
+            color: var(--dyx-text-3);
+            margin: .15rem 0 0;
+        }
+
+        /* ---------- 通用卡片 ---------- */
+        .dyx-card {
+            background: #fff;
+            border: 1px solid var(--dyx-line);
+            border-radius: .9rem;
+            box-shadow: 0 1px 2px rgba(16, 24, 40, .04);
+        }
+
+        /* ---------- 解析卡 ---------- */
+        .dyx-parse { padding: .95rem 1rem 1rem; margin-bottom: .85rem; }
+
+        .dyx-parse-label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .5rem;
+            font-size: .82rem;
+            font-weight: 600;
+            margin-bottom: .5rem;
+        }
+
+        .dyx-parse-label .dyx-label-hint {
+            font-weight: 400;
+            color: var(--dyx-text-3);
+            font-size: .74rem;
+        }
+
+        .dyx-input-row { display: flex; gap: .5rem; }
+
+        .dyx-input-wrap { position: relative; flex: 1; min-width: 0; }
+
+        .dyx-input-wrap > i {
+            position: absolute;
+            left: .7rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--dyx-text-3);
+            font-size: .85rem;
+            pointer-events: none;
+        }
+
+        .dyx-input {
+            width: 100%;
+            height: 2.55rem;
+            padding: 0 .8rem 0 2rem;
+            border: 1px solid #dfe1e7;
+            border-radius: .55rem;
+            background: #fff;
+            color: var(--dyx-text);
+            font-size: .86rem;
+            outline: none;
+            transition: border-color .15s ease, box-shadow .15s ease;
+        }
+
+        .dyx-input::placeholder { color: #b6bcc7; }
+
+        .dyx-input:focus {
+            border-color: var(--dyx-primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, .14);
+        }
+
+        .dyx-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: .4rem;
+            height: 2.55rem;
+            padding: 0 1.1rem;
+            border: 1px solid transparent;
+            border-radius: .55rem;
+            font-size: .86rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background .15s ease, border-color .15s ease, color .15s ease, opacity .15s ease;
+            white-space: nowrap;
+        }
+
+        .dyx-btn-primary {
+            background: var(--dyx-primary);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, .26);
+        }
+
+        .dyx-btn-primary:hover:not(:disabled) { background: var(--dyx-primary-dark); }
+
+        .dyx-btn-ghost {
+            background: #fff;
+            border-color: #dfe1e7;
+            color: var(--dyx-text-2);
+        }
+
+        .dyx-btn-ghost:hover:not(:disabled) { background: #f7f8fa; }
+
+        .dyx-btn:disabled { opacity: .6; cursor: not-allowed; }
+
+        .dyx-parse-foot {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .75rem;
+            margin-top: .55rem;
+            font-size: .75rem;
+            color: var(--dyx-text-3);
+        }
+
+        .dyx-parse-foot .dyx-tip { line-height: 1.5; }
+
+        /* 刷新开关 */
+        .dyx-switch { display: inline-flex; align-items: center; gap: .4rem; cursor: pointer; user-select: none; flex-shrink: 0; }
+        .dyx-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+        .dyx-switch-track {
+            width: 2rem;
+            height: 1.1rem;
+            border-radius: 999px;
+            background: #d7dae1;
+            position: relative;
+            transition: background .15s ease;
+        }
+        .dyx-switch-track::after {
+            content: "";
+            position: absolute;
+            top: .15rem;
+            left: .15rem;
+            width: .8rem;
+            height: .8rem;
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, .16);
+            transition: transform .15s ease;
+        }
+        .dyx-switch input:checked + .dyx-switch-track { background: var(--dyx-primary); }
+        .dyx-switch input:checked + .dyx-switch-track::after { transform: translateX(.9rem); }
+        .dyx-switch-text { color: var(--dyx-text-2); }
+
+        /* ---------- 空态 / 加载 / 错误 ---------- */
+        .dyx-state { padding: 2.6rem 1rem; text-align: center; margin-bottom: .85rem; }
+
+        .dyx-state-icon {
+            width: 3rem;
+            height: 3rem;
+            margin: 0 auto .7rem;
+            border-radius: .85rem;
+            background: var(--dyx-primary-soft);
+            color: var(--dyx-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.15rem;
+        }
+
+        .dyx-state-title { font-size: .9rem; font-weight: 600; margin: 0 0 .25rem; }
+        .dyx-state-desc { font-size: .78rem; color: var(--dyx-text-3); margin: 0; line-height: 1.6; }
+
+        .dyx-skeleton { width: 100%; max-width: 32rem; margin: .8rem auto 0; }
+        .dyx-skeleton-bar {
+            height: .62rem;
+            border-radius: .35rem;
+            margin-bottom: .45rem;
+            background: linear-gradient(90deg, #f1f2f5 25%, #e7e9ee 50%, #f1f2f5 75%);
+            background-size: 200% 100%;
+            animation: dyx-shimmer 1.4s infinite;
+        }
+        .dyx-skeleton-bar:nth-child(1) { width: 70%; margin-left: auto; margin-right: auto; }
+        .dyx-skeleton-bar:nth-child(2) { width: 92%; margin-left: auto; margin-right: auto; }
+        .dyx-skeleton-bar:nth-child(3) { width: 55%; margin-left: auto; margin-right: auto; }
+        @keyframes dyx-shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .dyx-error { border-color: #fbd5d5; background: #fff8f8; }
+        .dyx-error .dyx-state-icon { background: #fee2e2; color: #dc2626; }
+        .dyx-error-detail {
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: .72rem;
+            color: #9b1c1c;
+            background: #fff;
+            border: 1px solid #fbd5d5;
+            border-radius: .45rem;
+            padding: .5rem .6rem;
+            margin: .6rem auto 0;
+            max-width: 34rem;
+            text-align: left;
+            word-break: break-all;
+            overflow-wrap: anywhere;
+            max-height: 8rem;
+            overflow: auto;
+        }
+        .dyx-error .dyx-btn { margin-top: .8rem; }
+
+        /* ---------- 结果卡 ---------- */
+        .dyx-result { overflow: hidden; margin-bottom: .85rem; }
+
+        .dyx-author {
+            display: flex;
+            align-items: center;
+            gap: .7rem;
+            padding: .95rem 1rem;
+            border-bottom: 1px solid var(--dyx-line);
+        }
+
+        .dyx-avatar {
+            width: 2.6rem;
+            height: 2.6rem;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #f1f2f5;
+            flex-shrink: 0;
+        }
+
+        .dyx-author-main { min-width: 0; flex: 1; }
+
+        .dyx-author-name {
+            font-size: .92rem;
+            font-weight: 600;
+            margin: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .dyx-author-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .3rem .55rem;
+            margin-top: .25rem;
+            font-size: .73rem;
+            color: var(--dyx-text-3);
+        }
+
+        .dyx-author-meta .dyx-dot { color: #d5d8de; }
+
+        .dyx-author-intro {
+            font-size: .73rem;
+            color: var(--dyx-text-3);
+            margin: .3rem 0 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .dyx-time {
+            font-size: .74rem;
+            color: var(--dyx-text-3);
+            flex-shrink: 0;
+        }
+
+        .dyx-caption { padding: .85rem 1rem .1rem; }
+        .dyx-caption-title {
+            font-size: .9rem;
+            line-height: 1.6;
+            margin: 0;
+            color: var(--dyx-text);
+            word-break: break-word;
+        }
+
+        /* 数据统计 */
+        .dyx-stats {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            gap: .2rem;
+            margin: .8rem 1rem 1rem;
+            padding: .55rem .3rem;
+            background: #f8f9fb;
+            border: 1px solid #f0f1f5;
+            border-radius: .6rem;
+        }
+
+        .dyx-stat { text-align: center; padding: .15rem 0; min-width: 0; }
+
+        .dyx-stat-value {
+            font-size: .92rem;
+            font-weight: 700;
+            color: var(--dyx-text);
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .dyx-stat-label {
+            font-size: .68rem;
+            color: var(--dyx-text-3);
+            margin-top: .1rem;
+            white-space: nowrap;
+        }
+
+        /* 标签切换（分段控件） */
+        .dyx-tabs {
+            display: flex;
+            gap: .2rem;
+            margin: 0 1rem;
+            padding: .18rem;
+            background: #f3f4f7;
+            border-radius: .55rem;
+        }
+
+        .dyx-tab {
+            flex: 1;
+            height: 2rem;
+            border: 0;
+            border-radius: .42rem;
+            background: transparent;
+            color: var(--dyx-text-2);
+            font-size: .8rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: .35rem;
+            transition: background .15s ease, color .15s ease, box-shadow .15s ease;
+        }
+
+        .dyx-tab:hover { color: var(--dyx-text); }
+
+        .dyx-tab.is-active {
+            background: #fff;
+            color: var(--dyx-primary-dark);
+            box-shadow: 0 1px 2px rgba(16, 24, 40, .08);
+            font-weight: 600;
+        }
+
+        /* 媒体区 */
+        .dyx-panel { padding: .85rem 1rem 0; }
+
+        .dyx-stage {
+            background: #f6f7f9;
+            border: 1px solid #f0f1f5;
+            border-radius: .65rem;
+            padding: .55rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: .5rem;
+            max-height: 62vh;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #d5d8de transparent;
+        }
+        .dyx-stage::-webkit-scrollbar { width: 6px; }
+        .dyx-stage::-webkit-scrollbar-thumb { background: #d5d8de; border-radius: 3px; }
+
+        .dyx-media-item {
+            position: relative;
+            border-radius: .45rem;
+            overflow: hidden;
+            background: #000;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: border-color .15s ease;
+            max-width: 100%;
+            flex-shrink: 0;
+        }
+
+        .dyx-media-item:hover { border-color: rgba(99, 102, 241, .45); }
+        .dyx-media-item.is-selected { border-color: var(--dyx-primary); }
+
+        .dyx-media-item video {
+            display: block;
+            max-height: 46vh;
+            max-width: 100%;
+            background: #000;
+        }
+
+        .dyx-media-badge {
+            position: absolute;
+            top: .35rem;
+            left: .35rem;
+            background: rgba(0, 0, 0, .62);
+            color: #fff;
+            font-size: .68rem;
+            padding: .1rem .4rem;
+            border-radius: .3rem;
+            pointer-events: none;
+        }
+
+        /* 图片条 */
+        .dyx-image-strip {
+            display: flex;
+            gap: .55rem;
+            overflow-x: auto;
+            padding: .1rem .05rem .35rem;
+            scroll-snap-type: x proximity;
+            scrollbar-width: thin;
+            scrollbar-color: #cfd3dc transparent;
+        }
+
+        .dyx-image-strip::-webkit-scrollbar { height: 6px; }
+        .dyx-image-strip::-webkit-scrollbar-thumb { background: #cfd3dc; border-radius: 3px; }
+        .dyx-image-strip::-webkit-scrollbar-track { background: transparent; }
+
+        .dyx-thumb {
+            position: relative;
+            flex-shrink: 0;
+            width: 15rem;
+            height: 40vh;
+            min-height: 200px;
+            border-radius: .45rem;
+            overflow: hidden;
+            border: 2px solid transparent;
+            background: #fff;
+            cursor: pointer;
+            scroll-snap-align: center;
+            transition: border-color .15s ease;
+        }
+
+        .dyx-thumb:hover { border-color: rgba(99, 102, 241, .45); }
+        .dyx-thumb.is-selected { border-color: var(--dyx-primary); }
+
+        .dyx-thumb img {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: contain;
+            background: #f1f2f5;
+        }
+
+        .dyx-thumb .dyx-thumb-spec {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            padding: .2rem .4rem;
+            font-size: .66rem;
+            color: #fff;
+            background: linear-gradient(to top, rgba(0, 0, 0, .66), rgba(0, 0, 0, 0));
+            text-align: center;
+        }
+
+        /* 音频 */
+        .dyx-audio-box {
+            background: #f8f9fb;
+            border: 1px solid #f0f1f5;
+            border-radius: .65rem;
+            padding: 1.3rem 1rem;
+        }
+        .dyx-audio-box audio { width: 100%; display: block; }
+
+        /* 元信息条 + 下载 */
+        .dyx-media-foot {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .6rem;
+            flex-wrap: wrap;
+            padding: .75rem 1rem .9rem;
+        }
+
+        .dyx-chips { display: flex; flex-wrap: wrap; gap: .4rem; }
+
+        .dyx-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: .3rem;
+            font-size: .72rem;
+            color: var(--dyx-text-2);
+            background: #f4f5f8;
+            border: 1px solid #ebedf1;
+            border-radius: .35rem;
+            padding: .22rem .45rem;
+        }
+
+        .dyx-chip i { color: var(--dyx-text-3); }
+
+        .dyx-chip b { font-weight: 600; color: var(--dyx-text); }
+
+        /* ---------- 页脚 ---------- */
+        .dyx-footer {
+            text-align: center;
+            color: var(--dyx-text-3);
+            font-size: .75rem;
+            line-height: 1.7;
+            padding: 1.1rem 0 1.6rem;
+        }
+
+        .dyx-footer a { color: var(--dyx-text-3); text-decoration: none; }
+        .dyx-footer a:hover { color: var(--dyx-primary); }
+
+        /* ---------- 响应式 ---------- */
+        @media (max-width: 720px) {
+            body { padding: 18px 12px 0; }
+            .dyx-title { font-size: 1.1rem; }
+            .dyx-logo { width: 2.3rem; height: 2.3rem; font-size: 1rem; }
+            .dyx-input-row { flex-direction: column; }
+            .dyx-btn-primary { width: 100%; }
+            .dyx-parse-foot { flex-direction: column; align-items: flex-start; gap: .4rem; }
+            .dyx-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .35rem; }
+            .dyx-time { display: none; }
+            .dyx-tab { font-size: .76rem; }
+            .dyx-thumb { width: 10.5rem; height: 30vh; min-height: 160px; }
+            .dyx-media-foot .dyx-btn-primary { width: 100%; }
+            .dyx-author-intro {
+                margin-top: .15rem;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
             }
         }
     </style>
@@ -80,227 +589,195 @@
     <script src="js/client-info.js"></script>
     <script src="js/util.js"></script>
 </head>
-<body class="bg-neutral-100 font-sans text-neutral-800 min-h-screen py-8 px-4 md:px-8">
-<div class="max-w-4xl mx-auto">
-    <!-- 页面标题 -->
-    <h1 class="text-[clamp(1.8rem,3vw,2.5rem)] font-bold text-center mb-8 text-neutral-900 text-shadow">
-        抖音作品解析与展示
-    </h1>
+<body>
+<div class="dyx-wrap">
+    <header class="dyx-header">
+        <div class="dyx-logo"><i class="fa fa-play"></i></div>
+        <div class="dyx-header-text">
+            <h1 class="dyx-title">抖音作品解析</h1>
+            <p class="dyx-subtitle">粘贴分享链接，解析视频、图集与音频</p>
+        </div>
+    </header>
 
-    <!-- 链接输入区域 -->
-    <div class="bg-white rounded-2xl shadow-card p-6 mb-8">
-        <h2 class="text-xl font-semibold mb-4 text-neutral-800">解析作品链接</h2>
-        <div class="flex flex-col md:flex-row gap-3">
-            <input type="text"
-                   id="shareLinkInput"
-                   placeholder="粘贴作品分享链接到这里..."
-                   class="flex-1 px-4 py-3 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-custom">
-            <button id="parseBtn"
-                    class="bg-primary hover:bg-primary/90 text-white px-6 py-3 rounded-lg transition-custom flex items-center justify-center gap-2 font-medium">
-                <i class="fa fa-search"></i>
-                <span>解析链接</span>
+    <!-- 链接输入 -->
+    <section class="dyx-card dyx-parse">
+        <div class="dyx-parse-label">
+            <span>作品链接</span>
+            <span class="dyx-label-hint">支持视频 / 图集分享文案</span>
+        </div>
+        <div class="dyx-input-row">
+            <div class="dyx-input-wrap">
+                <i class="fa fa-link"></i>
+                <input type="text" id="shareLinkInput" class="dyx-input"
+                       placeholder="粘贴作品分享链接或整段分享文案…">
+            </div>
+            <button id="parseBtn" class="dyx-btn dyx-btn-primary">
+                <i class="fa fa-search"></i><span>解析链接</span>
             </button>
         </div>
-        <p class="text-sm text-neutral-500 mt-3 flex justify-between">
-            <span>支持解析抖音平台的视频/图片作品分享链接</span>
-            <label><input id="isRefresh" type="checkbox">刷新</label>
-        </p>
+        <div class="dyx-parse-foot">
+            <span class="dyx-tip">注意限流，按 IP 限流（默认 3 次/分钟），链接可直接粘贴整段分享文案。</span>
+            <label class="dyx-switch">
+                <input id="isRefresh" type="checkbox">
+                <span class="dyx-switch-track"></span>
+                <span class="dyx-switch-text">忽略缓存</span>
+            </label>
+        </div>
+    </section>
+
+    <!-- 初始空态 -->
+    <div id="emptyState" class="dyx-card dyx-state">
+        <div class="dyx-state-icon"><i class="fa fa-magic"></i></div>
+        <p class="dyx-state-title">还没有解析任何作品</p>
+        <p class="dyx-state-desc">在上方粘贴抖音分享链接，点「解析链接」即可查看作者、数据与素材。</p>
     </div>
 
     <!-- 加载状态 -->
-    <div id="loading" class="bg-white rounded-2xl shadow-card p-8 text-center mb-8 hidden">
-        <div class="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-        <p class="mt-4 text-neutral-600">正在解析并加载内容...</p>
+    <div id="loading" class="dyx-card dyx-state hidden">
+        <div class="dyx-state-icon"><i class="fa fa-circle-o-notch fa-spin"></i></div>
+        <p class="dyx-state-title">正在解析作品</p>
+        <p class="dyx-state-desc">首次解析可能需要几秒钟，请稍候…</p>
+        <div class="dyx-skeleton">
+            <div class="dyx-skeleton-bar"></div>
+            <div class="dyx-skeleton-bar"></div>
+            <div class="dyx-skeleton-bar"></div>
+        </div>
     </div>
 
     <!-- 错误状态 -->
-    <div id="error" class="bg-white rounded-2xl shadow-card p-8 text-center mb-8 hidden">
-        <i class="fa fa-exclamation-triangle text-4xl text-secondary mb-4"></i>
-        <p id="errorMessage" class="text-neutral-600 mb-4">解析链接失败，请检查链接是否有效</p>
-        <button id="retryBtn" class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg transition-custom">
-            重试
-        </button>
+    <div id="error" class="dyx-card dyx-state dyx-error hidden">
+        <div class="dyx-state-icon"><i class="fa fa-exclamation-triangle"></i></div>
+        <p id="errorMessage" class="dyx-state-title">解析链接失败，请检查链接是否有效</p>
+        <p id="errorDetail" class="dyx-error-detail hidden"></p>
+        <button id="retryBtn" class="dyx-btn dyx-btn-ghost"><i class="fa fa-refresh"></i>重新解析</button>
     </div>
 
-    <!-- 内容展示区 (初始隐藏，数据加载后显示) -->
-    <div id="contentContainer" class="hidden">
-        <!-- 作者信息区 -->
-        <div class="p-4 border-b border-neutral-200 flex items-center gap-4">
-            <img id="authorAvatar"
-                 src=""
-                 alt="作者头像"
-                 class="w-12 h-12 rounded-full object-cover border-2 border-primary/20">
-            <div class="flex-1">
-                <h3 id="authorName" class="font-semibold text-lg"></h3>
-                <div id="tagsContainer" class="flex flex-wrap gap-2 mt-1">
-                </div>
+    <!-- 结果 -->
+    <div id="contentContainer" class="dyx-card dyx-result hidden">
+        <!-- 作者 -->
+        <div class="dyx-author">
+            <img id="authorAvatar" src="" alt="作者头像" class="dyx-avatar">
+            <div class="dyx-author-main">
+                <h3 id="authorName" class="dyx-author-name"></h3>
+                <div id="tagsContainer" class="dyx-author-meta"></div>
+                <p id="authorIntro" class="dyx-author-intro"></p>
+            </div>
+            <span class="dyx-time"><i class="fa fa-clock-o mr-1"></i><span id="videoCreateTime"></span></span>
+        </div>
+
+        <!-- 标题 -->
+        <div class="dyx-caption">
+            <h3 id="videoTitle" class="dyx-caption-title"></h3>
+        </div>
+
+        <!-- 数据统计 -->
+        <div class="dyx-stats">
+            <div class="dyx-stat">
+                <div id="likeCount" class="dyx-stat-value"></div>
+                <div class="dyx-stat-label"><i class="fa fa-thumbs-up"></i> 点赞</div>
+            </div>
+            <div class="dyx-stat">
+                <div id="collectCount" class="dyx-stat-value"></div>
+                <div class="dyx-stat-label"><i class="fa fa-star"></i> 收藏</div>
+            </div>
+            <div class="dyx-stat">
+                <div id="shareCount" class="dyx-stat-value"></div>
+                <div class="dyx-stat-label"><i class="fa fa-share"></i> 分享</div>
+            </div>
+            <div class="dyx-stat">
+                <div id="commentCount" class="dyx-stat-value"></div>
+                <div class="dyx-stat-label"><i class="fa fa-comment"></i> 评论</div>
+            </div>
+            <div class="dyx-stat">
+                <div id="recommendCount" class="dyx-stat-value"></div>
+                <div class="dyx-stat-label"><i class="fa fa-thumbs-o-up"></i> 推荐</div>
+            </div>
+            <div class="dyx-stat">
+                <div id="admireCount" class="dyx-stat-value"></div>
+                <div class="dyx-stat-label"><i class="fa fa-trophy"></i> 赞赏</div>
             </div>
         </div>
 
-        <!-- 内容切换标签 -->
-        <div class="bg-white rounded-t-2xl shadow-card p-1 mb-0 flex" id="tabs">
-            <button id="tab-video"
-                    class="content-tab flex-1 py-3 px-4 rounded-xl bg-primary text-white font-medium transition-custom"
-                    data-tab="video">
-                <i class="fa fa-video-camera mr-2"></i>视频
-            </button>
-            <button id="tab-image"
-                    class="content-tab flex-1 py-3 px-4 rounded-xl hover:bg-neutral-100 transition-custom"
-                    data-tab="image">
-                <i class="fa fa-image mr-2"></i>图片
-            </button>
-            <button id="tab-audio"
-                    class="content-tab flex-1 py-3 px-4 rounded-xl hover:bg-neutral-100 transition-custom"
-                    data-tab="audio">
-                <i class="fa fa-music mr-2"></i>音频
-            </button>
+        <!-- 标签切换 -->
+        <div class="dyx-tabs" id="tabs">
+            <button id="tab-video" class="dyx-tab is-active" data-tab="video"><i class="fa fa-video-camera"></i>视频</button>
+            <button id="tab-image" class="dyx-tab" data-tab="image"><i class="fa fa-image"></i>图片</button>
+            <button id="tab-audio" class="dyx-tab" data-tab="audio"><i class="fa fa-music"></i>音频</button>
         </div>
 
-        <!-- 视频内容卡片 -->
-        <div id="videoTab"
-             class="content-panel bg-white rounded-b-2xl shadow-card hover:shadow-card-hover transition-custom overflow-hidden mb-8">
-            <!-- 视频预览区 -->
-            <div id="videoScrollWrap" class="flex gap-4 overflow-x-auto items-center h-[500px]">
-                <!-- 视频项会JS动态填充-->
-            </div>
-            <!-- 视频信息区域 -->
-            <div class="p-4 border-b border-neutral-200">
-                <div class="flex items-center justify-between">
-                    <span class="inline-block bg-secondary/90 text-white text-xs px-2 py-1 rounded-md ml-2">
-                        <i class="fa fa-info mr-1"></i>视频规格: <span id="videoSpecifications"></span>
-                    </span>
-                    <span class="inline-block bg-secondary/90 text-white text-xs px-2 py-1 rounded-md ml-2">
-                        <i class="fa fa-file-video-o mr-1"></i>视频大小: <span id="videoSize"></span>
-                    </span>
+        <!-- 视频面板 -->
+        <div id="videoTab" class="content-panel dyx-panel">
+            <div id="videoScrollWrap" class="dyx-stage"></div>
+            <div class="dyx-media-foot">
+                <div class="dyx-chips">
+                    <span class="dyx-chip"><i class="fa fa-expand"></i><b id="videoSpecifications">—</b></span>
+                    <span class="dyx-chip"><i class="fa fa-database"></i><b id="videoSize">—</b></span>
                 </div>
-
-                <div class="mt-4 flex justify-center">
-                    <button id="downloadVideoBtn"
-                            class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg transition-custom flex items-center gap-1">
-                        <i class="fa fa-download"></i>
-                        <span>下载视频</span>
-                    </button>
-                </div>
+                <button id="downloadVideoBtn" class="dyx-btn dyx-btn-primary">
+                    <i class="fa fa-download"></i><span>下载视频</span>
+                </button>
             </div>
         </div>
 
-        <!-- 图片内容卡片 -->
-        <div id="imageTab"
-             class="content-panel bg-white rounded-b-2xl shadow-card hover:shadow-card-hover transition-custom overflow-hidden mb-8 hidden">
-            <div class="p-6">
-                <!-- 横向滚动容器 -->
-                <div class="bg-neutral-100 p-4 rounded-xl">
-                    <div id="imageScrollWrap" class="flex gap-4 overflow-x-auto items-center">
-                        <!-- 图片项会JS动态填充-->
-                    </div>
+        <!-- 图片面板 -->
+        <div id="imageTab" class="content-panel dyx-panel hidden">
+            <div class="dyx-stage dyx-stage-light">
+                <div id="imageScrollWrap" class="dyx-image-strip"></div>
+            </div>
+            <div class="dyx-media-foot">
+                <div class="dyx-chips">
+                    <span class="dyx-chip"><i class="fa fa-picture-o"></i>点选图片后下载</span>
                 </div>
-
-                <!-- 下载按钮区域：可以下载当前选中图片 -->
-                <div class="mt-4 flex justify-center">
-                    <button id="downloadImageBtn"
-                            class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg transition-custom flex items-center gap-1">
-                        <i class="fa fa-download"></i>
-                        <span>下载图片</span>
-                    </button>
-                </div>
+                <button id="downloadImageBtn" class="dyx-btn dyx-btn-primary">
+                    <i class="fa fa-download"></i><span>下载图片</span>
+                </button>
             </div>
         </div>
 
-        <!-- 音频内容卡片 -->
-        <div id="audioTab"
-             class="content-panel bg-white rounded-b-2xl shadow-card hover:shadow-card-hover transition-custom overflow-hidden mb-8 hidden">
-            <div class="p-6">
-                <!--                <h3 class="text-lg font-semibold mb-4">音频版本</h3>-->
-                <div class="bg-neutral-100 p-6 rounded-xl">
-                    <audio id="audioPlayer" class="w-full" controls>
-                        您的浏览器不支持音频播放
-                    </audio>
-                    <div class="mt-4 text-center">
-                        <button id="downloadAudioBtn"
-                                class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg transition-custom flex items-center gap-1 mx-auto">
-                            <i class="fa fa-download"></i>
-                            <span>下载音频</span>
-                        </button>
-                    </div>
-                </div>
+        <!-- 音频面板 -->
+        <div id="audioTab" class="content-panel dyx-panel hidden">
+            <div class="dyx-audio-box">
+                <audio id="audioPlayer" controls>
+                    您的浏览器不支持音频播放
+                </audio>
             </div>
-        </div>
-
-        <!-- 作品标题内容  -->
-        <div class="text-center">
-            <h3 id="videoTitle" class="text-neutral-900 text-lg md:text-xl font-semibold"></h3>
-            <span class="inline-block bg-gray-600 text-white text-xs px-2 py-1 rounded-md ml-2">
-                <i class="fa fa-clock-o mr-1"></i>发布时间: <span id="videoCreateTime"></span>
-            </span>
-        </div>
-        <!-- 数据统计区 -->
-        <div class="p-4 grid grid-cols-2 md:grid-cols-6 gap-2 md:gap-4 text-center">
-            <div class="p-2 rounded-lg hover:bg-neutral-100 transition-custom">
-                <div id="likeCount" class="text-primary text-2xl font-bold"></div>
-                <div class="text-sm text-neutral-600 mt-1">
-                    <i class="fa fa-thumbs-up mr-1"></i>点赞
+            <div class="dyx-media-foot">
+                <div class="dyx-chips">
+                    <span class="dyx-chip"><i class="fa fa-music"></i>背景音乐原文件</span>
                 </div>
-            </div>
-            <div class="p-2 rounded-lg hover:bg-neutral-100 transition-custom">
-                <div id="collectCount" class="text-secondary text-2xl font-bold"></div>
-                <div class="text-sm text-neutral-600 mt-1">
-                    <i class="fa fa-star mr-1"></i>收藏
-                </div>
-            </div>
-            <div class="p-2 rounded-lg hover:bg-neutral-100 transition-custom">
-                <div id="shareCount" class="text-green-500 text-2xl font-bold"></div>
-                <div class="text-sm text-neutral-600 mt-1">
-                    <i class="fa fa-share mr-1"></i>分享
-                </div>
-            </div>
-            <div class="p-2 rounded-lg hover:bg-neutral-100 transition-custom">
-                <div id="commentCount" class="text-blue-500 text-2xl font-bold"></div>
-                <div class="text-sm text-neutral-600 mt-1">
-                    <i class="fa fa-comment mr-1"></i>评论
-                </div>
-            </div>
-            <div class="p-2 rounded-lg hover:bg-neutral-100 transition-custom">
-                <div id="recommendCount" class="text-purple-500 text-2xl font-bold"></div>
-                <div class="text-sm text-neutral-600 mt-1">
-                    <i class="fa fa-thumbs-o-up mr-1"></i>推荐
-                </div>
-            </div>
-            <div class="p-2 rounded-lg hover:bg-neutral-100 transition-custom">
-                <div id="admireCount" class="text-neutral-400 text-2xl font-bold"></div>
-                <div class="text-sm text-neutral-600 mt-1">
-                    <i class="fa fa-trophy mr-1"></i>赞赏
-                </div>
+                <button id="downloadAudioBtn" class="dyx-btn dyx-btn-primary">
+                    <i class="fa fa-download"></i><span>下载音频</span>
+                </button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- 页脚 -->
-<footer class="text-center text-neutral-500 text-sm py-6">
-    <p>© 2025 【星曦向荣】抖音视频作品解析工具 | 所有内容仅供学习交流使用</p>
+<footer class="dyx-footer">
+    <p>© 2025 【星曦向荣】抖音作品解析工具 · 内容仅供学习交流使用</p>
 </footer>
 
-<!-- 交互脚本 -->
 <script>
     const rootUrl = getMainUrl();
 
-    // DOM元素引用
     const shareLinkInput = document.getElementById('shareLinkInput');
     const parseBtn = document.getElementById('parseBtn');
     const retryBtn = document.getElementById('retryBtn');
     const loadingEl = document.getElementById('loading');
     const errorEl = document.getElementById('error');
+    const emptyState = document.getElementById('emptyState');
     const errorMessage = document.getElementById('errorMessage');
+    const errorDetail = document.getElementById('errorDetail');
     const contentContainer = document.getElementById('contentContainer');
-    const contentTabs = document.querySelectorAll('.content-tab');
+    const contentTabs = document.querySelectorAll('.dyx-tab');
     const contentPanels = document.querySelectorAll('.content-panel');
+    const authorIntro = document.getElementById('authorIntro');
 
     const downloadVideoBtn = document.getElementById('downloadVideoBtn');
     const downloadImgBtn = document.getElementById('downloadImageBtn');
     let selectedImgSrc = null;
     let selectedVideoSrc = null;
 
-    // 存储当前解析的视频数据
     let currentVideoData = null;
 
     // 从标题中提取标签
@@ -315,73 +792,58 @@
     }
 
     function extractDouyinLink(input) {
-        // 正则表达式：匹配抖音相关链接，支持多种子域名和路径格式
         const regex = /https:\/\/[\w.]+\.douyin\.com\/[\w\-/?&=]+/;
-
-        // 执行匹配
         const match = input.match(regex);
-
-        // 返回匹配到的第一个链接，未找到则返回null
         return match ? match[0] : null;
     }
 
     // 渲染数据到页面
     function renderData(data) {
-        // 保存当前数据
         currentVideoData = data;
-        const type = data.type;
-        if (data.videos) {
-            document.getElementById("tab-video").classList.remove("hidden")
-            document.getElementById("tab-video").click();
-        } else {
-            document.getElementById("tab-video").classList.add("hidden")
-            document.getElementById("tab-image").click();
-        }
-        // 设置图片
-        renderImageList(data.images);
-        renderVideoList(data.videos, type === "Video");
+        const hasVideo = !!(data.videos && data.videos.length);
+        const hasImage = !!(data.images && data.images.length);
+        const hasAudio = !!data.audioUrl;
 
-        document.getElementById('videoTitle').textContent = data.title;
-        document.getElementById('videoCreateTime').innerHTML = data.createTime;
-        if (data.audioUrl) {
+        document.getElementById("tab-video").classList.toggle("hidden", !hasVideo);
+        document.getElementById("tab-image").classList.toggle("hidden", !hasImage);
+        document.getElementById("tab-audio").classList.toggle("hidden", !hasAudio);
+
+        renderImageList(data.images);
+        renderVideoList(data.videos, data.type === "Video");
+
+        document.getElementById('videoTitle').textContent = data.title || '';
+        document.getElementById('videoCreateTime').textContent = data.createTime || '';
+        if (hasAudio) {
             const audioPlayer = document.getElementById('audioPlayer');
             audioPlayer.src = data.audioUrl;
-            // document.getElementById('audioPlayer').innerHTML = `<source src="${data.audioUrl}" type="audio/mpeg">`;
             document.getElementById('downloadAudioBtn').title = data.audioUrl;
-            document.getElementById("tab-audio").classList.remove("hidden");
-        } else {
-            document.getElementById("tab-audio").classList.add("hidden");
         }
 
-        // 填充作者信息
+        // 作者
         document.getElementById('authorAvatar').src = data.author.avatar;
         document.getElementById('authorAvatar').alt = `${data.author.nickname}的头像`;
         document.getElementById('authorName').textContent = data.author.nickname;
 
-
-        // 提取并渲染标签
         const tagsContainer = document.getElementById('tagsContainer');
-        tagsContainer.innerHTML = ''; // 清空现有标签
-        // const tags = extractTags(data.title);
-        let tags = [];
+        tagsContainer.innerHTML = '';
         if (data.author.id) {
-            tags.push(`抖音号: ${data.author.id}`)
+            tagsContainer.appendChild(buildMetaItem('抖音号', data.author.id));
         }
         if (data.author.follower_count) {
-            tags.push(`粉丝数: ${data.author.follower_count}`)
+            if (tagsContainer.childElementCount) {
+                const dot = document.createElement('span');
+                dot.className = 'dyx-dot';
+                dot.textContent = '·';
+                tagsContainer.appendChild(dot);
+            }
+            tagsContainer.appendChild(buildMetaItem('粉丝', data.author.follower_count));
         }
-        if (data.author.introduction) {
-            tags.push(`${data.author.introduction}`)
+        if (authorIntro) {
+            authorIntro.textContent = data.author.introduction || '';
+            authorIntro.classList.toggle('hidden', !data.author.introduction);
         }
 
-        tags.forEach(tag => {
-            const tagEl = document.createElement('span');
-            tagEl.className = 'text-xs bg-primary/10 text-primary px-2 py-1 rounded-full';
-            tagEl.textContent = `${tag}`;
-            tagsContainer.appendChild(tagEl);
-        });
-
-        // 填充统计数据
+        // 统计
         document.getElementById('likeCount').textContent = data.counter.like_count;
         document.getElementById('collectCount').textContent = data.counter.collect_count;
         document.getElementById('shareCount').textContent = data.counter.share_count;
@@ -389,127 +851,124 @@
         document.getElementById('recommendCount').textContent = data.counter.recommend_count;
         document.getElementById('admireCount').textContent = data.counter.admire_count;
 
-        // 显示内容，隐藏加载状态
         loadingEl.classList.add('hidden');
+        errorEl.classList.add('hidden');
+        emptyState.classList.add('hidden');
         contentContainer.classList.remove('hidden');
+
+        // 优先展示有内容的标签
+        if (hasVideo) {
+            document.getElementById("tab-video").click();
+        } else if (hasImage) {
+            document.getElementById("tab-image").click();
+        } else if (hasAudio) {
+            document.getElementById("tab-audio").click();
+        }
     }
 
-    // 渲染多张图片
+    function buildMetaItem(label, value) {
+        const span = document.createElement('span');
+        const labelEl = document.createElement('span');
+        labelEl.textContent = label + ' ';
+        const valueEl = document.createElement('b');
+        valueEl.style.fontWeight = '600';
+        valueEl.style.color = '#4b5563';
+        valueEl.textContent = value;
+        span.appendChild(labelEl);
+        span.appendChild(valueEl);
+        return span;
+    }
+
+    // 渲染图片
     function renderImageList(images) {
         const scrollWrap = document.getElementById('imageScrollWrap');
         scrollWrap.innerHTML = '';
         selectedImgSrc = null;
-
         if (!images || images.length === 0) return;
-        let allImageWidth = 0;
-        images.forEach((image) => {
-            allImageWidth += getRealWidth(image.specifications);
+
+        images.forEach((image, index) => {
             const div = document.createElement('div');
-            div.className = 'flex-shrink-0 cursor-pointer rounded-lg overflow-hidden border-2 border-transparent hover:border-primary transition-custom';
-            div.innerHTML = `
-                <img src="${image.url}" alt="${image.specifications} 封面图" class="h-[500px] max-w-none object-contain block">
-            `;
-            // 点击选中图片
+            div.className = 'dyx-thumb';
+            const img = document.createElement('img');
+            img.src = image.url || '';
+            img.alt = `${image.specifications || ""} 图片`;
+            img.loading = 'lazy';
+            div.appendChild(img);
+            if (image.specifications) {
+                const spec = document.createElement('span');
+                spec.className = 'dyx-thumb-spec';
+                spec.textContent = image.specifications;
+                div.appendChild(spec);
+            }
             div.addEventListener('click', () => {
-                // 清除其他选中边框
-                scrollWrap.querySelectorAll('div').forEach(el => el.classList.remove('border-primary'));
-                div.classList.add('border-primary');
+                scrollWrap.querySelectorAll('.dyx-thumb').forEach(el => el.classList.remove('is-selected'));
+                div.classList.add('is-selected');
                 selectedImgSrc = image.url;
             });
             scrollWrap.appendChild(div);
         });
-        if (document.getElementById("loading").offsetWidth > allImageWidth) {
-            scrollWrap.classList.add('justify-center');
-            scrollWrap.classList.remove('justify-start');
-        } else {
-            scrollWrap.classList.remove('justify-center');
-            scrollWrap.classList.add('justify-start');
-        }
-        // 默认选中第一张
         scrollWrap.firstElementChild?.click();
+        requestAnimationFrame(() => { scrollWrap.scrollLeft = 0; });
     }
 
-    function getRealWidth(specifications, height = 500) {
-        let split = specifications.split('×');
-        return (height / parseInt(split[1])) * parseInt(split[0]);
-    }
-
-    // 渲染多个视频
+    // 渲染视频（纵向排列，逐个下滚，避免横向滚动条割裂画面）
     function renderVideoList(videos, isClearError = true) {
         const scrollWrap = document.getElementById('videoScrollWrap');
         scrollWrap.innerHTML = '';
         selectedVideoSrc = null;
-
         if (!videos || videos.length === 0) return;
-        let allVideoWidth = 0;
-        videos.forEach((video) => {
-            allVideoWidth += getRealWidth(video.specifications);
+
+        videos.forEach((video, index) => {
             const div = document.createElement('div');
-            div.className = 'flex-shrink-0 h-full cursor-pointer rounded-lg overflow-hidden border-2 border-transparent hover:border-primary transition-custom';
-            div.innerHTML = `
-                <video src="${video.url}"
-                poster="${video.cover}"
-                    class="w-full h-full bg-neutral-900" controls>
-                </video>
-            `;
-            const videoEl = div.querySelector('video');
+            div.className = 'dyx-media-item';
+
+            const videoEl = document.createElement('video');
+            videoEl.src = video.url || '';
+            if (video.cover) videoEl.poster = video.cover;
+            videoEl.controls = true;
+            videoEl.preload = 'metadata';
+            div.appendChild(videoEl);
+
+            if (videos.length > 1) {
+                const badge = document.createElement('span');
+                badge.className = 'dyx-media-badge';
+                badge.textContent = `${index + 1} / ${videos.length}`;
+                div.appendChild(badge);
+            }
+
             if (isClearError) {
-                // 视频加载失败处理
                 videoEl.addEventListener('error', () => {
-                    // 当前剩余视频DOM数量
-                    const videoItems = Array.from(scrollWrap.querySelectorAll('div'));
-                    // 至少保留1个，只剩这一个时不删除
-                    if (videoItems.length > 1) {
+                    const items = Array.from(scrollWrap.querySelectorAll('.dyx-media-item'));
+                    if (items.length > 1) {
                         div.remove();
-                        allVideoWidth -= getRealWidth(video.specifications);
                     } else {
-                        // 最后一个加载失败：隐藏内容，保留占位DOM，可加样式提示错误
                         videoEl.style.display = 'none';
-                        div.classList.add('opacity-40');
-                    }
-                    // console.log(scrollWrap.offsetWidth, allVideoWidth)
-                    if (scrollWrap.offsetWidth > allVideoWidth) {
-                        scrollWrap.classList.add('justify-center');
-                        scrollWrap.classList.remove('justify-start');
-                    } else {
-                        scrollWrap.classList.remove('justify-center');
-                        scrollWrap.classList.add('justify-start');
+                        div.style.opacity = '0.4';
                     }
                 });
             }
 
-            // play互斥，点视频自带播放按钮也会暂停其他
+            // 播放互斥
             videoEl.addEventListener('play', () => {
                 scrollWrap.querySelectorAll('video').forEach(v => {
                     if (v !== videoEl) v.pause();
-                })
+                });
             });
 
             div.addEventListener('click', () => {
-                scrollWrap.querySelectorAll('div').forEach(el => el.classList.remove('border-primary'));
-                div.classList.add('border-primary');
-
-                document.getElementById('videoSize').innerHTML = formatFileSize(video.size);
-                document.getElementById('videoSpecifications').innerHTML = video.specifications;
+                scrollWrap.querySelectorAll('.dyx-media-item').forEach(el => el.classList.remove('is-selected'));
+                div.classList.add('is-selected');
+                document.getElementById('videoSize').textContent = formatFileSize(video.size);
+                document.getElementById('videoSpecifications').textContent = video.specifications || '';
                 selectedVideoSrc = video.url;
                 scrollWrap.querySelectorAll('video').forEach(v => {
-                    if (v !== videoEl) {
-                        v.pause();
-                    }
+                    if (v !== videoEl) v.pause();
                 });
             });
 
             scrollWrap.appendChild(div);
         });
 
-        if (document.getElementById("loading").offsetWidth > allVideoWidth) {
-            scrollWrap.classList.add('justify-center');
-            scrollWrap.classList.remove('justify-start');
-        } else {
-            scrollWrap.classList.remove('justify-center');
-            scrollWrap.classList.add('justify-start');
-        }
-        // 默认选中第一个
         scrollWrap.firstElementChild?.click();
     }
 
@@ -521,6 +980,7 @@
         }
         downloadFile(selectedImgSrc);
     });
+
     // 下载选中视频
     downloadVideoBtn.addEventListener('click', () => {
         if (!selectedVideoSrc) {
@@ -529,26 +989,33 @@
         }
         let fileName = null;
         try {
-            fileName = currentVideoData.author.nickname + " " + currentVideoData.createTime.substring(0, 10) + ".mp4"
+            fileName = currentVideoData.author.nickname + " " + currentVideoData.createTime.substring(0, 10) + ".mp4";
         } catch (e) {
-            console.error(e)
+            console.error(e);
         }
         downloadFile(selectedVideoSrc, fileName);
     });
 
-    // 解析链接并获取数据
+    function setBusy(busy) {
+        parseBtn.disabled = busy;
+        parseBtn.querySelector('span').textContent = busy ? '解析中…' : '解析链接';
+        const icon = parseBtn.querySelector('i');
+        if (icon) icon.className = busy ? 'fa fa-circle-o-notch fa-spin' : 'fa fa-search';
+    }
+
+    // 解析链接
     async function parseLink(link) {
         try {
             link = extractDouyinLink(link);
-            // 验证链接是否有效
             if (!link || !isValidUrl(link)) {
-                throw new Error('请输入有效的链接');
+                throw new Error('请输入有效的抖音分享链接');
             }
 
-            // 显示加载状态
+            emptyState.classList.add('hidden');
             loadingEl.classList.remove('hidden');
             errorEl.classList.add('hidden');
             contentContainer.classList.add('hidden');
+            setBusy(true);
 
             document.getElementById("videoScrollWrap").innerHTML = "";
             const audioPlayer = document.getElementById('audioPlayer');
@@ -562,35 +1029,42 @@
                 isRefresh: isRefreshChecked
             };
             let url = `${rootUrl}api/videoParsing?${objectToUrlParams(param)}`;
-            // 调用后端API获取视频数据
-            // 实际项目中替换为真实接口地址
-            const response = await fetch(url, {
+            const response = await publicFetch(url, {
                 method: "GET",
-                // 跨域携带凭证（Cookie）
                 credentials: "include"
             });
-            if (!response.ok) {
-                throw new Error(`获取作品数据异常: ${response.status} ${response.statusText}`);
+            if (response.status === 429) {
+                const retryAfter = response.headers.get("Retry-After");
+                throw new Error("解析请求过于频繁" + (retryAfter ? "，请 " + retryAfter + " 秒后再试" : "，请稍后再试"));
+            }
+            if (response.status === 401 || response.status === 403) {
+                throw new Error("接口暂不可用，请稍后重试");
             }
             const data = await response.json();
 
             if (data.code !== 0) {
-                throw new Error('获取作品数据失败: ' + data.message);
+                const err = new Error(data.message || "解析失败，请稍后重试");
+                err.detail = typeof data.data === "string" ? data.data : "";
+                throw err;
             }
-            // 渲染数据
             renderData(data.data);
 
         } catch (error) {
             console.error('解析失败:', error);
-            // 显示错误状态
             loadingEl.classList.add('hidden');
-            errorEl.classList.remove('hidden');
+            emptyState.classList.add('hidden');
             contentContainer.classList.add('hidden');
+            errorEl.classList.remove('hidden');
             errorMessage.textContent = error.message || '解析链接失败，请检查链接是否有效';
+            if (errorDetail) {
+                errorDetail.textContent = error.detail || "";
+                errorDetail.classList.toggle("hidden", !error.detail);
+            }
+        } finally {
+            setBusy(false);
         }
     }
 
-    // 验证URL是否有效
     function isValidUrl(url) {
         try {
             new URL(url);
@@ -600,58 +1074,36 @@
         }
     }
 
-    // 切换内容标签
+    // 切换标签
     function switchTab(tabName) {
-        // 更新标签样式
         contentTabs.forEach(tab => {
-            if (tab.dataset.tab === tabName) {
-                tab.classList.add('bg-primary', 'text-white');
-                tab.classList.remove('hover:bg-neutral-100');
-            } else {
-                tab.classList.remove('bg-primary', 'text-white');
-                tab.classList.add('hover:bg-neutral-100');
-            }
+            tab.classList.toggle('is-active', tab.dataset.tab === tabName);
         });
-
-        // 显示对应面板
         contentPanels.forEach(panel => {
-            if (panel.id === `${tabName}Tab`) {
-                panel.classList.remove('hidden');
-            } else {
-                panel.classList.add('hidden');
-            }
+            panel.classList.toggle('hidden', panel.id !== `${tabName}Tab`);
         });
     }
 
-    // 初始化
     document.addEventListener('DOMContentLoaded', () => {
-        // 解析按钮事件
         parseBtn.addEventListener('click', () => {
-            const link = shareLinkInput.value.trim();
-            parseLink(link);
+            parseLink(shareLinkInput.value.trim());
         });
 
-        // 回车触发解析
         shareLinkInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
-                const link = shareLinkInput.value.trim();
-                parseLink(link);
+                parseLink(shareLinkInput.value.trim());
             }
         });
 
-        // 重试按钮事件
         retryBtn.addEventListener('click', () => {
-            const link = shareLinkInput.value.trim();
-            parseLink(link);
+            parseLink(shareLinkInput.value.trim());
         });
 
-        // 标签切换事件
         contentTabs.forEach(tab => {
             tab.addEventListener('click', () => {
                 switchTab(tab.dataset.tab);
             });
         });
-
 
         const urlParams = new URLSearchParams(window.location.search);
         let shared = urlParams.get("shared");
@@ -662,33 +1114,19 @@
             shareLinkInput.value = shared;
             parseBtn.click();
         }
-        // 视频加载状态处理
-        // const video = document.getElementById('videoPlayer');
-        // video.addEventListener('loadedmetadata', () => {
-        //     console.log('视频元数据加载完成');
-        // });
-        // video.addEventListener('error', (e) => {
-        //     console.error('视频加载失败:', e);
-        //     alert('视频加载失败，请稍后重试');
-        // });
 
-        // 音频加载状态处理
         const audio = document.getElementById('audioPlayer');
         audio.addEventListener('error', (e) => {
             console.error('音频加载失败:', e);
-            alert('音频加载失败，请稍后重试');
         });
 
-        // 下载音频按钮
         document.getElementById('downloadAudioBtn').addEventListener('click', () => {
             if (currentVideoData) {
-                // alert('正在准备下载音频文件...');
-                // 实际项目中实现音频下载逻辑
                 let fileName = null;
                 try {
-                    fileName = currentVideoData.author.nickname + " " + currentVideoData.createTime.substring(0, 10) + ".mp3"
+                    fileName = currentVideoData.author.nickname + " " + currentVideoData.createTime.substring(0, 10) + ".mp3";
                 } catch (e) {
-                    console.error(e)
+                    console.error(e);
                 }
                 downloadFile(currentVideoData.audioUrl, fileName);
             }
@@ -696,24 +1134,18 @@
     });
 
     function downloadFile(url, fileName) {
-        // 创建隐藏的a标签
         const link = document.createElement('a');
-        link.target = "_blank"; // 打开新窗口
-        link.rel = "noreferrer noopener"; // 禁用Referer + 安全优化
-        link.href = url; // 下载链接（可以是 blob: 或 http(s): 协议）
-
-        // 指定文件名（可选，部分浏览器可能忽略）
+        link.target = "_blank";
+        link.rel = "noreferrer noopener";
+        link.href = url;
         if (fileName) {
-            link.download = fileName; // 文件名（不含路径，仅文件名+扩展名）
+            link.download = fileName;
             copyToClipboard(fileName);
-            alert("下载文件名已复制到剪切板");
+            alert("下载文件名已复制到剪贴板");
         }
-
-        // 触发点击
         document.body.appendChild(link);
         link.click();
-        console.log("文件下载", url, fileName)
-        // 清理
+        console.log("文件下载", url, fileName);
         document.body.removeChild(link);
     }
 </script>

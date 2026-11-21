@@ -37,7 +37,7 @@ public class DouYinBrowserUtil {
 
     public static void setRoomCookie(DouYinRoom room, Page page) throws MalformedURLException {
         BrowserContext context = page.context();
-        if (StrUtil.isNotBlank(room.getCookie()) && context.cookies(room.getRoomUrl()).isEmpty()) {
+        if (StrUtil.isNotBlank(room.getCookie())) {
             String host = new URL(room.getRoomUrl()).getHost();
             context.addCookies(BrowserUtil.parseCookieString(host, room.getCookie()));
         }

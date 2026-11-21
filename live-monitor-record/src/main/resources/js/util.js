@@ -1,7 +1,198 @@
+/**
+ * HTML 转义：所有来自接口/平台的数据在拼接进 innerHTML 前必须经过它
+ * 覆盖 &、<、>、"、'、`，可同时安全用于文本节点与属性值
+ * @param {*} value
+ * @returns {string}
+ */
+function escapeHtml(value) {
+    if (value === null || value === undefined) return "";
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;")
+        .replace(/`/g, "&#96;");
+}
+
+/**
+ * 安全 URL：只放行 http/https/相对路径/data/blob，其它协议（javascript:、file: 等）一律降级
+ * @param {*} value
+ * @param {string} [fallback="#"]
+ * @returns {string} 可直接写入 href/src 的转义后字符串
+ */
+function safeUrl(value, fallback) {
+    const fb = fallback || "#";
+    if (!value) return escapeHtml(fb);
+    const url = String(value).trim();
+    if (/^(https?:)?\/\//i.test(url) ||
+        /^(\.|\.\.)?\//.test(url) ||
+        url.startsWith("data:image/") ||
+        url.startsWith("blob:")) {
+        return escapeHtml(url);
+    }
+    return escapeHtml(fb);
+}
+
+/* ==========================================================================
+ * 接口令牌（无状态鉴权）
+ * 页面托管在 GitHub Pages、后端经 cpolar 暴露时属于跨站访问，浏览器会拦截
+ * 第三方 Cookie，因此鉴权改为「操作秘钥换令牌 + Authorization: Bearer」：
+ *   1. 首次/令牌过期 → action/auth?actionKey=xxx 换取 JWT 令牌（localStorage 缓存）
+ *   2. 之后所有接口带 Authorization: Bearer <token>
+ *   3. 同源直连后端时仍兼容 Cookie 会话，服务端两种都认
+ * ========================================================================== */
+const API_TOKEN_KEY = "lmr.api.token";
+const API_TOKEN_EXP_KEY = "lmr.api.tokenExp";
+const API_TOKEN_MIN_LEFT = 5 * 60 * 1000; // 剩余不足 5 分钟即提前续期
+
+function readApiToken() {
+    try {
+        return {
+            token: window.localStorage.getItem(API_TOKEN_KEY),
+            exp: Number(window.localStorage.getItem(API_TOKEN_EXP_KEY) || 0),
+        };
+    } catch (e) {
+        return {token: null, exp: 0};
+    }
+}
+
+function saveApiToken(token, expireSec) {
+    try {
+        window.localStorage.setItem(API_TOKEN_KEY, token);
+        window.localStorage.setItem(API_TOKEN_EXP_KEY, String(Date.now() + expireSec * 1000));
+    } catch (e) {
+        // 隐私模式下 localStorage 不可用，退化为每次现取
+    }
+}
+
+function clearApiToken() {
+    try {
+        window.localStorage.removeItem(API_TOKEN_KEY);
+        window.localStorage.removeItem(API_TOKEN_EXP_KEY);
+    } catch (e) {
+    }
+}
+
+function isApiTokenValid() {
+    const t = readApiToken();
+    return !!t.token && t.exp - Date.now() > API_TOKEN_MIN_LEFT;
+}
+
+let apiTokenTask = null;
+
+/**
+ * 确保拿到可用的接口令牌
+ * @param {boolean} [force] 强制重新换取（令牌被拒时使用）
+ * @returns {Promise<string>}
+ */
+function ensureApiToken(force) {
+    if (!force && isApiTokenValid()) return Promise.resolve(readApiToken().token);
+    if (apiTokenTask) return apiTokenTask;
+    apiTokenTask = (async function () {
+        let key = null;
+        try {
+            key = window.localStorage.getItem("actionKey");
+        } catch (e) {
+        }
+        if (!key && typeof window.promptActionKey === "function") {
+            key = await window.promptActionKey();
+        }
+        if (!key) throw new Error("缺少操作秘钥，无法访问接口");
+        const url = (window.MainUrl || "") + "action/auth?actionKey=" + encodeURIComponent(key);
+        const res = await fetch(url, {credentials: "omit"});
+        if (!res.ok) throw new Error("获取接口令牌失败：" + res.status);
+        const msg = await res.json();
+        if (!msg || msg.code !== 0 || !msg.data || !msg.data.token) {
+            throw new Error((msg && msg.message) || "操作秘钥错误");
+        }
+        saveApiToken(msg.data.token, msg.data.expireSec || 3600);
+        return msg.data.token;
+    })();
+    return apiTokenTask.finally(function () {
+        apiTokenTask = null;
+    });
+}
+
+/**
+ * 带令牌的 fetch：403/401 时自动重新换取令牌并重试一次
+ * @param {string} url
+ * @param {RequestInit} [options]
+ * @returns {Promise<Response>}
+ */
+async function authFetch(url, options) {
+    options = options || {};
+    const exec = async function (token) {
+        const headers = Object.assign({}, options.headers || {});
+        if (token) headers["Authorization"] = "Bearer " + token;
+        return fetch(url, Object.assign({}, options, {headers: headers}));
+    };
+    let token = null;
+    try {
+        token = await ensureApiToken(false);
+    } catch (e) {
+        token = null; // 拿不到令牌就先用 Cookie 会话试一次
+    }
+    let res = await exec(token);
+    if (res.status === 401 || res.status === 403) {
+        const fresh = await ensureApiToken(true); // 秘钥缺失/错误会在这里抛出
+        res = await exec(fresh);
+    }
+    return res;
+}
+
+/**
+ * 公开只读 fetch：不带令牌直接请求（陌生人也能看到页面数据）
+ * 若后端关闭了 server.auth.publicRead（返回 403），自动退回带令牌请求，弹出秘钥框
+ * @param {string} url
+ * @param {RequestInit} [options]
+ * @returns {Promise<Response>}
+ */
+async function publicFetch(url, options) {
+    const res = await fetch(url, options || {});
+    if (res.status === 401 || res.status === 403) {
+        return authFetch(url, options);
+    }
+    return res;
+}
+
+// 无法带请求头的地址（<a>/<img>/<video>）用查询参数携带令牌
+function withApiToken(url) {
+    const t = readApiToken();
+    if (!t.token) return url;
+    return url + (url.indexOf("?") > -1 ? "&" : "?") + "token=" + encodeURIComponent(t.token);
+}
+
+// 单页（如抖音作品解析）没有加载 RoomAction.js 时的兜底秘钥输入；
+// 首页会由 RoomAction.js 覆盖为统一的「操作验证」弹窗
+if (typeof window.promptActionKey !== "function") {
+    window.promptActionKey = function () {
+        return new Promise(function (resolve) {
+            const value = window.prompt("请输入操作秘钥（设备标识 ID）");
+            resolve(value && value.trim() ? value.trim() : null);
+        });
+    };
+}
+
+/**
+ * 安全格式化时间：无效/空值返回“未知”，避免出现 Invalid Date
+ * @param {number|string|Date} value
+ * @returns {string}
+ */
+function formatDateSafe(value) {
+    if (value === null || value === undefined || value === "" || value === 0) {
+        return "未知";
+    }
+    const date = value instanceof Date ? value : new Date(value);
+    if (isNaN(date.getTime())) return "未知";
+    return formatDate(date);
+}
+
 //发起GET请求
-async function getRequest(path, params) {
+async function getRequest(path, params, timeoutMs) {
+    const limit = typeof timeoutMs === "number" && timeoutMs > 0 ? timeoutMs : 10000;
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
+    const timeoutId = setTimeout(() => controller.abort(), limit); // 默认 10 秒，可按接口放宽
     try {
         let requestParam = "";
         if (params) {
@@ -10,12 +201,16 @@ async function getRequest(path, params) {
         path = path.startsWith("/") ? path.substring(1) : path;
         let root = window.MainUrl ? window.MainUrl : "";
         let url = `${root}${path}${requestParam}`;
-        const res = await fetch(url, {
+        // 跨站访问带 Bearer 令牌；403 会自动换令牌重试一次
+        const res = await authFetch(url, {
             signal: controller.signal,
             method: "GET",
-            // 跨域携带凭证（Cookie）
+            // 同源时仍可携带 Cookie 会话（跨站浏览器会自动忽略）
             credentials: "include"
         });
+        if (res.status === 401 || res.status === 403) {
+            throw new Error("鉴权失败，请重新输入操作秘钥");
+        }
         if (!res.ok) {
             throw new Error(`网络响应错误: ${res.status} ${res.statusText}`);
         }
@@ -24,14 +219,19 @@ async function getRequest(path, params) {
         return mockData;
     } catch (error) {
         let errorMessage = "请求失败";
+        let timeoutError = null;
         if (error.name === "AbortError") {
-            errorMessage = "请求超时（10秒）";
+            // 浏览器对 abort 的默认 message 是「signal is aborted without reason」，这里换成可读文案
+            errorMessage = `请求超时（${Math.round(limit / 1000)} 秒），请检查后端服务是否可达`;
+            timeoutError = new Error(errorMessage);
+            timeoutError.name = "TimeoutError";
+            timeoutError.timeout = true;
         } else if (error.message) {
             errorMessage = error.message;
         }
         console.error(errorMessage, error);
-        alert("请求失败 - "+errorMessage);
-        throw error; // 抛出给调用方处理
+        alert("请求失败 - " + errorMessage);
+        throw timeoutError || error; // 抛出给调用方处理
     } finally {
         // 无论成功失败，都清除定时器，防止内存残留
         clearTimeout(timeoutId);
@@ -39,9 +239,10 @@ async function getRequest(path, params) {
 }
 
 //发起POST请求
-async function postRequest(path, params) {
+async function postRequest(path, params, timeoutMs) {
+    const limit = typeof timeoutMs === "number" && timeoutMs > 0 ? timeoutMs : 10000;
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
+    const timeoutId = setTimeout(() => controller.abort(), limit); // 默认 10 秒，可按接口放宽
     try {
         // 处理接口路径
         path = path.startsWith("/") ? path.slice(1) : path;
@@ -54,18 +255,20 @@ async function postRequest(path, params) {
             body = JSON.stringify(params);
         }
 
-        const res = await fetch(url, {
+        const res = await authFetch(url, {
             signal: controller.signal,
             method: "POST",
-            // 跨域携带凭证（Cookie）
+            // 同源时仍可携带 Cookie 会话（跨站浏览器会自动忽略）
             credentials: "include",
             headers: {
-                //   "Content-Type": "application/json",
-                // Authorization: `Bearer ${localStorage.getItem('token')}`
+                "Content-Type": "application/json"
             },
             body
         });
 
+        if (res.status === 401 || res.status === 403) {
+            throw new Error("鉴权失败，请重新输入操作秘钥");
+        }
         if (!res.ok) {
             throw new Error(`网络响应错误: ${res.status} ${res.statusText}`);
         }
@@ -75,14 +278,19 @@ async function postRequest(path, params) {
         return mockData;
     } catch (error) {
         let errorMessage = "请求失败";
+        let timeoutError = null;
         if (error.name === "AbortError") {
-            errorMessage = "请求超时（10秒）";
+            // 浏览器对 abort 的默认 message 是「signal is aborted without reason」，这里换成可读文案
+            errorMessage = `请求超时（${Math.round(limit / 1000)} 秒），请检查后端服务是否可达`;
+            timeoutError = new Error(errorMessage);
+            timeoutError.name = "TimeoutError";
+            timeoutError.timeout = true;
         } else if (error.message) {
             errorMessage = error.message;
         }
         console.error(errorMessage, error);
-        alert("请求失败 - "+errorMessage);
-        throw error; // 抛出给调用方处理
+        alert("请求失败 - " + errorMessage);
+        throw timeoutError || error; // 抛出给调用方处理
     } finally {
         // 无论成功失败，都清除定时器，防止内存残留
         clearTimeout(timeoutId);

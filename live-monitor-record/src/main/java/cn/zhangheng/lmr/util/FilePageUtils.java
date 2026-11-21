@@ -85,6 +85,11 @@ public class FilePageUtils {
                 }
                 result.setSize(size);
             }
+            // 最后修改时间（毫秒），前端用于显示文件/目录的更新时间
+            try {
+                result.setLastModified(Files.getLastModifiedTime(path).toMillis());
+            } catch (Exception ignored) {
+            }
             return result;
         } catch (Exception e) {
             return null;
@@ -106,5 +111,6 @@ public class FilePageUtils {
         private String path;
         private String type;
         private long size;
+        private long lastModified;
     }
 }

@@ -1,7 +1,9 @@
 package cn.zhangheng.lmr.http_server.util;
 
 import cn.hutool.core.util.StrUtil;
+import cn.zhangheng.common.setting.ConfigKit;
 import cn.zhangheng.record.bean.Constant;
+import cn.zhangheng.record.bean.Setting;
 import cn.zhangheng.record.httpServer.util.JWTUtil;
 import cn.zhangheng.lmr.FileModeMain;
 import cn.zhangheng.lmr.bean.RoomFileModel;
@@ -12,6 +14,7 @@ import java.util.Map;
 
 import static cn.zhangheng.record.httpServer.util.HandlerUtils.getRequestCookie;
 import static cn.zhangheng.record.httpServer.util.HandlerUtils.getRequestCookies;
+import static cn.zhangheng.record.httpServer.util.HandlerUtils.parseQuery;
 
 /**
  * @author: ZhangHeng
@@ -21,6 +24,65 @@ import static cn.zhangheng.record.httpServer.util.HandlerUtils.getRequestCookies
  * @description:
  */
 public class CheckUtils {
+
+    /**
+     * 请求鉴权结果标记（挂在 HttpExchange 上，供后续处理判断当前请求是否已通过秘钥校验）
+     */
+    private static final String AUTH_ATTR = "lmr.auth";
+
+    /**
+     * 统一请求鉴权（本地同源 + 远程跨站都能用）：
+     * 1. Authorization: Bearer &lt;接口令牌&gt;（跨站推荐，页面托管在 GitHub Pages 时用这个）
+     * 2. URL 参数 token=&lt;接口令牌&gt;（img/video/a 之类无法带头部的请求）
+     * 3. Cookie 会话（同源页面直接访问后端时沿用，保持兼容）
+     */
+    public static boolean checkRequestAuth(HttpExchange httpExchange) {
+        String token = getBearerToken(httpExchange);
+        if (StrUtil.isBlank(token)) {
+            String query = httpExchange.getRequestURI().getQuery();
+            if (StrUtil.isNotBlank(query)) {
+                token = parseQuery(query, java.nio.charset.StandardCharsets.UTF_8).get("token");
+            }
+        }
+        if (StrUtil.isNotBlank(token) && JWTUtil.checkApiToken(token)) {
+            httpExchange.setAttribute(AUTH_ATTR, Boolean.TRUE);
+            return true;
+        }
+        // 兜底：同源 Cookie 会话
+        boolean ok = checkCookie(httpExchange);
+        if (ok) {
+            httpExchange.setAttribute(AUTH_ATTR, Boolean.TRUE);
+        }
+        return ok;
+    }
+
+    /**
+     * 只读接口鉴权：带令牌直接放行；不带令牌时，若开启 server.auth.publicRead 则匿名可读（返回体需脱敏）
+     */
+    public static boolean checkReadAuth(HttpExchange httpExchange) {
+        if (checkRequestAuth(httpExchange)) {
+            return true;
+        }
+        return ConfigKit.get(Setting.class).isAuthPublicRead();
+    }
+
+    /**
+     * 当前请求是否已通过秘钥/令牌校验（匿名只读时为 false，用于决定是否脱敏）
+     */
+    public static boolean isAuthenticated(HttpExchange httpExchange) {
+        return Boolean.TRUE.equals(httpExchange.getAttribute(AUTH_ATTR));
+    }
+
+    private static String getBearerToken(HttpExchange httpExchange) {
+        String header = httpExchange.getRequestHeaders().getFirst("Authorization");
+        if (header == null) return null;
+        header = header.trim();
+        if (header.regionMatches(true, 0, "Bearer ", 0, 7)) {
+            return header.substring(7).trim();
+        }
+        return null;
+    }
+
     public static boolean checkActionKey(Map<String, String> query, Message msg) {
         String actionKey = query.get("actionKey");
         if (StrUtil.isBlank(actionKey)) {

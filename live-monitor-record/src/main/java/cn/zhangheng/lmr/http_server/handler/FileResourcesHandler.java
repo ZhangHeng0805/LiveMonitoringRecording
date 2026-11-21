@@ -50,7 +50,7 @@ public class FileResourcesHandler extends JSONHandler {
     @Override
     protected boolean filter(HttpExchange httpExchange) throws IOException {
         super.filter(httpExchange);
-        return CheckUtils.checkCookie(httpExchange);
+        return CheckUtils.checkRequestAuth(httpExchange);
     }
 
     @Override

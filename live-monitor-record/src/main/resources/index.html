@@ -166,6 +166,12 @@
                         class="ml-4 p-1.5 rounded-full hover:bg-primary/10 text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30">
                     <i class="fa fa-refresh"></i>
                 </button>
+                <span class="w-px h-5 bg-gray-200 mx-2"></span>
+                <!-- 退出程序：调用 action/exit，需要操作秘钥校验 -->
+                <button id="exit-app-btn" title="退出整个程序（需要操作秘钥校验）"
+                        class="p-1.5 rounded-full hover:bg-danger/10 text-danger transition-colors focus:outline-none focus:ring-2 focus:ring-danger/30">
+                    <i class="fa fa-power-off"></i>
+                </button>
             </div>
         </div>
 
@@ -244,55 +250,7 @@
                 <span class="text-sm text-gray-500" id="living-count">0 个房间</span>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6" id="living-rooms-container">
-                <!-- 加载状态骨架屏 -->
-                <div class="bg-white rounded-xl overflow-hidden card-shadow animate-fade">
-                    <div class="bg-primary/5 p-4 border-b border-gray-100">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center">
-                                <div class="w-10 h-10 rounded-full skeleton"></div>
-                                <div class="ml-3">
-                                    <div class="w-32 h-5 skeleton rounded"></div>
-                                    <div class="w-48 h-3 skeleton rounded mt-2"></div>
-                                </div>
-                            </div>
-                            <div class="w-20 h-5 skeleton rounded"></div>
-                        </div>
-                    </div>
-                    <div class="p-4">
-                        <div class="flex flex-col md:flex-row gap-4 mb-4">
-                            <div class="w-full md:w-48 h-32 skeleton rounded-lg"></div>
-                            <div class="flex-1">
-                                <div class="w-full h-5 skeleton rounded mb-2"></div>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <div class="w-full h-4 skeleton rounded"></div>
-                                    <div class="w-full h-4 skeleton rounded"></div>
-                                    <div class="w-full h-4 skeleton rounded"></div>
-                                    <div class="w-full h-4 skeleton rounded"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="bg-light rounded-lg p-3 mb-4 border border-gray-100">
-                            <div class="flex items-center justify-between mb-2">
-                                <div class="w-24 h-5 skeleton rounded"></div>
-                                <div class="w-20 h-5 skeleton rounded"></div>
-                            </div>
-                            <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-2">
-                                <div class="w-full h-4 skeleton rounded"></div>
-                                <div class="w-full h-4 skeleton rounded"></div>
-                                <div class="w-full h-4 skeleton rounded"></div>
-                                <div class="w-full h-4 skeleton rounded"></div>
-                            </div>
-                            <div class="w-full h-3 skeleton rounded"></div>
-                        </div>
-                        <div class="flex gap-2">
-                            <div class="w-24 h-8 skeleton rounded"></div>
-                            <div class="w-24 h-8 skeleton rounded"></div>
-                            <div class="w-24 h-8 skeleton rounded"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6" id="living-rooms-container"></div>
         </section>
 
         <!-- 未直播房间 -->
@@ -307,42 +265,7 @@
                 <span class="text-sm text-gray-500" id="not-living-count">0 个房间</span>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6" id="not-living-rooms-container">
-                <!-- 加载状态骨架屏 -->
-                <div class="bg-white rounded-xl overflow-hidden card-shadow animate-fade opacity-80">
-                    <div class="bg-gray-50 p-4 border-b border-gray-100">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center">
-                                <div class="w-10 h-10 rounded-full skeleton"></div>
-                                <div class="ml-3">
-                                    <div class="w-32 h-5 skeleton rounded"></div>
-                                    <div class="w-48 h-3 skeleton rounded mt-2"></div>
-                                </div>
-                            </div>
-                            <div class="w-20 h-5 skeleton rounded"></div>
-                        </div>
-                    </div>
-                    <div class="p-4">
-                        <div class="flex flex-col md:flex-row gap-4 mb-4">
-                            <div class="w-full md:w-48 h-32 skeleton rounded-lg"></div>
-                            <div class="flex-1">
-                                <div class="w-full h-5 skeleton rounded mb-2"></div>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <div class="w-full h-4 skeleton rounded"></div>
-                                    <div class="w-full h-4 skeleton rounded"></div>
-                                    <div class="w-full h-4 skeleton rounded"></div>
-                                    <div class="w-full h-4 skeleton rounded"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="flex gap-2">
-                            <div class="w-24 h-8 skeleton rounded"></div>
-                            <div class="w-24 h-8 skeleton rounded"></div>
-                            <div class="w-24 h-8 skeleton rounded"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6" id="not-living-rooms-container"></div>
         </section>
     </main>
 
@@ -409,12 +332,100 @@
         // 绑定手动刷新按钮事件
         const refreshBtn = document.getElementById("manual-refresh-btn");
         refreshBtn.addEventListener("click", handleManualRefresh);
+        // 绑定退出程序按钮事件
+        const exitBtn = document.getElementById("exit-app-btn");
+        if (exitBtn) {
+            exitBtn.addEventListener("click", handleExitProgram);
+        }
+        // 卡片按钮统一走事件委托
+        initRoomCardActions();
+        // 首次进入先展示骨架屏
+        renderSkeleton("living-rooms-container");
+        renderSkeleton("not-living-rooms-container");
         refreshClient();
-        // 首次加载数据
+        // 首次加载数据（若首屏先到 403，fetchData 内部会自动续期并重试一次）
         fetchData();
         // 设置定时刷新
         startRefreshTimer();
     });
+
+    // 退出整个程序：二次确认 → 输入操作秘钥 → 调 action/exit（秘钥错误由接口拒绝并提示）
+    function handleExitProgram() {
+        if (!confirm("退出后所有直播监听都会停止，且网页服务一并关闭。确定要退出整个程序吗？")) {
+            return;
+        }
+        showActionBeforeModal(function (key) {
+            getRequest("action/exit", {actionKey: key})
+                .then(function (msg) {
+                    if (msg.success) {
+                        setModalContent(
+                            "程序已退出",
+                            `<p class="text-center text-green-600 mb-1">${escapeHtml(msg.message || "程序已退出")}</p>
+                             <p class="text-center text-xs text-gray-500">本页面已与服务断开，3 秒后自动关闭。</p>`,
+                            [{
+                                text: "关闭页面",
+                                className: "bg-primary text-white hover:bg-primary/90 focus:ring-primary",
+                                onClick: function () {
+                                    window.close();
+                                },
+                            }]
+                        );
+                        setTimeout(function () {
+                            try {
+                                window.close();
+                            } catch (e) {
+                            }
+                        }, 3000);
+                    } else {
+                        // 秘钥错误 / 接口异常，弹结果提示
+                        showActionAfterModal(msg);
+                    }
+                })
+                .catch(function () {
+                    // 服务已在退出时连接会被重置，忽略即可
+                });
+        });
+    }
+
+    // 骨架屏（两个列表共用一份模板，避免在 HTML 里重复两段静态结构）
+    function renderSkeleton(containerId) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        container.innerHTML = `
+            <div class="bg-white rounded-xl overflow-hidden card-shadow animate-fade">
+                <div class="bg-primary/5 p-4 border-b border-gray-100">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <div class="w-10 h-10 rounded-full skeleton"></div>
+                            <div class="ml-3">
+                                <div class="w-32 h-5 skeleton rounded"></div>
+                                <div class="w-48 h-3 skeleton rounded mt-2"></div>
+                            </div>
+                        </div>
+                        <div class="w-20 h-5 skeleton rounded"></div>
+                    </div>
+                </div>
+                <div class="p-4">
+                    <div class="flex flex-col md:flex-row gap-4 mb-4">
+                        <div class="w-full md:w-48 h-32 skeleton rounded-lg"></div>
+                        <div class="flex-1">
+                            <div class="w-full h-5 skeleton rounded mb-2"></div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div class="w-full h-4 skeleton rounded"></div>
+                                <div class="w-full h-4 skeleton rounded"></div>
+                                <div class="w-full h-4 skeleton rounded"></div>
+                                <div class="w-full h-4 skeleton rounded"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <div class="w-24 h-8 skeleton rounded"></div>
+                        <div class="w-24 h-8 skeleton rounded"></div>
+                        <div class="w-24 h-8 skeleton rounded"></div>
+                    </div>
+                </div>
+            </div>`;
+    }
 
     // 处理手动刷新
     function handleManualRefresh() {
@@ -444,6 +455,17 @@
         refreshTimer = setInterval(fetchData, REFRESH_INTERVAL * 1000);
     }
 
+    let sessionExpiredShown = false;
+
+    // 取数：公开只读，陌生人无需秘钥即可看到房间列表；
+    // 后端关闭 server.auth.publicRead 时会 403，publicFetch 自动退回带令牌请求并弹秘钥框
+    async function requestRooms(isManual, signal) {
+        return publicFetch(MainUrl + "api/rooms?manual=" + isManual, {
+            signal: signal,
+            credentials: "include"
+        });
+    }
+
     // 获取数据
     async function fetchData(isManual = false) {
         // 如果正在刷新中，则不重复触发
@@ -452,23 +474,47 @@
         isRefreshing = true;
         showRefreshStatus("loading");
 
+        let timeoutId = null;
         try {
             // 发起API请求并设置超时
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
+            timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
 
-            const response = await fetch(MainUrl + "api/rooms?manual=" + isManual, {
-                signal: controller.signal,
-                // 跨域携带凭证（Cookie）
-                credentials: "include"
-            });
+            const response = await requestRooms(isManual, controller.signal);
 
-            clearTimeout(timeoutId); // 清除超时定时器
             if (response.status === 403) {
-                const isOk = confirm('页面会话已过期，是否刷新页面？');
-                if (isOk) {
-                    location.reload();
+                showRefreshStatus("error");
+                // 已自动换令牌仍被拒：多半是秘钥失效/服务端重启，只提示一次，可重新输入秘钥
+                if (!sessionExpiredShown) {
+                    sessionExpiredShown = true;
+                    setModalContent(
+                        "访问被拒绝",
+                        `<p class="text-center text-sm text-gray-600">接口令牌已失效或操作秘钥不正确。</p>
+                         <p class="text-center text-xs text-gray-500 mt-1">点击「输入秘钥重试」重新换取令牌，无需刷新页面。</p>`,
+                        [
+                            {
+                                text: "关闭",
+                                className: "bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-gray-400",
+                                onClick: closeModal,
+                            },
+                            {
+                                text: "输入秘钥重试",
+                                className: "bg-primary text-white hover:bg-primary/90 focus:ring-primary",
+                                onClick: function () {
+                                    closeModal();
+                                    sessionExpiredShown = false;
+                                    clearApiToken();
+                                    if (typeof window.promptActionKey === "function") {
+                                        window.promptActionKey().then(function (key) {
+                                            if (key) fetchData(true);
+                                        });
+                                    }
+                                },
+                            },
+                        ]
+                    );
                 }
+                return;
             }
             // 检查响应状态
             if (!response.ok) {
@@ -479,10 +525,6 @@
 
             // 解析JSON数据
             const data = await response.json();
-            console.log("获取的数据:", data);
-
-            // 处理数据
-            // data.time = formatDate(new Date());
 
             if (data.code !== 0) {
                 throw new Error(`数据返回错误: ${data.message || "未知错误"}`);
@@ -502,6 +544,8 @@
             console.error(errorMessage, error);
             showRefreshStatus("error");
         } finally {
+            // 无论成功失败都清掉超时定时器，避免定时器泄漏
+            if (timeoutId) clearTimeout(timeoutId);
             // 无论成功失败，都标记为不在刷新中
             isRefreshing = false;
         }
@@ -530,22 +574,33 @@
         }
     }
 
+    // 上一次渲染的数据指纹：数据没变化时只更新时间，不重建整个列表（避免每 30 秒闪一次）
+    let lastRoomsSignature = "";
+
     // 更新界面
     function updateUI(data) {
+        const list = Array.isArray(data.data) ? data.data : [];
+
         // 更新时间显示
-        const updateTime = data.time;
-        document.getElementById("update-time").textContent = updateTime;
-        document.getElementById("footer-update-time").textContent = updateTime;
+        document.getElementById("update-time").textContent = data.time || "";
+        document.getElementById("footer-update-time").textContent = data.time || "";
+
+        const signature = JSON.stringify(list);
+        if (signature === lastRoomsSignature) {
+            return;
+        }
+        lastRoomsSignature = signature;
+
+        // 供事件委托按 key 反查房间对象
+        cacheRooms(list);
 
         // 统计数据
-        const totalRooms = data.data.length;
-        const livingRooms = data.data.filter(
+        const totalRooms = list.length;
+        const livingRooms = list.filter(
             (item) => item["room-status"] === "LIVING"
         ).length;
-        const notLivingRooms = data.data.filter(
-            (item) => item["room-status"] !== "LIVING"
-        ).length;
-        const recordingRooms = data.data.filter(
+        const notLivingRooms = totalRooms - livingRooms;
+        const recordingRooms = list.filter(
             (item) => item.recorder !== undefined && item.recorder.isRecord
         ).length;
 
@@ -561,31 +616,25 @@
         ).textContent = `${notLivingRooms} 个房间`;
 
         // 更新直播中房间列表
-        const livingContainer = document.getElementById(
-            "living-rooms-container"
-        );
+        const livingContainer = document.getElementById("living-rooms-container");
         livingContainer.innerHTML = "";
 
         // 更新未直播房间列表
-        const notLivingContainer = document.getElementById(
-            "not-living-rooms-container"
-        );
+        const notLivingContainer = document.getElementById("not-living-rooms-container");
         notLivingContainer.innerHTML = "";
 
-        // 处理每个房间数据
-        data.data.forEach((item, index) => {
+        // 处理每个房间数据（用 DocumentFragment 一次性插入，减少重排）
+        const livingFragment = document.createDocumentFragment();
+        const notLivingFragment = document.createDocumentFragment();
+        list.forEach((item, index) => {
             if (item["room-status"] === "LIVING") {
-                // 直播中房间
-                const roomElement = createLivingRoomElement(item, index);
-                livingContainer.appendChild(roomElement);
-                bindSettingClick(item, roomElement);
+                livingFragment.appendChild(createLivingRoomElement(item, index));
             } else {
-                // 未直播房间
-                const roomElement = createNotLivingRoomElement(item, index);
-                notLivingContainer.appendChild(roomElement);
-                bindSettingClick(item, roomElement);
+                notLivingFragment.appendChild(createNotLivingRoomElement(item, index));
             }
         });
+        livingContainer.appendChild(livingFragment);
+        notLivingContainer.appendChild(notLivingFragment);
 
         // 如果没有数据，显示提示
         if (livingRooms === 0) {
@@ -638,11 +687,19 @@
     }
 
     // 设置弹窗内容
-    function setModalContent(title, content, buttons = []) {
+    // options: { maxWidth: '56rem', hint: '共 45 个' }
+    function setModalContent(title, content, buttons = [], options = {}) {
         clearModalContent();
 
-        // 设置标题
-        modalTitle.textContent = title;
+        // 设置标题（可选右侧补充说明）
+        const hint = options.hint
+            ? `<span class="ml-2 text-xs font-normal text-gray-400">${escapeHtml(options.hint)}</span>`
+            : "";
+        modalTitle.innerHTML = `${escapeHtml(title)}${hint}`;
+
+        // 不同弹窗内容宽度差异很大，允许调用方指定
+        const modalBox = modal.querySelector(".modal-box");
+        modalBox.style.maxWidth = options.maxWidth || "";
 
         // 设置内容（支持HTML）
         modalBody.innerHTML = content;

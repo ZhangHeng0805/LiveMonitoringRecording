@@ -94,6 +94,7 @@ public class BrowserUtil {
         StringBuilder cookieStr = new StringBuilder();
         for (int i = 0; i < cookies.size(); i++) {
             Cookie cookie = cookies.get(i);
+            if (StrUtil.isBlank(cookie.name)) continue;
             cookieStr.append(cookie.name).append("=").append(cookie.value);
             if (i < cookies.size() - 1) {
                 cookieStr.append("; ");

@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 import static cn.zhangheng.record.httpServer.util.HandlerUtils.parseQuery;
 import static cn.zhangheng.record.httpServer.util.HandlerUtils.parseRequestBodyStr;
 import static cn.zhangheng.lmr.http_server.util.CheckUtils.checkActionKey;
-import static cn.zhangheng.lmr.http_server.util.CheckUtils.checkCookie;
+import static cn.zhangheng.lmr.http_server.util.CheckUtils.checkRequestAuth;
 
 /**
  * @author: ZhangHeng
@@ -43,7 +43,7 @@ public class RoomRecycleHandler extends JSONHandler {
     @Override
     protected boolean filter(HttpExchange httpExchange) throws IOException {
         super.filter(httpExchange);
-        return checkCookie(httpExchange);
+        return checkRequestAuth(httpExchange);
     }
 
     @Override
@@ -78,11 +78,33 @@ public class RoomRecycleHandler extends JSONHandler {
         responseJson(httpExchange, msg);
     }
 
-    private void recover(HttpExchange httpExchange, Map<String, String> query, Message<Object> msg) {
-        String fileName = query.getOrDefault("path", null);
-        if (fileName == null) {
+    /**
+     * 回收站文件名校验：必须是回收站目录下的普通 *.room.json.del 文件，
+     * 防止通过 path 参数做目录穿越（../），读到或删掉回收站以外的文件
+     */
+    private boolean invalidFileName(String fileName, Message<Object> msg) {
+        String suffix = FileModeMain.getFileSuffix() + ".del";
+        if (fileName == null || fileName.trim().isEmpty()) {
             msg.setCode(1);
             msg.setMessage("path不能为空");
+            return true;
+        }
+        if (!fileName.endsWith(suffix)) {
+            msg.setCode(1);
+            msg.setMessage("不是回收站文件：" + fileName);
+            return true;
+        }
+        if (fileName.contains("/") || fileName.contains("\\") || fileName.contains("..")) {
+            msg.setCode(1);
+            msg.setMessage("文件路径不合法：" + fileName);
+            return true;
+        }
+        return false;
+    }
+
+    private void recover(HttpExchange httpExchange, Map<String, String> query, Message<Object> msg) {
+        String fileName = query.getOrDefault("path", null);
+        if (invalidFileName(fileName, msg)) {
             return;
         }
         try {
@@ -92,6 +114,8 @@ public class RoomRecycleHandler extends JSONHandler {
                 roomJson = JSONUtil.toBean(bodyStr, RoomJson.class);
             }
             FileModeMain.recoverRoomFile(fileName, roomJson);
+            msg.setCode(0);
+            msg.setMessage("恢复成功!");
         } catch (Exception e) {
             msg.setCode(1);
             msg.setMessage("异常:" + e.getMessage());
@@ -100,9 +124,7 @@ public class RoomRecycleHandler extends JSONHandler {
 
     private void delete(Map<String, String> query, Message<Object> msg) {
         String fileName = query.getOrDefault("path", null);
-        if (fileName == null) {
-            msg.setCode(1);
-            msg.setMessage("path不能为空");
+        if (invalidFileName(fileName, msg)) {
             return;
         }
         Path path = Paths.get(FileModeMain.getBasePath(), fileName);
@@ -121,14 +143,17 @@ public class RoomRecycleHandler extends JSONHandler {
     private void getList(Map<String, String> query, Message msg) throws IOException {
         int pageNum = Integer.parseInt(query.getOrDefault("pageNum", "1"));
         int pageSize = Integer.parseInt(query.getOrDefault("pageSize", "100"));
+        String suffix = FileModeMain.getFileSuffix() + ".del";
         FilePageUtils.FilePageResult result = FilePageUtils.getFilePage(Paths.get(FileModeMain.getBasePath()), pageNum, pageSize, fileResult -> {
             String name = fileResult.getName();
-            return name.endsWith(FileModeMain.getFileSuffix() + ".del");
+            return name.endsWith(suffix);
         });
         List<Map<String, String>> collect = result.getFiles().stream().map(r -> {
             Map<String, String> map = new HashMap<>();
-            map.put("title", r.getName().substring(0, r.getName().indexOf(".")));
-            map.put("path", r.getName());
+            String name = r.getName();
+            // 按固定后缀截断，昵称里含“.”时也不会被截错
+            map.put("title", name.substring(0, name.length() - suffix.length()));
+            map.put("path", name);
             return map;
         }).collect(Collectors.toList());
         JSONObject entries = JSONUtil.parseObj(result);
@@ -139,9 +164,7 @@ public class RoomRecycleHandler extends JSONHandler {
 
     private void getDetails(Map<String, String> query, Message msg) {
         String fileName = query.getOrDefault("path", null);
-        if (fileName == null) {
-            msg.setCode(1);
-            msg.setMessage("path不能为空");
+        if (invalidFileName(fileName, msg)) {
             return;
         }
         Path path = Paths.get(FileModeMain.getBasePath(), fileName);

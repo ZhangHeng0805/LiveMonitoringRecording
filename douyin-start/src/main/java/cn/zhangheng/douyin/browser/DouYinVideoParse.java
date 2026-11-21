@@ -77,7 +77,7 @@ public class DouYinVideoParse {
     public static DouYinWork parse(String shareUrl, boolean isRefresh) throws Exception {
         String link = DouYinUtil.extractDouyinLink(shareUrl);
         if (link == null) {
-            return null;
+            throw new IllegalArgumentException("未识别到有效的抖音作品链接，请粘贴完整分享内容（含 v.douyin.com 短链）");
         }
         String key;
         try {
@@ -87,19 +87,28 @@ public class DouYinVideoParse {
             key = link;
         }
         if (isRefresh) queryHelper.invalidate(key);
-        return queryHelper.get(key, 120_000);
+        long sta = System.currentTimeMillis();
+        try {
+            DouYinWork work = queryHelper.get(key, 120_000);
+            log.info("抖音作品解析完成 key={} 刷新={} 耗时={}ms", key, isRefresh, System.currentTimeMillis() - sta);
+            return work;
+        } catch (Exception e) {
+            log.warn("抖音作品解析失败 key={} 耗时={}ms 原因={}", key, System.currentTimeMillis() - sta, e.getMessage());
+            throw e;
+        }
     }
 
     public static DouYinWork parse(String shareUrl) {
-        boolean success = false;
         String link = DouYinUtil.extractDouyinLink(shareUrl);
         if (link == null) {
-            return null;
+            throw new IllegalArgumentException("未识别到有效的抖音作品链接，请粘贴完整分享内容（含 v.douyin.com 短链）");
         }
         BrowserAPI browserApi = new BrowserAPI(null);
         JSONObject htmlJson = null;
-        MyBrowser myBrowser = PlaywrightBrowserFactory.getBrowser(DouYinVideoParse.class.getName(), 60_000, false);
+        boolean success = false;
+        MyBrowser myBrowser = PlaywrightBrowserFactory.getBrowser(DouYinVideoParse.class.getName(), 300_000, false);
         Page page = null;
+        Throwable lastError = null;
         try {
             page = myBrowser.newPage(DouYinBrowserUtil.getDouyinFingerprintScript());
             BrowserUtil.navigatePage(link, page, WaitUntilState.DOMCONTENTLOADED);
@@ -117,8 +126,10 @@ public class DouYinVideoParse {
             browserApi.setResponseBody(response.text());
             success = true;
         } catch (PlaywrightException pe) {
+            lastError = pe;
             log.error("获取抖音作品信息失败！{}", PlaywrightExceptionParser.parse(pe).toSimpleString());
         } catch (Exception e) {
+            lastError = e;
             log.error("获取抖音作品信息失败！{}", e.getMessage());
         } finally {
             myBrowser.closePage(page);
@@ -132,7 +143,9 @@ public class DouYinVideoParse {
             }
             return work;
         } else {
-            throw new RuntimeException("未解析到作品信息");
+            // 把真实的底层原因挂到异常上，前端/接口层就能显示「为什么失败」而不是空消息
+            String reason = lastError == null ? "" : ("：" + PlaywrightExceptionParser.parse(lastError).toSimpleString());
+            throw new RuntimeException("未解析到作品信息" + reason, lastError);
         }
     }
 
@@ -199,8 +212,38 @@ public class DouYinVideoParse {
         return work;
     }
 
+    /**
+     * 判断接口返回体是否可用，返回 null 表示可用，否则返回人类可读的失败原因。
+     * 用于把「空响应/风控页/非 JSON」和「JSON 结构变了」区分开，避免只报一句空的「解析格式错误：」。
+     */
+    private static String checkBody(String data, String apiName) {
+        if (data == null || data.trim().isEmpty()) {
+            return apiName + "返回内容为空，可能是作品已删除、链接失效或触发了抖音风控";
+        }
+        if (!JSONUtil.isTypeJSON(data)) {
+            String preview = data.replaceAll("\\s+", " ").trim();
+            if (preview.length() > 80) preview = preview.substring(0, 80) + "…";
+            if (preview.contains("验证") || preview.contains("captcha") || preview.contains("滑块")) {
+                return "触发抖音验证码/滑块校验，请稍后在页面点「刷新」重试";
+            }
+            return apiName + "返回的不是 JSON（长度 " + data.length() + "），开头为：" + preview;
+        }
+        return null;
+    }
+
+    /** 截断错误上下文，避免把整段 JSON 塞进接口响应 */
+    private static String brief(String data) {
+        if (data == null) return "null";
+        String s = data.replaceAll("\\s+", " ").trim();
+        return s.length() > 160 ? s.substring(0, 160) + "…" : s;
+    }
+
     private static DouYinWork handleVideoData(String data) {
         DouYinWork video = new DouYinWork(Work.Type.Video);
+        String bodyError = checkBody(data, "视频详情接口");
+        if (bodyError != null) {
+            throw new RuntimeException(bodyError);
+        }
         JSONConfig jsonConfig = new JSONConfig();
         jsonConfig.setIgnoreError(true);
         if (JSONUtil.isTypeJSON(data)) {
@@ -256,12 +299,16 @@ public class DouYinVideoParse {
                 }
             }
         } else {
-            throw new RuntimeException("解析格式错误：" + data);
+            throw new RuntimeException("解析格式错误，接口结构可能已变更，响应开头：" + brief(data));
         }
         return video;
     }
 
     private static DouYinWork handleImageData(String data, JSONObject htmlJson) {
+        String bodyError = checkBody(data, "图文列表接口");
+        if (bodyError != null) {
+            throw new RuntimeException(bodyError);
+        }
         DouYinWork work = handleImageData(htmlJson);
         JSONConfig jsonConfig = new JSONConfig();
         jsonConfig.setIgnoreError(true);
@@ -321,7 +368,7 @@ public class DouYinVideoParse {
                 }
             }
         } else {
-            throw new RuntimeException("解析格式错误：" + data);
+            throw new RuntimeException("解析格式错误，接口结构可能已变更，响应开头：" + brief(data));
         }
         return work;
     }

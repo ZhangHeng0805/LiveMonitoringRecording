@@ -1,5 +1,6 @@
 package cn.zhangheng.record.httpServer.util;
 
+import cn.hutool.core.map.MapUtil;
 import cn.hutool.jwt.JWT;
 import cn.zhangheng.record.bean.Constant;
 
@@ -13,13 +14,14 @@ import java.util.Map;
  * @description:
  */
 public class JWTUtil {
+    // 接口令牌类型标识，用于区分「Cookie 会话 token」与「无状态接口 token」
+    public static final String API_TOKEN_TYPE = "api";
     // 密钥，生产环境放在配置文件，长度尽量长
     private static final byte[] SECRET_KEY = Constant.deviceUniqueId.getBytes();
 
 
     // 生成token
     public static String generateToken(Map<String, Object> payload, long expireSec) {
-        // 快速创建token
 
         long now = System.currentTimeMillis() / 1000;
         JWT jwt = JWT.create();
@@ -31,6 +33,30 @@ public class JWTUtil {
                 .setPayload("iss ", "xxxr")
                 .setKey(SECRET_KEY)
                 .sign(); // 自动用 HS256
+    }
+
+    /**
+     * 生成无状态接口令牌（用于前端托管在 GitHub Pages 等跨站场景：
+     * 浏览器会拦截第三方 Cookie，只能靠 Authorization: Bearer 传递）
+     *
+     * @param expireSec 有效期（秒）
+     */
+    public static String generateApiToken(long expireSec) {
+        return generateToken(MapUtil.of("typ", API_TOKEN_TYPE), expireSec);
+    }
+
+    /**
+     * 校验接口令牌：签名有效、未过期、且类型为 api
+     */
+    public static boolean checkApiToken(String token) {
+        if (!checkToken(token)) return false;
+        try {
+            JWT jwt = JWT.of(token).setKey(SECRET_KEY);
+            Object typ = jwt.getPayload("typ");
+            return typ != null && API_TOKEN_TYPE.equals(typ.toString());
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     //校验token

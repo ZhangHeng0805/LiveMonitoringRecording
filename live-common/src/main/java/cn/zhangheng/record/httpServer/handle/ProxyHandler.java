@@ -28,6 +28,35 @@ public class ProxyHandler extends MyHandler {
     // 重定向响应码集合（HTTP规范：无响应体或响应体可忽略）
     private static final List<Integer> REDIRECT_CODES = Arrays.asList(301, 302, 303, 307, 308);
 
+    /**
+     * 是否本机发起的请求（本机调试允许代理本机/内网地址）
+     */
+    private static boolean isLocalClient(String ip) {
+        if (ip == null) return false;
+        ip = ip.trim();
+        return ip.startsWith("127.") || "::1".equals(ip) || "0:0:0:0:0:0:0:1".equals(ip)
+                || "localhost".equalsIgnoreCase(ip);
+    }
+
+    /**
+     * 目标主机是否解析到内网/本机/链路本地地址（用于阻断远程客户端把代理当跳板打内网）
+     */
+    private static boolean isPrivateHost(String host) {
+        if (host == null) return true;
+        try {
+            for (InetAddress addr : InetAddress.getAllByName(host)) {
+                if (addr.isAnyLocalAddress() || addr.isLoopbackAddress() || addr.isLinkLocalAddress()
+                        || addr.isSiteLocalAddress() || addr.isMulticastAddress()) {
+                    return true;
+                }
+            }
+            return false;
+        } catch (UnknownHostException e) {
+            // 解析失败不在这里拦截，交给下游连接时自然报错
+            return false;
+        }
+    }
+
 
     @Override
     public void request(HttpExchange httpExchange) throws IOException {
@@ -60,6 +89,15 @@ public class ProxyHandler extends MyHandler {
             if (!ALLOWED_PROTOCOLS.contains(targetUrl.getProtocol())) {
                 log.warn("Forbidden protocol: {}", targetUrl.getProtocol());
                 sendErrorResponse(httpExchange, 403, "Protocol not allowed: " + targetUrl.getProtocol());
+                isResponseSent = true;
+                return;
+            }
+
+            // 防开放代理/SSRF：远程客户端不得借本代理访问内网、本机地址（本机调试请求放行）
+            String clientIp = HandlerUtils.getClientIP(httpExchange);
+            if (!isLocalClient(clientIp) && isPrivateHost(targetUrl.getHost())) {
+                log.warn("Blocked private target {} for remote client {}", targetUrl.getHost(), clientIp);
+                sendErrorResponse(httpExchange, 403, "Target host not allowed for remote request");
                 isResponseSent = true;
                 return;
             }

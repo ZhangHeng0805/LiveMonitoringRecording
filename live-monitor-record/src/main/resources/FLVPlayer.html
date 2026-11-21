@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -17,211 +17,587 @@
     <meta name="referrer" content="no-referrer">
     <script src="js/flv.min.js"></script>
     <link href="css/font-awesome.min-4.7.0.css" rel="stylesheet">
-    <script src="js/tailwindcss-3.4.17.js"></script>
 
-    <!-- 配置Tailwind自定义颜色和字体 -->
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#3B82F6',
-                        secondary: '#10B981',
-                        danger: '#EF4444',
-                        dark: '#1E293B',
-                        light: '#F8FAFC'
-                    },
-                    fontFamily: {
-                        inter: ['Inter', 'sans-serif'],
-                    },
-                }
-            }
-        }
-    </script>
-
-    <!-- 自定义工具类 -->
-    <style type="text/tailwindcss">
-        /* 每行3个，减去gap补偿 */
-        .snap-item {
-            width: calc((100% - 2 * 16px) / 3);
-            text-align: center;
+    <style>
+        :root {
+            --flvx-primary: #2f6fed;
+            --flvx-primary-soft: rgba(47, 111, 237, .12);
+            --flvx-text: #1f2430;
+            --flvx-text-2: #5b6272;
+            --flvx-text-3: #98a0ae;
+            --flvx-line: #ecedf1;
+            --flvx-bg: #f4f5f8;
+            --flvx-danger: #dc2626;
+            --flvx-ok: #16a34a;
         }
 
+        * { box-sizing: border-box; }
 
-        /* 全局固定在屏幕右上角，层级拉满 */
-        #captureBtn {
-            position: fixed;
-            top: 16px;
-            right: 16px;
-            z-index: 999999;
-            padding: 8px 14px;
-            cursor: pointer;
-            background: rgba(0, 0, 0, 0.6);
+        body {
+            margin: 0;
+            padding: 28px 20px 0;
+            background: var(--flvx-bg);
+            color: var(--flvx-text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .flvx-wrap {
+            max-width: 62rem;
+            margin: 0 auto;
+            padding-bottom: 2rem;
+        }
+
+        /* ---------- 页头 ---------- */
+        .flvx-header {
+            display: flex;
+            align-items: center;
+            gap: .85rem;
+            margin-bottom: 1.1rem;
+            flex-wrap: wrap;
+        }
+
+        .flvx-logo {
+            flex: none;
+            width: 2.9rem;
+            height: 2.9rem;
+            border-radius: .8rem;
+            display: grid;
+            place-items: center;
             color: #fff;
-            border: none;
-            border-radius: 6px;
-            font-size: 14px;
-            pointer-events: auto;
+            font-size: 1.25rem;
+            background: linear-gradient(135deg, #4b8bff, #2f6fed);
+            box-shadow: 0 6px 16px rgba(47, 111, 237, .28);
         }
 
-        #captureBtn:hover {
-            background: rgba(0, 0, 0, 0.8);
+        .flvx-header-text { flex: 1 1 auto; min-width: 0; }
+
+        .flvx-title {
+            margin: 0;
+            font-size: 1.32rem;
+            font-weight: 700;
+            letter-spacing: .01em;
         }
 
-        @layer utilities {
-            .content-auto {
-                content-visibility: auto;
-            }
+        .flvx-subtitle {
+            margin: .18rem 0 0;
+            font-size: .82rem;
+            color: var(--flvx-text-3);
+        }
 
-            .card-shadow {
-                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-            }
+        .flvx-badge {
+            flex: none;
+            font-size: .7rem;
+            color: var(--flvx-text-2);
+            background: #fff;
+            border: 1px solid var(--flvx-line);
+            border-radius: .45rem;
+            padding: .3rem .55rem;
+        }
 
-            .gradient-bg {
-                background: linear-gradient(135deg, #f5f7fa 0%, #e4e5e6 100%);
-            }
+        /* ---------- 卡片 ---------- */
+        .flvx-card {
+            background: #fff;
+            border: 1px solid var(--flvx-line);
+            border-radius: .9rem;
+            box-shadow: 0 1px 2px rgba(24, 30, 48, .04), 0 12px 28px -18px rgba(24, 30, 48, .18);
+            overflow: hidden;
+        }
 
-            .tab-active {
-                @apply border-b-2 border-primary text-primary;
-            }
+        /* ---------- 分段标签 ---------- */
+        .flvx-tabs {
+            display: flex;
+            gap: .25rem;
+            padding: .55rem;
+            margin: .9rem .9rem 0;
+            background: #f6f7f9;
+            border: 1px solid var(--flvx-line);
+            border-radius: .6rem;
+        }
+
+        .flvx-tab {
+            flex: 1 1 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: .35rem;
+            padding: .5rem .6rem;
+            font-size: .82rem;
+            font-weight: 600;
+            color: var(--flvx-text-2);
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: .45rem;
+            cursor: pointer;
+            transition: color .15s ease, background .15s ease, box-shadow .15s ease;
+        }
+
+        .flvx-tab:hover { color: var(--flvx-text); }
+
+        .flvx-tab.is-active {
+            color: var(--flvx-primary);
+            background: #fff;
+            border-color: #e6e8ee;
+            box-shadow: 0 1px 2px rgba(24, 30, 48, .06);
+        }
+
+        /* ---------- 来源区 ---------- */
+        .flvx-pane { padding: .95rem .9rem .9rem; }
+
+        .flvx-pane.is-hidden { display: none; }
+
+        .flvx-label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .5rem;
+            margin-bottom: .4rem;
+            font-size: .76rem;
+            font-weight: 600;
+            color: var(--flvx-text-2);
+        }
+
+        .flvx-label-hint {
+            font-weight: 400;
+            font-size: .72rem;
+            color: var(--flvx-text-3);
+        }
+
+        .flvx-row {
+            display: flex;
+            align-items: center;
+            gap: .55rem;
+        }
+
+        .flvx-input {
+            flex: 1 1 auto;
+            min-width: 0;
+            height: 2.4rem;
+            padding: 0 .8rem;
+            font-size: .82rem;
+            color: var(--flvx-text);
+            background: #fff;
+            border: 1px solid #e3e5ec;
+            border-radius: .55rem;
+            outline: none;
+            transition: border-color .15s ease, box-shadow .15s ease;
+            font-family: inherit;
+        }
+
+        .flvx-input::placeholder { color: #b3b9c6; }
+
+        .flvx-input:focus {
+            border-color: var(--flvx-primary);
+            box-shadow: 0 0 0 3px var(--flvx-primary-soft);
+        }
+
+        .flvx-btn {
+            flex: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: .35rem;
+            height: 2.4rem;
+            padding: 0 1.15rem;
+            font-size: .82rem;
+            font-weight: 600;
+            font-family: inherit;
+            color: #fff;
+            background: var(--flvx-primary);
+            border: 1px solid transparent;
+            border-radius: .55rem;
+            cursor: pointer;
+            transition: background .15s ease, box-shadow .15s ease, transform .1s ease;
+        }
+
+        .flvx-btn:hover:not(:disabled) { background: #245ee0; }
+        .flvx-btn:active:not(:disabled) { transform: translateY(1px); }
+
+        .flvx-btn:disabled {
+            background: #dfe3ee;
+            color: #a3aab8;
+            cursor: not-allowed;
+        }
+
+        .flvx-file {
+            flex: 1 1 auto;
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            gap: .55rem;
+            height: 2.4rem;
+            padding: 0 .65rem 0 .3rem;
+            border: 1px dashed #dcdfe8;
+            border-radius: .55rem;
+            background: #fafbfd;
+        }
+
+        .flvx-file-btn {
+            flex: none;
+            display: inline-flex;
+            align-items: center;
+            gap: .35rem;
+            height: 1.8rem;
+            padding: 0 .7rem;
+            font-size: .78rem;
+            font-weight: 600;
+            color: var(--flvx-primary);
+            background: #fff;
+            border: 1px solid #dfe4f0;
+            border-radius: .4rem;
+            cursor: pointer;
+            transition: background .15s ease;
+        }
+
+        .flvx-file-btn:hover { background: #f4f7ff; }
+
+        .flvx-file-name {
+            flex: 1 1 auto;
+            min-width: 0;
+            font-size: .78rem;
+            color: var(--flvx-text-3);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #fileInput { display: none; }
+
+        /* ---------- 状态条 ---------- */
+        .flvx-status {
+            display: flex;
+            align-items: flex-start;
+            gap: .45rem;
+            margin: 0 .9rem .85rem;
+            padding: .55rem .7rem;
+            font-size: .76rem;
+            line-height: 1.5;
+            color: var(--flvx-text-2);
+            background: #f7f9fd;
+            border: 1px solid #e7ecf8;
+            border-left: 3px solid #b9cdf3;
+            border-radius: .45rem;
+            word-break: break-all;
+            overflow-wrap: anywhere;
+        }
+
+        .flvx-status[data-type="success"] {
+            color: #15803d;
+            background: #f2fbf5;
+            border-color: #d8f0e0;
+            border-left-color: #86d9a6;
+        }
+
+        .flvx-status[data-type="danger"] {
+            color: #b42318;
+            background: #fff6f5;
+            border-color: #fbd9d4;
+            border-left-color: #f1998e;
+        }
+
+        .flvx-status i { flex: none; margin-top: .1rem; }
+        .flvx-status span { flex: 1 1 auto; min-width: 0; }
+
+        /* ---------- 播放区 ---------- */
+        .flvx-stage {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            max-height: 62vh;
+            background: #0f1115;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        #videoElement {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: contain;
+            background: #0f1115;
+            outline: none;
+        }
+
+        .flvx-capture {
+            position: absolute;
+            top: .6rem;
+            right: .6rem;
+            z-index: 10;
+            display: inline-flex;
+            align-items: center;
+            gap: .35rem;
+            padding: .35rem .6rem;
+            font-size: .72rem;
+            font-family: inherit;
+            color: #fff;
+            background: rgba(15, 17, 21, .62);
+            border: 1px solid rgba(255, 255, 255, .18);
+            border-radius: .4rem;
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+            transition: background .15s ease, opacity .15s ease;
+        }
+
+        .flvx-capture:hover:not(:disabled) { background: rgba(15, 17, 21, .85); }
+        .flvx-capture:disabled { opacity: .45; cursor: not-allowed; }
+
+        .flvx-loading {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: .6rem;
+            background: rgba(15, 17, 21, .55);
+            z-index: 9;
+        }
+
+        .flvx-loading.is-hidden { display: none; }
+
+        .flvx-spinner {
+            width: 2.1rem;
+            height: 2.1rem;
+            border: 3px solid rgba(255, 255, 255, .28);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: flvx-spin .8s linear infinite;
+        }
+
+        @keyframes flvx-spin { to { transform: rotate(360deg); } }
+
+        .flvx-loading p {
+            margin: 0;
+            font-size: .76rem;
+            color: rgba(255, 255, 255, .85);
+        }
+
+        /* ---------- 底栏 ---------- */
+        .flvx-foot {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .8rem;
+            flex-wrap: wrap;
+            padding: .7rem .9rem;
+            font-size: .72rem;
+            color: var(--flvx-text-3);
+            border-top: 1px solid var(--flvx-line);
+            background: #fbfbfd;
+        }
+
+        .flvx-foot a { color: var(--flvx-primary); text-decoration: none; }
+        .flvx-foot a:hover { text-decoration: underline; }
+
+        .flvx-foot .flvx-dot { margin: 0 .25rem; color: #d7dbe4; }
+
+        /* ---------- 截图列表 ---------- */
+        .flvx-snaps {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: .7rem;
+            padding: .9rem;
+            border-top: 1px solid var(--flvx-line);
+        }
+
+        .flvx-snaps-empty { display: none; }
+
+        #snapList:empty { display: none; }
+
+        .snap-item {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--flvx-line);
+            border-radius: .55rem;
+            background: #fff;
+            overflow: hidden;
+        }
+
+        .snap-item img {
+            width: 100%;
+            display: block;
+            cursor: zoom-in;
+            background: #f1f2f5;
+        }
+
+        .snap-item .btn-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: .3rem;
+            padding: .3rem .35rem;
+            border-top: 1px solid var(--flvx-line);
+        }
+
+        .save-btn,
+        .del-btn {
+            font-size: .72rem;
+            font-family: inherit;
+            padding: .2rem .5rem;
+            border-radius: .35rem;
+            border: 1px solid transparent;
+            background: transparent;
+            cursor: pointer;
+            transition: background .15s ease;
+        }
+
+        .save-btn { color: var(--flvx-primary); }
+        .save-btn:hover { background: #f2f6ff; }
+
+        .del-btn { color: var(--flvx-danger); }
+        .del-btn:hover { background: #fff3f2; }
+
+        /* ---------- 使用说明 ---------- */
+        .flvx-help {
+            margin-top: 1rem;
+            padding: 1rem 1.1rem 1.15rem;
+        }
+
+        .flvx-help h2 {
+            margin: 0 0 .55rem;
+            font-size: .92rem;
+            font-weight: 700;
+        }
+
+        .flvx-help ul {
+            margin: 0;
+            padding-left: 1.1rem;
+            color: var(--flvx-text-2);
+            font-size: .78rem;
+            line-height: 1.9;
+        }
+
+        .flvx-help code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: .74rem;
+            color: var(--flvx-text-2);
+            background: #f4f5f8;
+            padding: .08rem .3rem;
+            border-radius: .25rem;
+            word-break: break-all;
+        }
+
+        /* ---------- 响应式 ---------- */
+        @media (max-width: 720px) {
+            body { padding: 18px 12px 0; }
+            .flvx-title { font-size: 1.12rem; }
+            .flvx-logo { width: 2.4rem; height: 2.4rem; font-size: 1.05rem; }
+            .flvx-badge { display: none; }
+            .flvx-row { flex-direction: column; align-items: stretch; }
+            .flvx-btn { width: 100%; height: 2.6rem; }
+            .flvx-file { height: 2.6rem; }
+            .flvx-stage { aspect-ratio: auto; height: 52vh; }
+            .flvx-snaps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .flvx-foot { font-size: .7rem; }
+            .flvx-help ul { padding-left: .95rem; }
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen font-inter text-gray-800">
-<div class="container mx-auto px-4 py-8 max-w-4xl">
-    <!-- 标题区域 -->
-    <div class="text-center mb-8">
-        <h1 class="text-[clamp(1.75rem,4vw,2.5rem)] font-bold text-gray-800 mb-2">
-            <i class="fa fa-play-circle text-primary mr-2"></i>FLV 播放器
-        </h1>
-        <p class="text-gray-600">播放本地或在线 FLV 视频文件</p>
-    </div>
+<body>
+<div class="flvx-wrap">
+    <header class="flvx-header">
+        <div class="flvx-logo"><i class="fa fa-play"></i></div>
+        <div class="flvx-header-text">
+            <h1 class="flvx-title">FLV 播放器</h1>
+            <p class="flvx-subtitle">播放本地或在线 FLV 视频文件，随时截取画面</p>
+        </div>
+        <span class="flvx-badge">FLV · H.264 + AAC/MP3</span>
+    </header>
 
-    <!-- 主卡片 -->
-    <div class="bg-white rounded-xl overflow-hidden card-shadow transition-all duration-300 hover:shadow-xl">
-        <!-- 标签页切换 -->
-        <div class="border-b border-gray-200">
-            <div class="flex space-x-8 px-6">
-                <button id="localTab"
-                        class="tab-active py-4 px-1 text-sm font-medium focus:outline-none transition-colors duration-200">
-                    <i class="fa fa-file-video-o mr-1"></i> 本地文件
-                </button>
-                <button id="onlineTab"
-                        class="py-4 px-1 text-sm font-medium text-gray-500 focus:outline-none transition-colors duration-200">
-                    <i class="fa fa-link mr-1"></i> 在线视频
-                </button>
-            </div>
+    <main class="flvx-card">
+        <!-- 分段标签 -->
+        <div class="flvx-tabs">
+            <button id="localTab" class="flvx-tab is-active">
+                <i class="fa fa-file-video-o"></i><span>本地文件</span>
+            </button>
+            <button id="onlineTab" class="flvx-tab">
+                <i class="fa fa-link"></i><span>在线视频</span>
+            </button>
         </div>
 
-        <!-- 本地文件选择区域 -->
-        <div id="localSection" class="p-6">
-            <div class="flex flex-col md:flex-row items-center gap-4">
-                <div class="flex-1">
-                    <label for="fileInput" class="block text-sm font-medium text-gray-700 mb-1">
-                        选择 FLV 文件
+        <!-- 本地文件 -->
+        <section id="localSection" class="flvx-pane">
+            <div class="flvx-label">
+                <span>选择 FLV 文件</span>
+                <span class="flvx-label-hint">仅支持 .flv 后缀</span>
+            </div>
+            <div class="flvx-row">
+                <div class="flvx-file">
+                    <input type="file" id="fileInput" accept=".flv"
+                           onchange="document.getElementById('fileName').textContent = this.files[0]?.name || '未选择文件'">
+                    <label for="fileInput" class="flvx-file-btn">
+                        <i class="fa fa-folder-open-o"></i><span>浏览文件</span>
                     </label>
-                    <div class="relative">
-                        <input type="file" id="fileInput" accept=".flv"
-                               class="hidden"
-                               onchange="this.nextElementSibling.textContent = this.files[0]?.name || '未选择文件'">
-                        <label for="fileInput"
-                               class="flex items-center px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors duration-200">
-                            <i class="fa fa-file-video-o text-primary mr-2"></i>
-                            <span>浏览文件</span>
-                        </label>
-                        <span id="fileName" class="ml-2 text-sm text-gray-500 truncate max-w-xs">未选择文件</span>
-                    </div>
+                    <span id="fileName" class="flvx-file-name">未选择文件</span>
                 </div>
-                <button id="playLocalBtn" disabled
-                        class="px-6 py-2 bg-primary/70 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary transition-colors duration-200 flex items-center justify-center">
-                    <i class="fa fa-play mr-2"></i>
-                    <span>播放</span>
+                <button id="playLocalBtn" class="flvx-btn" disabled>
+                    <i class="fa fa-play"></i><span>播放</span>
                 </button>
+            </div>
+        </section>
+
+        <!-- 在线视频 -->
+        <section id="onlineSection" class="flvx-pane is-hidden">
+            <div class="flvx-label">
+                <span>FLV 视频 URL</span>
+                <span class="flvx-label-hint">需服务端允许跨域（CORS）</span>
+            </div>
+            <div class="flvx-row">
+                <input type="url" id="urlInput" class="flvx-input"
+                       placeholder="https://example.com/video.flv">
+                <button id="playUrlBtn" class="flvx-btn" disabled>
+                    <i class="fa fa-play"></i><span>播放</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- 状态 -->
+        <div id="statusContainer" class="flvx-status" data-type="info">
+            <i class="fa fa-info-circle"></i>
+            <span id="status">请选择 FLV 文件或输入在线视频 URL…</span>
+        </div>
+
+        <!-- 播放区 -->
+        <div class="flvx-stage">
+            <video id="videoElement" controls playsinline webkit-playsinline
+                   x5-video-player-type="h5" x5-video-player-fullscreen="true"></video>
+            <button id="captureBtn" class="flvx-capture" disabled>
+                <i class="fa fa-camera"></i><span>截取视频帧</span>
+            </button>
+            <div id="loadingOverlay" class="flvx-loading is-hidden">
+                <div class="flvx-spinner"></div>
+                <p>加载中…</p>
             </div>
         </div>
 
-        <!-- 在线视频输入区域 -->
-        <div id="onlineSection" class="p-6 hidden">
-            <div class="flex flex-col md:flex-row items-center gap-4">
-                <div class="flex-1">
-                    <label for="urlInput" class="block text-sm font-medium text-gray-700 mb-1">
-                        FLV 视频 URL
-                    </label>
-                    <div class="relative">
-                        <input type="url" id="urlInput" placeholder="https://example.com/video.flv"
-                               class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all duration-200">
-                    </div>
-                </div>
-                <button id="playUrlBtn" disabled
-                        class="px-6 py-2 bg-primary/70 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary transition-colors duration-200 flex items-center justify-center">
-                    <i class="fa fa-play mr-2"></i>
-                    <span>播放</span>
-                </button>
-            </div>
-        </div>
-
-        <!-- 状态显示 -->
-        <div id="statusContainer" class="px-6 pb-4">
-            <p id="status" class="text-sm text-gray-600 flex items-center">
-                <i class="fa fa-info-circle mr-2 text-primary"></i>
-                <span>请选择 FLV 文件或输入在线视频 URL...</span>
-            </p>
-        </div>
-
-        <!-- 视频播放区域 -->
-        <div class="relative bg-gray-900">
-            <div id="videoContainer" class="aspect-video w-full bg-black flex items-center justify-center">
-                <video id="videoElement" class="max-w-full max-h-full" controls playsinline
-                       webkit-playsinline
-                       x5-video-player-type="h5"
-                       x5-video-player-fullscreen="true">
-                </video>
-                <button disabled class="capture-overlay-btn" id="captureBtn">
-                    <i class="fa fa-camera"></i> 截取视频帧
-                </button>
-                <!-- 加载动画 (默认隐藏) -->
-                <div id="loadingOverlay" class="absolute inset-0 bg-black/50 flex items-center justify-center hidden">
-                    <div class="flex flex-col items-center">
-                        <div class="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-                        <p class="mt-3 text-white text-sm">加载中...</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 播放器信息 -->
-        <div class="p-4 bg-gray-50 text-xs text-gray-500 flex justify-between">
+        <div class="flvx-foot">
             <div>
-                <span class="font-medium"><i class="fa fa-github mr-1"></i>GitHub</span> : <a target="_blank"
-                                                                                              href="https://github.com/ZhangHeng0805/FLVPlayer">FLVPlayer</a>
+                <span class="fa fa-github"></span>
+                <a href="https://github.com/ZhangHeng0805/FLVPlayer" target="_blank" rel="noopener">FLVPlayer</a>
+                <span class="flvx-dot">·</span>
+                <span>基于 flv.js</span>
             </div>
-            <div>
-                <span class="font-medium">支持格式:</span> FLV (H.264 + AAC/MP3)
-            </div>
+            <div>支持格式：FLV（H.264 + AAC/MP3）</div>
         </div>
-        <div>
-            <!-- 隐藏画布用于绘图 -->
-            <canvas id="canvas" style="display: none;"></canvas>
-            <!--            <h3>截图列表</h3>-->
-            <div id="snapList" class="p-4 bg-gray-50 text-xs text-gray-500 flex items-center justify-between"
-                 style="flex-wrap: wrap;">
 
-            </div>
-        </div>
-    </div>
-    <!-- 功能说明 -->
-    <div class="mt-8 bg-white rounded-lg p-6 card-shadow">
-        <h3 class="text-lg font-semibold text-gray-800 mb-3">使用说明</h3>
-        <ul class="list-disc pl-5 space-y-2 text-gray-600 text-sm">
-            <li>支持播放本地 FLV 格式视频文件和在线 FLV 视频地址</li>
-            <li>视频编码要求：H.264</li>
-            <li>音频编码要求：AAC 或 MP3</li>
-            <li>浏览器需支持 Media Source Extensions (MSE)</li>
-            <li>推荐使用 Chrome、Firefox 或 Edge 浏览器</li>
-            <li>在线播放时，请确保视频服务器支持跨域访问 (CORS)</li>
-            <li>可通过 URL 参数直接播放视频：http://yourdomain.com/player.html?url=http://example.com/video.flv</li>
+        <canvas id="canvas" style="display: none;"></canvas>
+        <div id="snapList" class="flvx-snaps"></div>
+    </main>
+
+    <section class="flvx-card flvx-help">
+        <h2>使用说明</h2>
+        <ul>
+            <li>支持播放本地 FLV 文件和在线 FLV 视频地址</li>
+            <li>视频编码要求：H.264；音频编码要求：AAC 或 MP3</li>
+            <li>浏览器需支持 Media Source Extensions (MSE)，推荐 Chrome / Firefox / Edge</li>
+            <li>在线播放时请确保视频服务器允许跨域访问（CORS）</li>
+            <li>可通过 URL 参数直接播放：<code>?url=http://example.com/video.flv</code></li>
         </ul>
-    </div>
+    </section>
 </div>
 
 <script>
@@ -266,7 +642,7 @@
 
         // 创建列表项DOM
         const item = document.createElement('div');
-        item.className = 'snap-item bg-gray-200 my-2';
+        item.className = 'snap-item';
 
         const img = document.createElement('img');
         img.src = imgBase64;
@@ -280,11 +656,11 @@
 
         // 按钮容器（存放保存+删除）
         const btnWrap = document.createElement('div');
-        btnWrap.className = 'btn-row py-2';
+        btnWrap.className = 'btn-row';
 
         // 保存按钮
         const saveBtn = document.createElement('button');
-        saveBtn.className = 'save-btn px-2 text-primary';
+        saveBtn.className = 'save-btn';
         saveBtn.textContent = '保存图片';
         saveBtn.onclick = () => {
             const a = document.createElement('a');
@@ -295,7 +671,7 @@
 
         // 删除按钮
         const delBtn = document.createElement('button');
-        delBtn.className = 'del-btn px-2 text-red-500';
+        delBtn.className = 'del-btn';
         delBtn.textContent = '删除';
         delBtn.onclick = () => {
             item.remove();
@@ -411,23 +787,12 @@
 
     // 切换标签页
     function switchTab(tab) {
-        if (tab === 'local') {
-            localTab.classList.add('tab-active');
-            localTab.classList.remove('text-gray-500');
-            onlineTab.classList.remove('tab-active');
-            onlineTab.classList.add('text-gray-500');
-            localSection.classList.remove('hidden');
-            onlineSection.classList.add('hidden');
-            showStatus('请选择 FLV 文件...', 'info');
-        } else {
-            onlineTab.classList.add('tab-active');
-            onlineTab.classList.remove('text-gray-500');
-            localTab.classList.remove('tab-active');
-            localTab.classList.add('text-gray-500');
-            onlineSection.classList.remove('hidden');
-            localSection.classList.add('hidden');
-            showStatus('请输入在线 FLV 视频 URL...', 'info');
-        }
+        const isLocal = tab === 'local';
+        localTab.classList.toggle('is-active', isLocal);
+        onlineTab.classList.toggle('is-active', !isLocal);
+        localSection.classList.toggle('is-hidden', !isLocal);
+        onlineSection.classList.toggle('is-hidden', isLocal);
+        showStatus(isLocal ? '请选择 FLV 文件…' : '请输入在线 FLV 视频 URL…', 'info');
     }
 
     // 自定义 Loader 类
@@ -490,8 +855,8 @@
 
     // 播放 FLV 视频
     function playFLV(source) {
-        showStatus('正在加载视频...', 'info');
-        loadingOverlay.classList.remove('hidden');
+        showStatus('正在加载视频…', 'info');
+        loadingOverlay.classList.remove('is-hidden');
 
         // 释放之前的资源
         releaseResources();
@@ -528,13 +893,13 @@
             // 监听播放器事件
             flvPlayer.on(flvjs.Events.ERROR, (errorType, errorDetail, error) => {
                 showStatus(`播放错误: ${errorType} - ${errorDetail} > [${error.code}]${error.msg}`, 'danger');
-                loadingOverlay.classList.add('hidden');
-                console.error('FLV 错误:', errorType, errorDetail, code);
+                loadingOverlay.classList.add('is-hidden');
+                console.error('FLV 错误:', errorType, errorDetail, error && error.code, error && error.msg);
             });
 
             flvPlayer.on(flvjs.Events.LOADING_COMPLETE, () => {
                 showStatus('加载完成', 'success');
-                loadingOverlay.classList.add('hidden');
+                loadingOverlay.classList.add('is-hidden');
             });
 
             flvPlayer.on(flvjs.Events.METADATA_PARSED, () => {
@@ -551,7 +916,7 @@
             flvPlayer.attachMediaElement(videoElement);
             flvPlayer.load();
             flvPlayer.play();
-            loadingOverlay.classList.add('hidden');
+            loadingOverlay.classList.add('is-hidden');
         } catch (error) {
             let msg = error.message;
             if (window.location.href.startsWith("https:")) {
@@ -560,7 +925,7 @@
                 }
             }
             showStatus(`播放错误: ${msg}`, 'danger');
-            loadingOverlay.classList.add('hidden');
+            loadingOverlay.classList.add('is-hidden');
             console.error('播放错误:', error);
         }
     }
@@ -582,6 +947,8 @@
 
     // 格式化文件大小
     function formatFileSize(bytes) {
+        if (!bytes && bytes !== 0) return '-';
+        if (isNaN(bytes)) return '-';
         if (bytes === 0) return '0 Bytes';
         const k = 1024;
         const sizes = ['Bytes', 'KB', 'MB', 'GB'];
@@ -604,22 +971,22 @@
         return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
 
+    // HTML 转义：状态文案里可能带用户输入的 URL
+    function escapeHtml(value) {
+        if (value === null || value === undefined) return "";
+        return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    }
+
     // 显示状态信息
     function showStatus(message, type = 'info') {
         const icons = {
-            info: 'fa-info-circle text-primary',
-            success: 'fa-check-circle text-secondary',
-            danger: 'fa-exclamation-circle text-danger'
+            info: 'fa-info-circle',
+            success: 'fa-check-circle',
+            danger: 'fa-exclamation-circle'
         };
-
-        const colors = {
-            info: 'bg-blue-50 border-l-4 border-blue-400',
-            success: 'bg-green-50 border-l-4 border-green-400',
-            danger: 'bg-red-50 border-l-4 border-red-400'
-        };
-
-        statusContainer.className = `px-6 pb-4 ${colors[type] || colors.info}`;
-        status.innerHTML = `<i class="fa ${icons[type] || icons.info} mr-2"></i><span>${message}</span>`;
+        statusContainer.dataset.type = type;
+        statusContainer.innerHTML =
+            `<i class="fa ${icons[type] || icons.info}"></i><span>${escapeHtml(message)}</span>`;
     }
 
     // 初始化应用

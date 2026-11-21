@@ -37,6 +37,7 @@ public class RoomJson {
     }
 
     public void desensitize() {
+        if (setting == null) return;
         String xiZhiUrl = setting.getXiZhiUrl();
         if (xiZhiUrl != null && xiZhiUrl.length() > 50) {
             setting.setXiZhiUrl(StrUtil.replace(xiZhiUrl, 25, 50, "***"));
@@ -48,6 +49,7 @@ public class RoomJson {
     }
 
     public void check() {
+        if (setting == null) return;
         if ("null".equalsIgnoreCase(setting.getCookie())) {
             setting.setCookie("");
         }
@@ -57,6 +59,7 @@ public class RoomJson {
     }
 
     public cn.zhangheng.record.bean.Setting convert(cn.zhangheng.record.bean.Setting setting) {
+        if (this.setting == null) return setting;
         // 核心配置：忽略源对象中的 null 值
         CopyOptions options = CopyOptions.create()
                 .setIgnoreNullValue(true) // 源对象为 null 的属性不进行拷贝

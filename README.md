@@ -18,6 +18,7 @@
 - [程序架构](#程序架构)
 - [快速开始](#快速开始)
 - [使用说明](#使用说明)
+- [接口鉴权与远程访问](#接口鉴权与远程访问)
 - [配置说明](#配置说明)
 - [常见问题](#常见问题)
 - [目录结构](#目录结构)
@@ -227,9 +228,73 @@ pause
 
 ### 停止运行
 
-1. **托盘「退出监听」（推荐）**：结束当前房间的监听；`FILE` 模式下只退该房间，所有房间都退出后进程才结束，`COMMAND` 模式直接退出进程。用 FFmpeg 录制时建议走这个入口，直接 `taskkill` 结束 JVM 可能残留 `ffmpeg.exe`。
-2. **可视化界面停止**：在监控界面点击**停止监控**，当所有监听都停止时程序自动终止。
-3. **强制结束**：`taskkill /f /im javaw.exe`，仅在前两种方式失效时使用，结束后需检查是否有残留的 `ffmpeg.exe` / `chromium` 进程。
+程序默认**常驻**：所有监听结束（下播、停止监控）后不再自动退出，网页服务与接口继续运行，可以随时再新增或恢复监听。
+
+1. **网页「退出程序」（推荐）**：监控界面右上角的电源按钮，需二次确认并输入**操作秘钥**（即设备唯一 ID，与页面其它操作同一套秘钥）；确认后程序按「停监听 → 关浏览器 → 收线程池 → 停 HTTP/cpolar 服务」的顺序优雅退出。用 FFmpeg 录制时建议走这个入口，直接 `taskkill` 结束 JVM 可能残留 `ffmpeg.exe`。
+2. **接口调用**：`GET/POST action/exit?actionKey=<设备唯一ID>`，秘钥错误会被拒绝，返回 `操作秘钥错误！`。适合远程或脚本调用。
+3. **托盘「退出监听」**：只结束当前房间的监听，进程继续常驻（`COMMAND` 模式除外）。
+4. **强制结束**：`taskkill /f /im javaw.exe`，仅在前几种方式失效时使用，结束后需检查是否有残留的 `ffmpeg.exe` / `chromium` 进程。
+
+## 接口鉴权与远程访问
+
+控制台支持两种访问形态，鉴权统一收敛成「操作秘钥 → 接口令牌」：
+
+| 形态 | 前端位置 | 鉴权方式 |
+| --- | --- | --- |
+| 本地直连 | 后端自带页面 `http://127.0.0.1:8005/` | Cookie 会话（`_token`）或 Bearer 令牌，二者都认 |
+| 跨站远程 | GitHub Pages / 任意静态托管 + cpolar 域名 | `Authorization: Bearer <令牌>`（浏览器会拦截第三方 Cookie，不能依赖 Cookie） |
+
+**公开访问范围（谁能看到什么）**
+
+页面本身可公开分享，陌生人打开就能看到实时监视面板；秘钥只拦敏感操作，由 `server.auth.publicRead` 控制只读权限：
+
+| 内容 / 操作 | 陌生人（无秘钥） | 说明 |
+| --- | --- | --- |
+| 页面、脚本、皮肤 | ✅ 可访问 | 静态资源不含任何秘钥与房间数据 |
+| 房间列表、直播/录制状态、观众统计 | ✅ 只读可见 | 需 `server.auth.publicRead=true`（默认开启） |
+| 房间本地录制路径、平台 Cookie、息知通知地址 | ❌ 匿名请求自动剔除 | 匿名返回体脱敏，授权请求才返回完整字段 |
+| 新增/修改/删除房间、开始/停止监听、刷新、关闭浏览器实例 | ❌ 需秘钥 | 走 `action/*`，无令牌一律 403 |
+| 录制文件下载、监听回收站 | ❌ 需秘钥 | 文件名与录制内容都属于私密数据 |
+| 抖音作品解析 `api/videoParsing` | ✅ 完全公开 | 不占用秘钥体系，任何人可直接调用 |
+| 退出整个程序 | ❌ 需秘钥 | `action/exit` 只认秘钥，不认令牌 |
+
+把 `server.auth.publicRead=false` 写进全局配置，页面就回到「先输秘钥、否则只能看到空壳」的严格模式；前端会自动在首次请求被 403 时弹出「操作验证」，无需改代码。
+
+**令牌怎么来的**
+
+1. 前端首次访问（或令牌过期）调用 `action/auth?actionKey=<设备标识ID>`，服务端校验秘钥后用 `JWT` 签发令牌，返回 `{token, expireSec, expireAt}`；
+2. 令牌有效期等于 `server.api.expireSec`（默认 7200 秒），前端缓存在 `localStorage`，剩余不足 5 分钟自动续期；
+3. 页面没有秘钥时会弹出「操作验证」输入框，勾选「记住秘钥」后写入 `localStorage`，下次不再询问；
+4. `img` / `video` / `<a>` 这类无法带请求头的地址（如录制文件下载），用查询参数 `token=<令牌>` 携带。
+
+**本地存储键**
+
+| 键 | 说明 |
+| --- | --- |
+| `actionKey` | 操作秘钥（设备标识 ID），勾选「记住秘钥」后写入 |
+| `lmr.api.token` | 接口令牌（JWT） |
+| `lmr.api.tokenExp` | 令牌到期时间戳（毫秒） |
+
+**接口侧规则**
+
+- 鉴权失败返回 `403`，响应体为空；前端收到 403 会自动重新换令牌并重试一次，仍失败才提示；
+- 只读接口 `api/rooms` 在 `server.auth.publicRead=true` 时允许匿名访问并自动脱敏；`api/videoParsing`（抖音作品解析）完全公开，任何人可直接调用，但按来源 IP 限流（`server.api.parsePerMinute`，默认 3 次/分钟，超限返回 `429` + `Retry-After`）；写操作 `action/*`、`fileRes`、`room-recycle` 必须带令牌；
+- 服务端按顺序尝试：`Authorization: Bearer` → `?token=` → `_token` Cookie，任一通过即放行；
+- 跨域响应已放开 `Authorization`、`Range` 请求头与 `Content-Range`、`Content-Length` 等响应头，录制文件的分片下载/断点续传在跨站下同样可用；`OPTIONS` 预检直接返回 `204`；
+- 退出接口 `action/exit?actionKey=<ID>` 用的是同一把秘钥，不接收令牌，避免令牌泄露后被人远程关停；
+- `action/parseDouYinLink?shareLink=` 会对解析结果做校验：入参是纯数字时直接原样返回并提示「已是直播间号」；启动无头浏览器跳转后，只有最终地址命中 `live.douyin.com/{数字}`（或本身是纯数字）才回填房间号，否则返回 `code=1` 并说明返回内容，不会把普通网页地址当房间号写入；
+- `/proxy` 流媒体代理拒绝远程客户端访问内网/本机地址（本机请求不受限），避免被当作内网探测跳板。
+
+**部署到 GitHub Pages 的用法**
+
+把 `index.html`、`js/`、`css/`、`fonts/`、`img/` 上传到 Pages 仓库，用下面任一方式指向后端：
+
+```
+https://你的用户名.github.io/项目名/?url=https://xxxx.cpolar.cn
+https://你的用户名.github.io/项目名/?redirect=<配置键>
+```
+
+`?redirect=` 会读取 `LiveMonitoringRecordingPage/redirect/json/config.json` 中的 `redirectUrl`（缓存 10 分钟），适合 cpolar 免费版域名会变的情况；只换 `redirectUrl` 就能让所有页面跟着切换。
 
 ## 配置说明
 
@@ -296,6 +361,8 @@ Cookie.KuaiShou=
 | `living.start.shortcut` / `living.end.shortcut` | — | 空 | 开播 / 下播触发的快捷键，小写、多个用逗号分隔（如 `alt+tab,ctrl+s`） |
 | `monitor.maxMonitorThreads` | — | 10 | 同时监听上限，1-100，模板未列出需手动添加 |
 | `server.api.expireSec` | — | 7200 | 控制台接口会话有效期（秒），模板未列出需手动添加 |
+| `server.auth.publicRead` | — | true | 允许匿名只读访问房间列表；设 `false` 则任何数据都要先输操作秘钥，模板未列出需手动添加 |
+| `server.api.parsePerMinute` | — | 3 | 抖音作品解析限流：同一 IP 每分钟最多调用次数，`0` 为不限，模板未列出需手动添加 |
 
 > 浏览器上下文清理策略已改为代码内置固定值（`isPageClear=false`、`updateContextCounts=50`），不再提供配置项。
 
@@ -343,7 +410,7 @@ Cookie.KuaiShou=
 ## 常见问题
 
 **升级打包时提示 jar 被占用**
-程序正在运行，jar 文件被 JVM 锁定。先托盘右键退出程序（必要时 `taskkill /f /im javaw.exe`），再执行打包。
+程序正在运行，jar 文件被 JVM 锁定。先在网页点「退出程序」（或调用 `action/exit`），必要时 `taskkill /f /im javaw.exe`，再执行打包。
 
 **提示激活失败或凭证无效**
 `xxxr-activation.lic` 与设备绑定，换机、重装系统都会失效；确认文件与 jar 同目录，或检查 `activation.filePath` 配置。
@@ -364,7 +431,7 @@ Cookie.KuaiShou=
 需要配置抖音账号 Cookie，未登录只能拿到聊天、点赞等公开消息。
 
 **退出后仍有 ffmpeg 进程**
-必须通过托盘右键退出；直接杀 JVM 会留下子进程，可手动结束 `ffmpeg.exe`。
+必须走网页「退出程序」或 `action/exit` 接口（内部会先停录制再退出）；直接杀 JVM 会留下子进程，可手动结束 `ffmpeg.exe`。
 
 ## 目录结构
 

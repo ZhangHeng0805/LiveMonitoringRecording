@@ -82,10 +82,17 @@ public abstract class MyHandler implements HttpHandler {
         } else {
             respHeaders.set("Access-Control-Allow-Origin", "*");
         }
-        // 允许携带Cookie、凭证
+        // 允许携带Cookie、凭证（同源页面走 Cookie 会话）
         respHeaders.set("Access-Control-Allow-Credentials", "true");
-        // 允许跨域请求的请求头
-        respHeaders.set("Access-Control-Allow-Headers", "Content-Type");
+        // 允许跨域请求的请求头：Authorization 用于跨站接口令牌，Range 用于视频分片/断点续传
+        respHeaders.set("Access-Control-Allow-Headers",
+                "Content-Type, Authorization, Range, X-Action-Key, X-Requested-With");
+        // 允许的跨域方法
+        respHeaders.set("Access-Control-Allow-Methods", "GET, POST, HEAD, OPTIONS");
+        // 让前端能读到分片/长度相关响应头（跨域默认不可见）
+        respHeaders.set("Access-Control-Expose-Headers",
+                "Content-Type, Content-Length, Content-Range, Accept-Ranges, Content-Disposition");
+        respHeaders.set("Access-Control-Max-Age", "3600");
         respHeaders.set("Vary", "Origin"); //告诉浏览器Origin是动态变化的
         if ("OPTIONS".equals(httpExchange.getRequestMethod())) {
             // 上面所有跨域头全部设置后

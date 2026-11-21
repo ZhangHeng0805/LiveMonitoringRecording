@@ -9,5 +9,5 @@ package cn.zhangheng.browser.login;
  */
 public class BrowserLogin {
     public static final String FileSuffix = ".room-cookie.txt";
-    public static final int maxWaitTimeSec = 300;
+    public static final int maxWaitTimeSec = 360;
 }

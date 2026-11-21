@@ -2,7 +2,7 @@
 var ua = window.navigator.userAgent,
     e = ua.toLowerCase(),
     isPc = /(WindowsNT)|(Windows NT)|(Macintosh)/i.test(ua),
-    isMobile = /mobile/.test(e) || isOperaMini,
+    isMobile = /mobile/.test(e) || /opera\s*mini/.test(e),
     isWindows = !isMobile && /windows/.test(e),
     isWebOS = /web0s|webos/.test(e),
     isLinux = !isMobile && /linux/.test(e),
@@ -295,7 +295,7 @@ function getCookie(key) {
 // }
 
 const getSid = () => {
-    var sid = getCookie("JSESSIONID");
+    var sid = getCookie("JSESSIONID") || "";
     sid = sid.length > 0 ? sid : Math.random().toString(36).slice(-8);
     var a = "zhangheng0805_sid";
     window.localStorage.setItem(a, sid);
@@ -309,13 +309,15 @@ const getCid = () => {
     if (cid) return cid;
     let b = new Date().getUTCMilliseconds();
     cid = (Math.round(2147483647 * Math.abs(Math.random() - 1)) * b) % 1e10;
-    setCookie(a, cid);
+    // 页面 Cookie 有效期必须覆盖服务端会话（_token 用 server.api.expireSec），
+    // 否则 2 小时后 _cid 过期换新值，而 token 里的 cid 仍是旧值，会导致接口持续 403
+    setCookie(a, cid, 24 * 30);
     return cid;
 };
 
 const serialize = (obj) => {
     var z = [];
-    for (d in obj)
+    for (const d in obj)
         obj.hasOwnProperty(d) &&
         obj[d] &&
         z.push(encodeURIComponent(d) + "=" + encodeURIComponent(obj[d]));
@@ -339,16 +341,19 @@ const sendImg = (url, data) => {
 };
 
 const sendXhr = (url, param) => {
-    const xhr = new XMLHttpRequest();
-    if (!("withCredentials" in xhr)) return false;
-    // 第三个参数 false：同步阻塞，不用回调
-    if (param) {
-        url = url + "?" + serialize(param);
+    // 改为异步 fetch（keepalive），避免同步 XHR 阻塞页面加载
+    const target = param ? url + "?" + serialize(param) : url;
+    try {
+        fetch(target, {
+            method: "GET",
+            credentials: "include",
+            keepalive: true
+        }).catch(() => {
+        });
+        return true;
+    } catch (e) {
+        return false;
     }
-    xhr.open("GET", url, false);
-    xhr.withCredentials = true;
-    xhr.send(null);
-    return true;
 };
 
 const SendData = (json) => {
@@ -360,34 +365,7 @@ const SendData = (json) => {
     refreshClient()
 };
 
-/**
- * @desc  函数防抖---“立即执行版本” 和 “非立即执行版本” 的组合版本
- * 立即执行版 触发事件后函数不会立即执行，而是在 n 秒后执行，如果在 n 秒内又触发了事件，则会重新计算函数执行时间
- * 非立即执行版 指的是 触发事件后函数会立即执行，然后 n 秒内不触发事件才能继续执行函数的效果。
- * @param  func 需要执行的函数
- * @param  wait 延迟执行时间（毫秒）
- * @param  immediate---true 表立即执行，false 表非立即执行
- **/
-function debounce(func, wait, immediate) {
-    let timer;
-    return function () {
-        let context = this;
-        let args = arguments;
-
-        if (timer) clearTimeout(timer);
-        if (immediate) {
-            var callNow = !timer;
-            timer = setTimeout(() => {
-                timer = null;
-            }, wait);
-            if (callNow) func.apply(context, args);
-        } else {
-            timer = setTimeout(function () {
-                func.apply(context, args);
-            }, wait);
-        }
-    };
-}
+// 注：debounce 已由 util.js 提供，此处不再重复定义，避免两套实现互相覆盖
 
 function client_result() {
     // var sid = getSid();
@@ -438,40 +416,47 @@ function client_result() {
     return ClientData;
 }
 
-function getClientIP() {
-    let ticket = "";
+// 获取访问者公网 IP：改为异步 + 3 秒超时，本机访问时直接跳过（不需要外网探测）
+async function getClientIP() {
+    if (isLocalHost()) return {data: {ip: "127.0.0.1"}};
+    const ticket = (window.xxxr && window.xxxr.ip && window.xxxr.ip.ticket) || "";
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
     try {
-        if (window.xxxr.ip.ticket) {
-            ticket = window.xxxr.ip.ticket;
-        }
-    } catch (e) {
-        throw e;
+        const res = await fetch("https://my.ip.cn/json/?ticket=" + encodeURIComponent(ticket), {
+            signal: controller.signal,
+            credentials: "omit"
+        });
+        if (!res.ok) throw new Error("获取getClientIP失败: " + res.status);
+        return await res.json();
+    } finally {
+        clearTimeout(timeoutId);
     }
-    const xhr = new XMLHttpRequest();
-    xhr.open("GET", "https://my.ip.cn/json/?ticket=" + ticket, false); // false = 同步阻塞
-    xhr.send(null);
+}
 
-    if (xhr.status >= 200 && xhr.status < 300) {
-        return JSON.parse(xhr.responseText);
-    } else {
-        throw new Error("获取getClientIP失败" + xhr);
-    }
+// 判断是否本机访问
+function isLocalHost() {
+    const host = window.location.hostname;
+    return host === "localhost" || host === "127.0.0.1" || host === "::1" || !host;
 }
 
 
 (function () {
-    let isRefreshClient = false;
+    let refreshing = null;
 
+    // 向服务端申请/续期 _token 会话 Cookie，返回 Promise，便于调用方 await
     function refreshClient() {
-        try {
-            if (isRefreshClient) return;
-            sendXhr(window.MainUrl + "client-info/index", {cid: getCid(), mainUrl: window.MainUrl});
-            isRefreshClient = true;
-
-        } catch (e) {
-            console.error(e);
-            isRefreshClient = false;
-        }
+        if (refreshing) return refreshing;
+        const url = window.MainUrl + "client-info/index?cid=" + encodeURIComponent(getCid()) +
+            "&mainUrl=" + encodeURIComponent(window.MainUrl || "");
+        refreshing = fetch(url, {method: "GET", credentials: "include"})
+            .catch(function (e) {
+                console.error("会话续期失败", e);
+            })
+            .finally(function () {
+                refreshing = null;
+            });
+        return refreshing;
     }
 
     // 对外暴露方法，内部变量隔离
@@ -482,10 +467,9 @@ async function sendClient() {
     let ip = null;
     let client = null;
     try {
-        ip = getClientIP().data;
+        ip = (await getClientIP()).data;
     } catch (e) {
-        if (e.name === "TypeError")
-            return;
+        if (e.name === "AbortError") return;
         console.error(e);
     }
     try {

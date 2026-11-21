@@ -45,6 +45,24 @@ public class Setting {
      */
     @PropertyValue(value = "server.api.expireSec")
     private long apiExpireSec = Constant.apiExpireSec;
+
+    /**
+     * 是否允许匿名（陌生人）只读访问房间列表
+     * 开启后：页面可公开分享，房间列表/直播状态只读可见（路径、Cookie 等字段自动脱敏），
+     * 所有写操作、录制文件下载、退出程序仍需操作秘钥
+     * 关闭后：任何数据都要先输入操作秘钥
+     */
+    @JmxAttribute(desc = "允许匿名只读访问房间列表")
+    @PropertyValue("server.auth.publicRead")
+    private boolean authPublicRead = true;
+
+    /**
+     * 抖音作品解析接口的限流阈值（每个来源 IP 每分钟允许的调用次数）
+     * 该接口对外公开且会占用本机浏览器解析资源，0 表示不限制
+     */
+    @JmxAttribute(desc = "作品解析每IP每分钟次数（0为不限）")
+    @PropertyValue("server.api.parsePerMinute")
+    private int parsePerMinute = 3;
     /**
      * 微信客户端通用对象
      */
