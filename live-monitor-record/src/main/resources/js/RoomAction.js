@@ -65,14 +65,35 @@ function showActionBeforeModal(onSubmit, onCancel) {
 }
 
 // 供 util.js 换取接口令牌时弹出秘钥输入的 Promise 包装
+// 注意：右上角 ✕ 关闭弹窗时也必须 resolve(null)，否则 Promise 永久 pending，
+// apiTokenTask 会被一直复用，后续请求既不发出去也不再弹验证框。
 window.promptActionKey = function () {
     return new Promise(function (resolve) {
+        let settled = false;
+
+        function finish(value) {
+            if (settled) return;
+            settled = true;
+            if (typeof window.offModalDismiss === "function") {
+                window.offModalDismiss(onDismiss);
+            }
+            resolve(value);
+        }
+
+        function onDismiss() {
+            finish(null);
+        }
+
+        if (typeof window.onModalDismiss === "function") {
+            window.onModalDismiss(onDismiss);
+        }
+
         showActionBeforeModal(
             function (key) {
-                resolve(key);
+                finish(key);
             },
             function () {
-                resolve(null);
+                finish(null);
             }
         );
     });

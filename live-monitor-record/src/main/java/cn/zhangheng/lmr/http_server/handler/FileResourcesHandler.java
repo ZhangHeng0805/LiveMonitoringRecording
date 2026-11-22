@@ -1,13 +1,15 @@
 package cn.zhangheng.lmr.http_server.handler;
 
-import cn.hutool.core.io.IoUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.zhangheng.record.bean.Room;
-import cn.zhangheng.record.httpServer.handle.JSONHandler;
+import cn.zhangheng.record.httpServer.router.AnnotationHandler;
+import cn.zhangheng.record.httpServer.router.AuthPolicy;
+import cn.zhangheng.record.httpServer.router.Endpoint;
+import cn.zhangheng.record.httpServer.router.RequestContext;
 import cn.zhangheng.record.util.RoomUtils;
 import cn.zhangheng.lmr.FileModeMain;
 import cn.zhangheng.lmr.bean.RoomFileModel;
-import cn.zhangheng.lmr.http_server.util.CheckUtils;
+import cn.zhangheng.lmr.http_server.util.AuthResolvers;
 import cn.zhangheng.lmr.util.FilePageUtils;
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
@@ -41,22 +43,20 @@ import static cn.zhangheng.record.httpServer.util.HandlerUtils.parseQuery;
  * @description:
  */
 @Slf4j
-public class FileResourcesHandler extends JSONHandler {
+public class FileResourcesHandler extends AnnotationHandler {
 
     public FileResourcesHandler(String prefix) {
-        super(prefix);
+        super(prefix, AuthResolvers.defaults());
     }
 
-    @Override
-    protected boolean filter(HttpExchange httpExchange) throws IOException {
-        super.filter(httpExchange);
-        return CheckUtils.checkRequestAuth(httpExchange);
-    }
-
-    @Override
-    public void request(HttpExchange httpExchange) throws IOException {
-        Map<String, String> query = parseQuery(httpExchange);
-        Message<Object> message = new Message<>();
+    /**
+     * 录制文件浏览/下载：整个 /fileRes 前缀共用一套鉴权（必须令牌/秘钥）
+     */
+    @Endpoint(value = "/", auth = AuthPolicy.READ)
+    public void fileResource(RequestContext ctx) throws IOException {
+        HttpExchange httpExchange = ctx.exchange();
+        Map<String, String> query = ctx.query();
+        Message<Object> message = ctx.message();
         RoomFileModel model = checkRoomKey(query, message);
         if (model != null) {
             String path = query.getOrDefault("path", "./");
@@ -82,7 +82,9 @@ public class FileResourcesHandler extends JSONHandler {
 //                        }
                         int pageNum = Integer.parseInt(query.getOrDefault("pageNum", "1"));
                         int pageSize = Integer.parseInt(query.getOrDefault("pageSize", "50"));
-                        FilePageUtils.FilePageResult filePageResult = FilePageUtils.getFilePage(targetPath, pageNum, pageSize, filePredicate);
+                        // 返回给前端的 path 相对房间录制根目录计算（前端会原样回传）
+                        FilePageUtils.FilePageResult filePageResult = FilePageUtils.getFilePage(
+                                Paths.get(basePathStr), targetPath, pageNum, pageSize, filePredicate);
                         message.setData(filePageResult);
                     } catch (Exception e) {
                         message.setCode(1);
@@ -102,48 +104,13 @@ public class FileResourcesHandler extends JSONHandler {
         responseJson(httpExchange, message);
     }
 
-//    public void responseFile1(HttpExchange httpExchange, File file) throws IOException {
-//        log.debug("{} 请求[{}]:{}", getClientIP(httpExchange), httpExchange.getRequestURI().getPath(), httpExchange.getRequestHeaders().getFirst("User-Agent"));
-//        if (!file.exists()) {
-//            httpExchange.sendResponseHeaders(404, -1);
-//            return;
-//        }
-//
-//        long fileLength = file.length();
-//
-//        Headers headers = httpExchange.getResponseHeaders();
-//        String fileName = file.getName();
-//        String fileContentType = FiletypeUtil.getFileContentType(fileName);
-//        // ====================== 智能 Content-Type ======================
-//        if (fileContentType.startsWith("video/") || fileContentType.startsWith("audio/") || fileContentType.startsWith("image/")) {
-//            headers.set("Content-Type", fileContentType);
-//        } else {
-//            headers.set("Content-Type", fileContentType + "; charset=utf-8");
-//        }
-//
-//        // ====================== 基础响应头 ======================
-////        headers.set("Access-Control-Allow-Origin", "*");
-//        // 文件名编码
-//        String encodedFileName = URLEncoder.encode(fileName, charset.name()).replace("+", "%20");
-//        String dis = "application/octet-stream".equals(fileContentType) ? "attachment" : "inline";
-//        headers.set("Content-Disposition", dis + "; filename*=UTF-8''" + encodedFileName);
-//
-//        // ====================== 输出流 ======================
-//        httpExchange.sendResponseHeaders(200, fileLength);
-//
-//        try (BufferedInputStream bis = new BufferedInputStream(Files.newInputStream(file.toPath()));
-//             OutputStream out = httpExchange.getResponseBody()
-//        ) {
-//            IoUtil.copy(bis, out);
-//        }
-//    }
-
     // 限速：字节/毫秒，0=不限速，例如 100 代表 100KB/s
     private static final long LIMIT_BYTE_PER_MS = 0;
     //RFC 1123 线程安全格式化器；SimpleDateFormat 非线程安全，多线程响应下会解析错乱
     private static final DateTimeFormatter GMT_DATE_FORMAT =
             DateTimeFormatter.RFC_1123_DATE_TIME.withLocale(Locale.US).withZone(ZoneOffset.UTC);
     private static final int BUFFER_SIZE = 1024 * 8; //缓冲区，优化大文件IO
+
     public void responseFile(HttpExchange httpExchange, File file) throws IOException {
         Path filePath = file.toPath();
         Headers reqHeaders = httpExchange.getRequestHeaders();
@@ -264,7 +231,7 @@ public class FileResourcesHandler extends JSONHandler {
             copyWithLimit(raf, httpExchange.getResponseBody(), start, end);
         } catch (IOException e) {
             if (httpExchange.getResponseCode() == -1) throw e;
-            log.debug("{} 下载中断{}[{}-{}]:{}", getClientIP(httpExchange),filePath, start, end, e.getMessage());
+            log.debug("{} 下载中断{}[{}-{}]:{}", getClientIP(httpExchange), filePath, start, end, e.getMessage());
         }
 
     }

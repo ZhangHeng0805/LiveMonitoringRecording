@@ -2,7 +2,6 @@ package cn.zhangheng.record.bean;
 
 import cn.hutool.core.util.StrUtil;
 import cn.zhangheng.common.jmx.JmxAttribute;
-import cn.zhangheng.common.setting.ConfigLoader;
 import cn.zhangheng.common.setting.PropertiesConfig;
 import cn.zhangheng.common.setting.PropertyValue;
 import cn.zhangheng.record.bean.enums.RecordType;
@@ -47,12 +46,12 @@ public class Setting {
     private long apiExpireSec = Constant.apiExpireSec;
 
     /**
-     * 是否允许匿名（陌生人）只读访问房间列表
+     * 是否允许匿名（陌生人）只读访问访问指定接口
      * 开启后：页面可公开分享，房间列表/直播状态只读可见（路径、Cookie 等字段自动脱敏），
      * 所有写操作、录制文件下载、退出程序仍需操作秘钥
      * 关闭后：任何数据都要先输入操作秘钥
      */
-    @JmxAttribute(desc = "允许匿名只读访问房间列表")
+    @JmxAttribute(desc = "允许匿名只读访问指定接口")
     @PropertyValue("server.auth.publicRead")
     private boolean authPublicRead = true;
 
@@ -63,6 +62,14 @@ public class Setting {
     @JmxAttribute(desc = "作品解析每IP每分钟次数（0为不限）")
     @PropertyValue("server.api.parsePerMinute")
     private int parsePerMinute = 3;
+
+    /**
+     * 直播间链接解析接口（action/parseDouYinLink）的限流阈值
+     * 每个来源 IP 每分钟允许调用次数，0 表示不限制
+     */
+    @JmxAttribute(desc = "直播间链接解析每IP每分钟次数（0为不限）")
+    @PropertyValue("server.api.parseLinkPerMinute")
+    private int parseLinkPerMinute = 10;
     /**
      * 微信客户端通用对象
      */

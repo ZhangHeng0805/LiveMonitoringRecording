@@ -7,7 +7,11 @@ import cn.zhangheng.browser.factory.PlaywrightBrowserFactory;
 import cn.zhangheng.common.setting.ConfigKit;
 import cn.zhangheng.douyin.browser.DouYinUrlParse;
 import cn.zhangheng.record.bean.Setting;
-import cn.zhangheng.record.httpServer.handle.JSONHandler;
+import cn.zhangheng.record.httpServer.router.AnnotationHandler;
+import cn.zhangheng.record.httpServer.router.AuthPolicy;
+import cn.zhangheng.record.httpServer.router.Endpoint;
+import cn.zhangheng.record.httpServer.router.RateLimit;
+import cn.zhangheng.record.httpServer.router.RequestContext;
 import cn.zhangheng.record.httpServer.util.JWTUtil;
 import cn.zhangheng.record.service.MonitorMain;
 import cn.zhangheng.record.bean.Room;
@@ -17,6 +21,8 @@ import cn.zhangheng.lmr.FileModeMain;
 import cn.zhangheng.lmr.Main;
 import cn.zhangheng.lmr.bean.RoomFileModel;
 import cn.zhangheng.lmr.bean.RoomJson;
+import cn.zhangheng.lmr.http_server.util.AuthResolvers;
+import cn.zhangheng.lmr.http_server.util.RateLimitResolvers;
 import com.sun.net.httpserver.HttpExchange;
 import com.zhangheng.bean.Message;
 import com.zhangheng.util.ThrowableUtil;
@@ -28,7 +34,6 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static cn.zhangheng.record.httpServer.util.HandlerUtils.parseQuery;
 import static cn.zhangheng.record.httpServer.util.HandlerUtils.parseRequestBodyStr;
 import static cn.zhangheng.lmr.http_server.util.CheckUtils.*;
 
@@ -40,7 +45,7 @@ import static cn.zhangheng.lmr.http_server.util.CheckUtils.*;
  * @version: 1.0
  * @description:
  */
-public class ActionHandler extends JSONHandler {
+public class ActionHandler extends AnnotationHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ActionHandler.class);
 
@@ -50,123 +55,143 @@ public class ActionHandler extends JSONHandler {
     private static final Pattern ROOM_ID_PATTERN = Pattern.compile("^\\d{5,20}$");
 
     public ActionHandler(String prefix) {
-        super(prefix);
+        // 鉴权/限流规则交给项目自己的实现，路由框架不关心具体怎么验、怎么读配置
+        super(prefix, AuthResolvers.defaults(), RateLimitResolvers.defaults());
     }
 
-    @Override
-    protected boolean filter(HttpExchange httpExchange) throws IOException {
-        super.filter(httpExchange);
-        // 换取接口令牌的入口自身用 actionKey 校验，这里放行
-        if (getIndexPath(httpExchange, prefix).startsWith("auth")) {
-            return true;
-        }
-        return checkRequestAuth(httpExchange);
-    }
+    // ======================= 接口定义（路径/鉴权/限流由注解声明） =======================
 
-    @Override
-    public void request(HttpExchange httpExchange) throws IOException {
-        String indexPath = getIndexPath(httpExchange, prefix);
-        Message<Object> msg = new Message<>();
-        try {
-            if (indexPath.startsWith("monitor")) {
-                Map<String, String> query = parseQuery(httpExchange);
-                if (checkActionKey(query, msg) && checkRoomKey(query, msg)) {
-                    actionMonitor(msg, query);
-                } else {
-                    msg.setCode(1);
-                }
-            } else if (indexPath.startsWith("record")) {
-                Map<String, String> query = parseQuery(httpExchange);
-                if (checkActionKey(query, msg) && checkRoomKey(query, msg)) {
-                    actionRecord(msg, query);
-                } else {
-                    msg.setCode(1);
-                }
-            } else if (indexPath.startsWith("addRoom")) {
-                Map<String, String> query = parseQuery(httpExchange);
-                if (checkActionKey(query, msg)) {
-                    addMonitor(msg, httpExchange);
-                } else {
-                    msg.setCode(1);
-                }
-            } else if (indexPath.startsWith("delRoom")) {
-                Map<String, String> query = parseQuery(httpExchange);
-                if (checkActionKey(query, msg) && checkRoomKey(query, msg)) {
-                    delMonitor(msg, query);
-                } else {
-                    msg.setCode(1);
-                }
-            } else if (indexPath.startsWith("setting")) {
-                Map<String, String> query = parseQuery(httpExchange);
-                if (checkActionKey(query, msg) && checkRoomKey(query, msg)) {
-                    actionSetting(msg, httpExchange, query);
-                } else {
-                    msg.setCode(1);
-                }
-            } else if (indexPath.startsWith("parseDouYinLink")) {
-                Map<String, String> query = parseQuery(httpExchange);
-                parseDouYinRoomId(msg, query.get("shareLink"));
-            } else if (indexPath.startsWith("refresh")) {
-                Map<String, String> query = parseQuery(httpExchange);
-                if (checkRoomKey(query, msg)) {
-                    actionRefresh(msg, query);
-                } else {
-                    msg.setCode(1);
-                }
-            } else if (indexPath.startsWith("destroyBrowser")) {
-                Map<String, String> query = parseQuery(httpExchange);
-                if (checkActionKey(query, msg)) {
-                    PlaywrightBrowserFactory.destroy();
-                    msg.setMessage("浏览器销毁成功！");
-                } else {
-                    msg.setCode(1);
-                }
-            } else if (indexPath.startsWith("closeBrowser")) {
-                Map<String, String> query = parseQuery(httpExchange);
-                if (checkActionKey(query, msg)) {
-                    PlaywrightBrowserFactory.closeBrowser();
-                    msg.setMessage("浏览器关闭成功！");
-                } else {
-                    msg.setCode(1);
-                }
-            } else if (indexPath.startsWith("exit")) {
-                // 退出整个程序：必须携带操作秘钥，防止任意人关掉常驻服务
-                Map<String, String> query = parseQuery(httpExchange);
-                if (checkActionKey(query, msg)) {
-                    msg.setMessage("退出指令已接收，程序将在数秒内停止！");
-                    log.info("收到来自{}的退出指令，准备终止程序", httpExchange.getRemoteAddress());
-                    FileModeMain.shutdown("http:" + httpExchange.getRemoteAddress());
-                } else {
-                    msg.setCode(1);
-                }
-            } else if (indexPath.startsWith("auth")) {
-                // 用操作秘钥换取无状态接口令牌（跨站前端用 Authorization: Bearer 携带）
-                Map<String, String> query = parseQuery(httpExchange);
-                if (checkActionKey(query, msg)) {
-                    long expireSec = ConfigKit.get(Setting.class).getApiExpireSec();
-                    String token = JWTUtil.generateApiToken(expireSec);
-                    msg.setMessage("接口令牌签发成功！");
-                    JSONObject data = new JSONObject();
-                    data.set("token", token);
-                    data.set("expireSec", expireSec);
-                    data.set("expireAt", System.currentTimeMillis() + expireSec * 1000);
-                    msg.setData(data);
-                } else {
-                    msg.setCode(1);
-                }
-            } else {
-                msg.setCode(1);
-                msg.setMessage("访问的接口路径不存在！" + prefix + indexPath);
-            }
-        } catch (Throwable throwable) {
+    /**
+     * 换接口令牌：自身用 actionKey 校验，不能被前置鉴权拦掉
+     */
+    @Endpoint(value = "/auth", auth = AuthPolicy.PUBLIC)
+    public void auth(RequestContext ctx) {
+        Message<Object> msg = ctx.message();
+        Map<String, String> query = ctx.query();
+        if (checkActionKey(query, msg)) {
+            long expireSec = ConfigKit.get(Setting.class).getApiExpireSec();
+            String token = JWTUtil.generateApiToken(expireSec);
+            msg.setMessage("接口令牌签发成功！");
+            JSONObject data = new JSONObject();
+            data.set("token", token);
+            data.set("expireSec", expireSec);
+            data.set("expireAt", System.currentTimeMillis() + expireSec * 1000);
+            msg.setData(data);
+        } else {
             msg.setCode(1);
-            msg.setTitle("接口异常！");
-            String errMsg = ThrowableUtil.getAllCauseMessage(throwable);
-            msg.setMessage(errMsg);
-            log.error(prefix + indexPath + "接口异常:{}", errMsg);
         }
-//        System.out.println(msg);
-        responseJson(httpExchange, msg);
+    }
+
+    @Endpoint("/monitor")
+    public void monitor(RequestContext ctx) {
+        Message<Object> msg = ctx.message();
+        Map<String, String> query = ctx.query();
+        if (checkActionKey(query, msg) && checkRoomKey(query, msg)) {
+            actionMonitor(msg, query);
+        } else {
+            msg.setCode(1);
+        }
+    }
+
+    @Endpoint("/record")
+    public void record(RequestContext ctx) {
+        Message<Object> msg = ctx.message();
+        Map<String, String> query = ctx.query();
+        if (checkActionKey(query, msg) && checkRoomKey(query, msg)) {
+            actionRecord(msg, query);
+        } else {
+            msg.setCode(1);
+        }
+    }
+
+    @Endpoint("/addRoom")
+    public void addRoom(RequestContext ctx) throws IOException {
+        Message<Object> msg = ctx.message();
+        if (checkActionKey(ctx.query(), msg)) {
+            addMonitor(msg, ctx.exchange());
+        } else {
+            msg.setCode(1);
+        }
+    }
+
+    @Endpoint("/delRoom")
+    public void delRoom(RequestContext ctx) {
+        Message<Object> msg = ctx.message();
+        Map<String, String> query = ctx.query();
+        if (checkActionKey(query, msg) && checkRoomKey(query, msg)) {
+            delMonitor(msg, query);
+        } else {
+            msg.setCode(1);
+        }
+    }
+
+    @Endpoint("/setting")
+    public void setting(RequestContext ctx) throws IOException {
+        Message<Object> msg = ctx.message();
+        Map<String, String> query = ctx.query();
+        if (checkActionKey(query, msg) && checkRoomKey(query, msg)) {
+            actionSetting(msg, ctx.exchange(), query);
+        } else {
+            msg.setCode(1);
+        }
+    }
+
+    /**
+     * 刷新房间状态：只读操作，不要求 actionKey（前端也不再前置弹框）
+     */
+    @Endpoint(value = "/refresh",auth = AuthPolicy.READ)
+    public void refresh(RequestContext ctx) {
+        Message<Object> msg = ctx.message();
+        Map<String, String> query = ctx.query();
+        if (checkRoomKey(query, msg)) {
+            actionRefresh(msg, query);
+        } else {
+            msg.setCode(1);
+        }
+    }
+
+    /**
+     * 抖音直播间链接解析：要开浏览器，成本高，按来源 IP 限流
+     * 阈值读 server.api.parseLinkPerMinute（默认 10，0 为不限）
+     */
+    @Endpoint(value = "/parseDouYinLink", auth = AuthPolicy.READ)
+    @RateLimit(configKey = "server.api.parseLinkPerMinute", limit = 10)
+    public void parseDouYinLink(RequestContext ctx) {
+        parseDouYinRoomId(ctx.message(), ctx.query().get("shareLink"));
+    }
+
+    @Endpoint(value = "/destroyBrowser",auth = AuthPolicy.READ)
+    public void destroyBrowser(RequestContext ctx) {
+        Message<Object> msg = ctx.message();
+        if (checkActionKey(ctx.query(), msg)) {
+            PlaywrightBrowserFactory.destroy();
+            msg.setMessage("浏览器销毁成功！");
+        } else {
+            msg.setCode(1);
+        }
+    }
+
+    @Endpoint(value = "/closeBrowser",auth = AuthPolicy.READ)
+    public void closeBrowser(RequestContext ctx) {
+        Message<Object> msg = ctx.message();
+        if (checkActionKey(ctx.query(), msg)) {
+            PlaywrightBrowserFactory.closeBrowser();
+            msg.setMessage("浏览器关闭成功！");
+        } else {
+            msg.setCode(1);
+        }
+    }
+
+    @Endpoint("/exit")
+    public void exit(RequestContext ctx) {
+        Message<Object> msg = ctx.message();
+        if (checkActionKey(ctx.query(), msg)) {
+            msg.setMessage("退出指令已接收，程序将在数秒内停止！");
+            log.info("收到来自{}的退出指令，准备终止程序", ctx.exchange().getRemoteAddress());
+            FileModeMain.shutdown("http:" + ctx.exchange().getRemoteAddress());
+        } else {
+            msg.setCode(1);
+        }
     }
 
     private synchronized void delMonitor(Message msg, Map<String, String> query) {

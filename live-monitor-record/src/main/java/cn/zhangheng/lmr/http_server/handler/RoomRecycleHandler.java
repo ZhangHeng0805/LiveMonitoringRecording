@@ -2,14 +2,16 @@ package cn.zhangheng.lmr.http_server.handler;
 
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
-import cn.zhangheng.record.httpServer.handle.JSONHandler;
+import cn.zhangheng.record.httpServer.router.AnnotationHandler;
+import cn.zhangheng.record.httpServer.router.Endpoint;
+import cn.zhangheng.record.httpServer.router.RequestContext;
 import cn.zhangheng.lmr.FileModeMain;
 import cn.zhangheng.lmr.bean.RoomJson;
+import cn.zhangheng.lmr.http_server.util.AuthResolvers;
 import cn.zhangheng.lmr.util.FilePageUtils;
 import com.sun.net.httpserver.HttpExchange;
 import com.zhangheng.bean.Message;
 import com.zhangheng.file.FileUtil;
-import com.zhangheng.util.ThrowableUtil;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -35,47 +37,49 @@ import static cn.zhangheng.lmr.http_server.util.CheckUtils.checkRequestAuth;
  * @description:
  */
 @Slf4j
-public class RoomRecycleHandler extends JSONHandler {
+public class RoomRecycleHandler extends AnnotationHandler {
     public RoomRecycleHandler(String prefix) {
-        super(prefix);
+        super(prefix, AuthResolvers.defaults());
     }
 
-    @Override
-    protected boolean filter(HttpExchange httpExchange) throws IOException {
-        super.filter(httpExchange);
-        return checkRequestAuth(httpExchange);
-    }
-
-    @Override
-    protected void request(HttpExchange httpExchange) throws IOException {
-        String indexPath = getIndexPath(httpExchange, prefix);
-        Message<Object> msg = new Message<>();
-        try {
-            Map<String, String> query = parseQuery(httpExchange);
-            if (checkActionKey(query, msg)) {
-                if (indexPath.startsWith("getList")) {
-                    getList(query, msg);
-                } else if (indexPath.startsWith("getDetails")) {
-                    getDetails(query, msg);
-                } else if (indexPath.startsWith("recover")) {
-                    recover(httpExchange, query, msg);
-                } else if (indexPath.startsWith("delete")) {
-                    delete(query, msg);
-                } else {
-                    msg.setCode(1);
-                    msg.setMessage("访问的接口路径不存在！" + prefix + indexPath);
-                }
-            } else {
-                msg.setCode(1);
-            }
-        } catch (Throwable throwable) {
+    @Endpoint("/getList")
+    public void list(RequestContext ctx) throws IOException {
+        Message<Object> msg = ctx.message();
+        if (checkActionKey(ctx.query(), msg)) {
+            getList(ctx.query(), msg);
+        } else {
             msg.setCode(1);
-            msg.setTitle("接口异常！");
-            String errMsg = ThrowableUtil.getAllCauseMessage(throwable);
-            msg.setMessage(errMsg);
-            log.error(prefix + indexPath + "接口异常:{}", errMsg);
         }
-        responseJson(httpExchange, msg);
+    }
+
+    @Endpoint("/getDetails")
+    public void details(RequestContext ctx) {
+        Message<Object> msg = ctx.message();
+        if (checkActionKey(ctx.query(), msg)) {
+            getDetails(ctx.query(), msg);
+        } else {
+            msg.setCode(1);
+        }
+    }
+
+    @Endpoint("/recover")
+    public void recoverRoom(RequestContext ctx) throws IOException {
+        Message<Object> msg = ctx.message();
+        if (checkActionKey(ctx.query(), msg)) {
+            recover(ctx.exchange(), ctx.query(), msg);
+        } else {
+            msg.setCode(1);
+        }
+    }
+
+    @Endpoint("/delete")
+    public void deleteRoom(RequestContext ctx) {
+        Message<Object> msg = ctx.message();
+        if (checkActionKey(ctx.query(), msg)) {
+            delete(ctx.query(), msg);
+        } else {
+            msg.setCode(1);
+        }
     }
 
     /**
@@ -144,7 +148,8 @@ public class RoomRecycleHandler extends JSONHandler {
         int pageNum = Integer.parseInt(query.getOrDefault("pageNum", "1"));
         int pageSize = Integer.parseInt(query.getOrDefault("pageSize", "100"));
         String suffix = FileModeMain.getFileSuffix() + ".del";
-        FilePageUtils.FilePageResult result = FilePageUtils.getFilePage(Paths.get(FileModeMain.getBasePath()), pageNum, pageSize, fileResult -> {
+        Path base = Paths.get(FileModeMain.getBasePath());
+        FilePageUtils.FilePageResult result = FilePageUtils.getFilePage(base, base, pageNum, pageSize, fileResult -> {
             String name = fileResult.getName();
             return name.endsWith(suffix);
         });

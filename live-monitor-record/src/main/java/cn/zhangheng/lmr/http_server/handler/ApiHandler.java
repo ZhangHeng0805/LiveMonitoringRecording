@@ -4,24 +4,26 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import cn.zhangheng.common.cache.CacheWithOnceLoadHelper;
-import cn.zhangheng.common.setting.ConfigKit;
 import cn.zhangheng.douyin.bean.work.DouYinWork;
 import cn.zhangheng.record.bean.Room;
-import cn.zhangheng.record.bean.Setting;
-import cn.zhangheng.record.httpServer.handle.JSONHandler;
+import cn.zhangheng.record.httpServer.router.AnnotationHandler;
+import cn.zhangheng.record.httpServer.router.AuthPolicy;
+import cn.zhangheng.record.httpServer.router.Endpoint;
+import cn.zhangheng.record.httpServer.router.RateLimit;
+import cn.zhangheng.record.httpServer.router.RequestContext;
 import cn.zhangheng.record.httpServer.util.HandlerUtils;
 import cn.zhangheng.record.record.Recorder;
 import cn.zhangheng.douyin.browser.DouYinVideoParse;
 import cn.zhangheng.lmr.FileModeMain;
 import cn.zhangheng.lmr.Main;
 import cn.zhangheng.lmr.bean.RoomFileModel;
-import cn.zhangheng.lmr.util.RateLimiter;
-import com.sun.net.httpserver.HttpExchange;
+import cn.zhangheng.lmr.http_server.util.AuthResolvers;
+import cn.zhangheng.lmr.http_server.util.CheckUtils;
+import cn.zhangheng.lmr.http_server.util.RateLimitResolvers;
 import com.zhangheng.bean.Message;
 import com.zhangheng.util.ThrowableUtil;
 import lombok.extern.slf4j.Slf4j;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -29,10 +31,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static cn.zhangheng.lmr.http_server.util.CheckUtils.checkReadAuth;
-import static cn.zhangheng.lmr.http_server.util.CheckUtils.checkRequestAuth;
-import static cn.zhangheng.lmr.http_server.util.CheckUtils.isAuthenticated;
-import static cn.zhangheng.record.httpServer.util.HandlerUtils.parseQuery;
 
 /**
  * @author: ZhangHeng
@@ -42,15 +40,11 @@ import static cn.zhangheng.record.httpServer.util.HandlerUtils.parseQuery;
  * @description:
  */
 @Slf4j
-public class ApiHandler extends JSONHandler {
-    /**
-     * 抖音作品解析限流：固定 1 分钟窗口，阈值取 server.api.parsePerMinute
-     */
-    private static final RateLimiter PARSE_LIMITER = new RateLimiter(60_000L);
+public class ApiHandler extends AnnotationHandler {
     private final CacheWithOnceLoadHelper<String, List<Map<String, Object>>> roomsQueryHelper;
 
     public ApiHandler(String prefix) {
-        super(prefix);
+        super(prefix, AuthResolvers.defaults(), RateLimitResolvers.defaults());
         roomsQueryHelper = CacheWithOnceLoadHelper.<String, List<Map<String, Object>>>builder(
                         key -> getRooms()
                 )
@@ -73,56 +67,31 @@ public class ApiHandler extends JSONHandler {
         return list;
     }
 
-    @Override
-    protected boolean filter(HttpExchange httpExchange) throws IOException {
-        super.filter(httpExchange);
-        String indexPath = getIndexPath(httpExchange, prefix);
-        if (indexPath != null && indexPath.startsWith("rooms")) {
-            // 房间列表：允许匿名只读（返回体自动脱敏），是否开放由 server.auth.publicRead 控制
-            return checkReadAuth(httpExchange);
+    /**
+     * 房间列表：带令牌直接看全量；匿名访问时按 server.auth.publicRead 决定是否放行，并自动脱敏
+     */
+    @Endpoint(value = "/rooms", auth = AuthPolicy.READ)
+    public void rooms(RequestContext ctx) throws Exception {
+        Message<Object> msg = ctx.message();
+        String roomsKey = "rooms";
+        Map<String, String> query = ctx.query();
+        if ("true".equalsIgnoreCase(query.get("manual"))) {
+            roomsQueryHelper.invalidate(roomsKey);
         }
-        // 抖音作品解析等其它 api 接口：完全公开，任何人可用（不消耗本机秘钥体系）
-        return true;
+        List<Map<String, Object>> collect = roomsQueryHelper.get(roomsKey, 5000);
+        // 匿名访问时脱敏：去掉本地录制路径、Cookie、通知地址等隐私字段
+        msg.setData(CheckUtils.isAuthenticated(ctx.exchange()) ? collect : maskForPublic(collect));
     }
 
-
-    @Override
-    public void request(HttpExchange httpExchange) throws Exception {
-        try {
-            String indexPath = getIndexPath(httpExchange, prefix);
-            Message<Object> msg = new Message<>();
-
-            Map<String, String> query = parseQuery(httpExchange);
-            if (indexPath.startsWith("rooms")) {
-                String roomsKey = "rooms";
-                if ("true".equalsIgnoreCase(query.get("manual"))) roomsQueryHelper.invalidate(roomsKey);
-                List<Map<String, Object>> collect = roomsQueryHelper.get(roomsKey, 5000);
-                // 匿名访问时脱敏：去掉本地录制路径、Cookie、通知地址等隐私字段
-                msg.setData(isAuthenticated(httpExchange) ? collect : maskForPublic(collect));
-            } else if (indexPath.startsWith("videoParsing")) {
-                // 公开接口，按来源 IP 做轻量限流，避免被刷爆本机浏览器解析资源
-                int perMinute = ConfigKit.get(Setting.class).getParsePerMinute();
-                String clientIp = HandlerUtils.getClientIP(httpExchange);
-                long retryAfter = PARSE_LIMITER.tryAcquire(clientIp, perMinute);
-                if (retryAfter > 0) {
-                    PARSE_LIMITER.evictExpired();
-                    httpExchange.getResponseHeaders().set("Retry-After", String.valueOf(retryAfter));
-                    msg.setCode(429);
-                    msg.setMessage("解析请求过于频繁，请 " + retryAfter + " 秒后再试");
-                    responseJson(httpExchange, JSONUtil.toJsonStr(msg), 429);
-                    return;
-                }
-                videoParsing(msg, query, HandlerUtils.getRequestUserAgent(httpExchange));
-            } else {
-                msg.setCode(1);
-                msg.setMessage("访问的接口路径不存在！" + prefix + indexPath);
-            }
-            responseJson(httpExchange, msg);
-        } catch (Exception e) {
-            log.error(e.getMessage(), e);
-            sendErrorResponse(httpExchange, e);
-            throw e;
-        }
+    /**
+     * 抖音作品解析：完全公开，按来源 IP 做轻量限流，阈值实时读 server.api.parsePerMinute（0 为不限）
+     */
+    @Endpoint(value = "/videoParsing", auth = AuthPolicy.PUBLIC)
+    @RateLimit(configKey = "server.api.parsePerMinute", limit = 3)
+    public void videoParsing(RequestContext ctx) throws Exception {
+        Message<Object> msg = ctx.message();
+        Map<String, String> query = ctx.query();
+        parseVideo(msg, query, HandlerUtils.getRequestUserAgent(ctx.exchange()));
     }
 
     private static Map<String, Object> getRoomsMap(RoomFileModel model) {
@@ -215,7 +184,7 @@ public class ApiHandler extends JSONHandler {
         return out;
     }
 
-    private void videoParsing(Message msg, Map<String, String> query, String userAgent) {
+    private void parseVideo(Message msg, Map<String, String> query, String userAgent) {
         try {
             String url = query.get("url");
             String isRefresh = query.get("isRefresh");

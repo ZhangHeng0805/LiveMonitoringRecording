@@ -19,7 +19,6 @@ import cn.zhangheng.record.bean.enums.RunMode;
 import cn.zhangheng.record.service.MonitorMain;
 import cn.zhangheng.record.util.RoomUtils;
 import cn.zhangheng.record.util.TrayIconUtil;
-import cn.zhangheng.douyin.browser.DouYinBrowserFactory;
 import cn.zhangheng.lmr.bean.RoomFileModel;
 import cn.zhangheng.lmr.bean.RoomJson;
 import com.zhangheng.file.FileUtil;
@@ -205,7 +204,7 @@ public class FileModeMain {
         Room.Platform platform = room.getPlatform();
         platformMap.compute(platform, (k, v) -> v == null ? 0 : v - 1);
         if (platformMap.get(Room.Platform.DouYin) == null || platformMap.get(Room.Platform.DouYin) < 1) {
-            DouYinBrowserFactory.closeBrowser();
+            PlaywrightBrowserFactory.destroy();
         }
         log.info("{}个监听运行情况：{}", runCount.get(), platformMap);
 

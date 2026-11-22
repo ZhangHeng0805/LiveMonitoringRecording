@@ -120,6 +120,827 @@
             }
         }
     </style>
+    <!-- 页面自有样式：lml- 前缀，卡片与面板的统一视觉层 -->
+    <style>
+        :root {
+            --lml-primary: #6366f1;
+            --lml-primary-soft: rgba(99, 102, 241, .12);
+            --lml-text: #1f2430;
+            --lml-text-2: #5b6272;
+            --lml-text-3: #98a0ae;
+            --lml-line: #ecedf1;
+            --lml-bg: #f4f5f8;
+            --lml-ok: #16a34a;
+            --lml-warn: #d97706;
+            --lml-danger: #dc2626;
+        }
+
+        html, body { background: var(--lml-bg); }
+
+        body.lml-body {
+            margin: 0;
+            padding: 26px 18px 0;
+            color: var(--lml-text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .lml-wrap { max-width: 78rem; margin: 0 auto; padding-bottom: 2rem; }
+
+        .is-hidden { display: none !important; }
+
+        /* ---------- 页头 ---------- */
+        .lml-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: .9rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+
+        .lml-brand { display: flex; align-items: center; gap: .8rem; min-width: 0; }
+
+        .lml-logo {
+            flex: none;
+            width: 2.9rem;
+            height: 2.9rem;
+            border-radius: .8rem;
+            display: grid;
+            place-items: center;
+            color: #fff;
+            font-size: 1.25rem;
+            background: linear-gradient(135deg, #818cf8, #6366f1);
+            box-shadow: 0 6px 16px rgba(99, 102, 241, .28);
+        }
+
+        .lml-title { margin: 0; font-size: 1.28rem; font-weight: 700; letter-spacing: .01em; }
+        .lml-subtitle { margin: .18rem 0 0; font-size: .8rem; color: var(--lml-text-3); }
+
+        .lml-statusbar {
+            display: flex;
+            align-items: center;
+            gap: .45rem;
+            padding: .45rem .5rem .45rem .7rem;
+            background: #fff;
+            border: 1px solid var(--lml-line);
+            border-radius: .6rem;
+            box-shadow: 0 1px 2px rgba(24, 30, 48, .04);
+            font-size: .74rem;
+            color: var(--lml-text-2);
+            flex-wrap: wrap;
+        }
+
+        .lml-statusbar .fa-clock-o { color: var(--lml-primary); }
+        .lml-update-time { font-weight: 600; color: var(--lml-text); }
+
+        .lml-refresh-flag { display: inline-flex; align-items: center; gap: .25rem; font-size: .72rem; }
+        .lml-refresh-flag.is-ok { color: var(--lml-ok); }
+        .lml-refresh-flag.is-error { color: var(--lml-danger); }
+        .lml-refresh-flag.is-loading { color: var(--lml-primary); }
+
+        .lml-sep { width: 1px; height: 1rem; background: var(--lml-line); }
+
+        .lml-icon-btn {
+            width: 1.9rem;
+            height: 1.9rem;
+            display: inline-grid;
+            place-items: center;
+            border: 1px solid transparent;
+            border-radius: .45rem;
+            background: transparent;
+            color: var(--lml-primary);
+            cursor: pointer;
+            transition: background .15s ease, color .15s ease;
+        }
+
+        .lml-icon-btn:hover { background: var(--lml-primary-soft); }
+        .lml-icon-btn.is-danger { color: var(--lml-danger); }
+        .lml-icon-btn.is-danger:hover { background: rgba(220, 38, 38, .1); }
+
+        .lml-icon-btn.btn-refresh-active { transform: rotate(360deg); transition: transform .5s ease-in-out; }
+
+        /* ---------- 概览 ---------- */
+        .lml-overview {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: .8rem;
+            margin-bottom: .9rem;
+        }
+
+        .lml-stat {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .6rem;
+            padding: .8rem 1rem;
+            background: #fff;
+            border: 1px solid var(--lml-line);
+            border-radius: .8rem;
+            box-shadow: 0 1px 2px rgba(24, 30, 48, .04), 0 12px 26px -20px rgba(24, 30, 48, .18);
+        }
+
+        .lml-stat-label { margin: 0; font-size: .74rem; color: var(--lml-text-3); }
+        .lml-stat-value { margin: .18rem 0 0; font-size: 1.5rem; font-weight: 700; line-height: 1.15; }
+        .lml-stat-value.is-ok { color: var(--lml-ok); }
+        .lml-stat-value.is-primary { color: var(--lml-primary); }
+
+        .lml-stat-icon {
+            flex: none;
+            width: 2.5rem;
+            height: 2.5rem;
+            display: grid;
+            place-items: center;
+            border-radius: .7rem;
+            font-size: 1rem;
+            background: var(--lml-primary-soft);
+            color: var(--lml-primary);
+        }
+
+        .lml-stat-icon.is-ok { background: rgba(22, 163, 74, .12); color: var(--lml-ok); }
+
+        /* ---------- 工具条 ---------- */
+        .lml-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .6rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.4rem;
+        }
+
+        .lml-toolbar-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+
+        .lml-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: .35rem;
+            height: 2.3rem;
+            padding: 0 .9rem;
+            font-family: inherit;
+            font-size: .8rem;
+            font-weight: 600;
+            border: 1px solid transparent;
+            border-radius: .55rem;
+            cursor: pointer;
+            transition: background .15s ease, border-color .15s ease, color .15s ease;
+        }
+
+        .lml-btn-primary {
+            color: #fff;
+            background: var(--lml-primary);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, .22);
+        }
+
+        .lml-btn-primary:hover { background: #5457e6; }
+
+        .lml-btn-ghost {
+            color: var(--lml-text-2);
+            background: #fff;
+            border-color: var(--lml-line);
+        }
+
+        .lml-btn-ghost:hover { color: var(--lml-primary); border-color: rgba(99, 102, 241, .35); }
+
+        .lml-hint { font-size: .72rem; color: var(--lml-text-3); }
+
+        /* ---------- 搜索 ---------- */
+        .lml-search {
+            position: relative;
+            flex: 0 1 22rem;
+            min-width: 12rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .lml-search > i {
+            position: absolute;
+            left: .65rem;
+            font-size: .78rem;
+            color: #b6bcc9;
+            pointer-events: none;
+        }
+
+        .lml-search input {
+            width: 100%;
+            height: 2.3rem;
+            padding: 0 2rem 0 1.9rem;
+            font-family: inherit;
+            font-size: .78rem;
+            color: var(--lml-text);
+            background: #fff;
+            border: 1px solid var(--lml-line);
+            border-radius: .55rem;
+            outline: none;
+            transition: border-color .15s ease, box-shadow .15s ease;
+        }
+
+        .lml-search input::placeholder { color: #b3b9c6; }
+
+        .lml-search input:focus {
+            border-color: var(--lml-primary);
+            box-shadow: 0 0 0 3px var(--lml-primary-soft);
+        }
+
+        .lml-search-clear {
+            position: absolute;
+            right: .35rem;
+            width: 1.5rem;
+            height: 1.5rem;
+            display: none;
+            place-items: center;
+            color: #b6bcc9;
+            background: transparent;
+            border: none;
+            border-radius: .3rem;
+            cursor: pointer;
+            font-size: .72rem;
+        }
+
+        .lml-search-clear:hover { color: var(--lml-text-2); background: #f2f3f7; }
+        .lml-search.has-value .lml-search-clear { display: grid; }
+
+        .lml-search-count { font-size: .72rem; color: var(--lml-text-3); white-space: nowrap; }
+
+        /* ---------- 分区标题 ---------- */
+        .lml-section { margin-bottom: 1.6rem; }
+
+        .lml-section-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .6rem;
+            margin-bottom: .7rem;
+        }
+
+        .lml-section-title {
+            display: inline-flex;
+            align-items: center;
+            gap: .4rem;
+            margin: 0;
+            font-size: .95rem;
+            font-weight: 700;
+        }
+
+        .lml-dot {
+            display: inline-grid;
+            place-items: center;
+            width: .5rem;
+            height: .5rem;
+            border-radius: 50%;
+            background: #cbd0da;
+        }
+
+        .lml-dot.is-live { background: var(--lml-ok); box-shadow: 0 0 0 3px rgba(22, 163, 74, .14); }
+
+        .lml-section-count { font-size: .74rem; color: var(--lml-text-3); }
+
+        .lml-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1rem;
+            align-items: start;
+        }
+
+        /* ---------- 房间卡片 ---------- */
+        .lml-card {
+            background: #fff;
+            border: 1px solid var(--lml-line);
+            border-radius: .9rem;
+            overflow: hidden;
+            box-shadow: 0 1px 2px rgba(24, 30, 48, .04), 0 14px 30px -22px rgba(24, 30, 48, .22);
+            transition: transform .18s ease, box-shadow .18s ease;
+            animation: lml-fade .28s ease both;
+        }
+
+        @keyframes lml-fade {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: none; }
+        }
+
+        .lml-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 2px 4px rgba(24, 30, 48, .05), 0 18px 34px -20px rgba(24, 30, 48, .26);
+        }
+
+        /* 直播中：绿色顶条 + 淡绿头部，整卡更“亮” */
+        .lml-card.is-live {
+            border-color: rgba(22, 163, 74, .26);
+            box-shadow: 0 1px 2px rgba(22, 163, 74, .1), 0 14px 30px -20px rgba(22, 163, 74, .35);
+        }
+
+        .lml-card.is-live::before {
+            content: "";
+            display: block;
+            height: 3px;
+            background: linear-gradient(90deg, #22c55e, #86efac);
+        }
+
+        .lml-card.is-live .lml-card-head {
+            background: linear-gradient(180deg, #f1fbf4 0%, #fcfefd 100%);
+            border-bottom-color: #e6f4ec;
+        }
+
+        /* 录制中：左侧主色竖条，一眼区分“在录” */
+        .lml-card.is-recording { position: relative; }
+
+        .lml-card.is-recording::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: linear-gradient(180deg, #818cf8, #6366f1);
+        }
+
+        /* 离线：整体去饱和，缩后一档 */
+        .lml-card.is-offline { background: #fcfcfd; border-color: #e9ebf1; }
+
+        /* 未直播封面：不加任何滤镜（完整展示与高度封顶已在 .lml-cover 统一处理） */
+
+        .lml-card.is-offline .lml-card-head {
+            background: linear-gradient(180deg, #f5f6f9 0%, #fbfbfd 100%);
+            border-bottom-color: #eceef3;
+        }
+
+        .lml-card.is-offline .lml-nickname { color: var(--lml-text-2); }
+
+        .lml-card.is-offline::before {
+            content: "";
+            display: block;
+            height: 3px;
+            background: linear-gradient(90deg, #dfe2ea, #f0f1f5);
+        }
+
+        .lml-card-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: .6rem;
+            padding: .8rem .9rem .7rem;
+            border-bottom: 1px solid var(--lml-line);
+            background: #fbfbfe;
+        }
+
+        .lml-author { display: flex; align-items: center; gap: .6rem; min-width: 0; }
+
+        .lml-avatar {
+            flex: none;
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #eef0f5;
+            display: grid;
+            place-items: center;
+            color: var(--lml-text-3);
+            font-size: 1rem;
+        }
+
+        .lml-author-meta { min-width: 0; }
+
+        .lml-nickname {
+            margin: 0;
+            font-size: .86rem;
+            font-weight: 700;
+            color: var(--lml-text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 16rem;
+        }
+
+        .lml-chips { display: flex; flex-wrap: wrap; gap: .25rem; margin-top: .3rem; }
+
+        .lml-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: .2rem;
+            padding: .1rem .4rem;
+            font-size: .66rem;
+            color: var(--lml-text-2);
+            background: #f4f5f8;
+            border: 1px solid #eceef4;
+            border-radius: .3rem;
+            white-space: nowrap;
+        }
+
+        .lml-chip.is-platform {
+            color: var(--lml-primary);
+            background: var(--lml-primary-soft);
+            border-color: rgba(99, 102, 241, .18);
+            font-weight: 600;
+        }
+
+        /* 平台色：抖音靛、B站粉、快手橙 */
+        .lml-chip.is-douyin { color: #4f46e5; background: rgba(99, 102, 241, .12); border-color: rgba(99, 102, 241, .22); }
+        .lml-chip.is-bili { color: #d6336c; background: rgba(214, 51, 108, .1); border-color: rgba(214, 51, 108, .22); }
+        .lml-chip.is-ks { color: #c2410c; background: rgba(234, 88, 12, .1); border-color: rgba(234, 88, 12, .22); }
+
+        .lml-badge {
+            flex: none;
+            display: inline-flex;
+            align-items: center;
+            gap: .3rem;
+            padding: .22rem .5rem;
+            font-size: .7rem;
+            font-weight: 600;
+            border-radius: .4rem;
+            white-space: nowrap;
+        }
+
+        .lml-badge.is-live { color: #15803d; background: rgba(22, 163, 74, .12); }
+        .lml-badge.is-offline { color: var(--lml-text-2); background: #f1f2f6; }
+        .lml-badge.is-recording { color: #b42318; background: rgba(220, 38, 38, .1); }
+        .lml-badge.is-recording .fa-circle { animation: lml-blink 1.2s ease-in-out infinite; }
+
+        @keyframes lml-blink { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+        .lml-badge .fa-circle { font-size: .55rem; }
+        .lml-badge.is-live .fa-circle { animation: lml-pulse 1.8s ease-in-out infinite; }
+
+        @keyframes lml-pulse { 0%, 100% { opacity: .9; } 50% { opacity: .35; } }
+
+        .lml-badge .lml-mini-refresh {
+            display: inline-grid;
+            place-items: center;
+            width: 1.2rem;
+            height: 1.2rem;
+            margin-left: .1rem;
+            color: inherit;
+            background: transparent;
+            border: none;
+            border-radius: .25rem;
+            cursor: pointer;
+            opacity: .75;
+            font-size: .7rem;
+        }
+
+        .lml-badge .lml-mini-refresh:hover { opacity: 1; background: rgba(0, 0, 0, .05); }
+
+        .lml-card-body { padding: .8rem .9rem .9rem; }
+
+        .lml-main { display: flex; gap: .8rem; margin-bottom: .75rem; }
+
+        /* 封面统一风格：不裁剪、完整展示，但限制最高比例（约 1.3 倍宽度） */
+        .lml-cover {
+            position: relative;
+            flex: none;
+            width: 11.5rem;
+            height: auto;
+            min-height: 6.5rem;
+            border-radius: .55rem;
+            overflow: hidden;
+            background: #f1f2f5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .lml-cover img {
+            width: 100%;
+            height: auto;
+            max-height: 15rem; /* 11.5rem × 1.3，超高的竖屏图在此封顶，contain 保证不裁 */
+            object-fit: contain;
+            display: block;
+        }
+
+        .lml-cover-empty {
+            width: 100%;
+            height: 6.5rem;
+            display: grid;
+            place-items: center;
+            color: #b3b9c6;
+            font-size: 1.6rem;
+        }
+
+        .viewer-count {
+            position: absolute;
+            right: .35rem;
+            bottom: .35rem;
+            padding: .08rem .35rem;
+            font-size: .66rem;
+            color: #fff;
+            background: rgba(15, 17, 21, .66);
+            border-radius: .25rem;
+        }
+
+        .lml-detail { flex: 1 1 auto; min-width: 0; }
+
+        .lml-room-title {
+            margin: 0 0 .4rem;
+            font-size: .82rem;
+            font-weight: 600;
+            color: var(--lml-text);
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .lml-room-title.is-offline { color: var(--lml-text-3); font-weight: 500; }
+
+        .lml-info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: .3rem .7rem;
+            font-size: .72rem;
+            color: var(--lml-text-2);
+        }
+
+        .lml-info-item { display: flex; align-items: center; gap: .3rem; min-width: 0; }
+        .lml-info-item > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .lml-info-item i { flex: none; width: .85rem; color: #b6bcc9; font-size: .74rem; }
+        .lml-info-item i.is-accent { color: var(--lml-primary); }
+        .lml-info-item i.is-like { color: #ef4444; }
+
+        .lml-flagnum {
+            padding: .05rem .3rem;
+            margin-left: .2rem;
+            border-radius: .25rem;
+            font-size: .68rem;
+        }
+
+        .lml-flagnum.is-on { color: #15803d; background: rgba(22, 163, 74, .12); }
+        .lml-flagnum.is-off { color: #b42318; background: rgba(220, 38, 38, .1); }
+
+        /* 录制信息块 */
+        .lml-record {
+            padding: .6rem .7rem;
+            margin-bottom: .75rem;
+            background: #f8f9fc;
+            border: 1px solid #eef0f5;
+            border-radius: .55rem;
+        }
+
+        .lml-record.is-recording {
+            background: #f7f8ff;
+            border-color: rgba(99, 102, 241, .2);
+        }
+
+        .lml-record-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .5rem;
+            flex-wrap: wrap;
+        }
+
+        .lml-record-name {
+            display: inline-flex;
+            align-items: center;
+            gap: .3rem;
+            font-size: .74rem;
+            font-weight: 600;
+            color: var(--lml-text-3);
+        }
+
+        .lml-record.is-recording .lml-record-name { color: var(--lml-primary); }
+
+        .lml-record-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: .25rem .6rem;
+            margin-top: .45rem;
+            font-size: .7rem;
+            color: var(--lml-text-2);
+        }
+
+        .lml-path {
+            display: flex;
+            align-items: center;
+            gap: .3rem;
+            margin-top: .4rem;
+            font-size: .68rem;
+            color: var(--lml-text-3);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .lml-path i { flex: none; }
+
+        /* 操作按钮 */
+        .lml-actions { display: flex; flex-wrap: wrap; gap: .4rem; }
+
+        .lml-act {
+            display: inline-flex;
+            align-items: center;
+            gap: .3rem;
+            height: 1.95rem;
+            padding: 0 .6rem;
+            font-family: inherit;
+            font-size: .73rem;
+            font-weight: 600;
+            color: var(--lml-text-2);
+            background: #fff;
+            border: 1px solid var(--lml-line);
+            border-radius: .45rem;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background .15s ease, border-color .15s ease, color .15s ease;
+        }
+
+        .lml-act:hover { border-color: #dfe2ea; background: #fbfbfd; }
+
+        .lml-act.is-primary {
+            color: #fff;
+            background: var(--lml-primary);
+            border-color: var(--lml-primary);
+        }
+
+        .lml-act.is-primary:hover { background: #5457e6; border-color: #5457e6; }
+
+        .lml-act .fa { font-size: .76rem; }
+        .lml-act .is-danger { color: var(--lml-danger); }
+        .lml-act .is-warn { color: var(--lml-warn); }
+        .lml-act .is-ok { color: var(--lml-ok); }
+        .lml-act .is-folder { color: #eab308; }
+
+        /* 图标按钮（低频操作收成方块，靠 title 提示） */
+        .lml-act.is-icon {
+            width: 1.95rem;
+            padding: 0;
+            justify-content: center;
+            color: var(--lml-text-3);
+        }
+
+        .lml-act.is-icon:hover { color: var(--lml-text); }
+        .lml-act.is-icon.is-danger:hover { color: var(--lml-danger); border-color: rgba(220, 38, 38, .3); background: #fff6f5; }
+        .lml-act.is-icon.is-ok:hover { color: var(--lml-ok); border-color: rgba(22, 163, 74, .3); background: #f2fbf5; }
+
+        /* 录制/监控这类二态按钮：开态绿、关态红 */
+        .lml-act.is-on {
+            color: #15803d;
+            background: rgba(22, 163, 74, .08);
+            border-color: rgba(22, 163, 74, .3);
+        }
+
+        .lml-act.is-on:hover { background: rgba(22, 163, 74, .14); border-color: rgba(22, 163, 74, .45); }
+
+        .lml-act.is-off {
+            color: #b42318;
+            background: rgba(220, 38, 38, .06);
+            border-color: rgba(220, 38, 38, .26);
+        }
+
+        .lml-act.is-off:hover { background: rgba(220, 38, 38, .12); border-color: rgba(220, 38, 38, .4); }
+
+        .lml-actions-spacer { flex: 1 1 auto; }
+
+        /* 纯享播放（hover 下拉） */
+        .lml-drop { position: relative; display: inline-block; }
+
+        .lml-drop-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: .3rem;
+            height: 1.95rem;
+            padding: 0 .6rem;
+            font-family: inherit;
+            font-size: .73rem;
+            font-weight: 600;
+            color: #fff;
+            background: var(--lml-primary);
+            border: 1px solid var(--lml-primary);
+            border-radius: .45rem;
+            cursor: pointer;
+        }
+
+        .lml-drop-menu {
+            position: absolute;
+            bottom: calc(100% + .3rem);
+            left: 0;
+            z-index: 50;
+            min-width: 9.5rem;
+            padding: .25rem;
+            background: #fff;
+            border: 1px solid var(--lml-line);
+            border-radius: .5rem;
+            box-shadow: 0 10px 24px -12px rgba(24, 30, 48, .3);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(4px);
+            transition: opacity .15s ease, transform .15s ease, visibility .15s;
+        }
+
+        .lml-drop:hover .lml-drop-menu,
+        .lml-drop:focus-within .lml-drop-menu {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .lml-drop-item {
+            display: flex;
+            align-items: center;
+            gap: .35rem;
+            padding: .35rem .45rem;
+            font-size: .73rem;
+            color: var(--lml-text-2);
+            border-radius: .35rem;
+            text-decoration: none;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .lml-drop-item:hover { color: var(--lml-primary); background: #f4f6ff; }
+
+        /* 空状态 / 骨架 */
+        .lml-empty {
+            grid-column: 1 / -1;
+            padding: 2rem 1rem;
+            text-align: center;
+            font-size: .78rem;
+            color: var(--lml-text-3);
+            background: #fff;
+            border: 1px dashed #e2e5ee;
+            border-radius: .8rem;
+        }
+
+        .lml-skel {
+            background: linear-gradient(90deg, #f1f2f5 25%, #e8eaf0 50%, #f1f2f5 75%);
+            background-size: 200% 100%;
+            animation: lml-shimmer 1.5s infinite;
+            border-radius: .35rem;
+        }
+
+        @keyframes lml-shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* ---------- 页脚 ---------- */
+        .lml-footer {
+            margin-top: 1.4rem;
+            padding-bottom: 1.6rem;
+            text-align: center;
+            font-size: .72rem;
+            color: var(--lml-text-3);
+            line-height: 1.9;
+        }
+
+        .lml-footer a { color: var(--lml-primary); text-decoration: none; }
+        .lml-footer a:hover { text-decoration: underline; }
+
+        .lml-footer-links { display: inline-flex; flex-wrap: wrap; gap: .5rem; justify-content: center; }
+        .lml-footer-links a { display: inline-flex; align-items: center; gap: .25rem; }
+
+        /* ---------- 响应式 ---------- */
+        @media (max-width: 1080px) {
+            .lml-grid { grid-template-columns: minmax(0, 1fr); }
+        }
+
+        @media (max-width: 860px) {
+            .lml-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .lml-stat:last-child { grid-column: 1 / -1; }
+        }
+
+        @media (max-width: 720px) {
+            body.lml-body { padding: 16px 12px 0; }
+            .lml-title { font-size: 1.08rem; }
+            .lml-logo { width: 2.4rem; height: 2.4rem; font-size: 1.05rem; }
+            .lml-statusbar {
+                width: 100%;
+                justify-content: flex-start;
+                gap: .4rem;
+                padding-right: .35rem;
+            }
+            .lml-statusbar .lml-sep { display: none; }
+            .lml-statusbar #manual-refresh-btn,
+            .lml-statusbar #exit-app-btn { margin-left: auto; }
+            .lml-statusbar #exit-app-btn { margin-left: .15rem; }
+            /* 三张统计卡压成一行，省一屏高度 */
+            .lml-overview {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: .5rem;
+            }
+            .lml-stat { padding: .55rem .65rem; }
+            .lml-stat:last-child { grid-column: auto; }
+            .lml-stat-icon { display: none; }
+            .lml-stat-label { font-size: .68rem; line-height: 1.35; }
+            .lml-stat-value { font-size: 1.15rem; }
+            .lml-btn { flex: 1 1 0; min-width: 0; justify-content: center; }
+            .lml-toolbar-actions { width: 100%; }
+            .lml-search { flex: 1 1 100%; order: 3; max-width: none; }
+            .lml-toolbar .lml-hint { order: 4; width: 100%; }
+            .lml-main { flex-direction: column; }
+            .lml-cover { width: 100%; height: auto; min-height: 8rem; }
+            /* 移动端封面更宽，封顶同步放大，仍保持完整不裁剪 */
+            .lml-cover img { max-height: 26rem; }
+            .lml-info-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .lml-record-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .lml-act { flex: 1 1 auto; justify-content: center; }
+            .lml-nickname { max-width: 9rem; }
+            .lml-card-head { padding: .7rem .75rem .6rem; }
+            .lml-card-body { padding: .7rem .75rem .8rem; }
+        }
+    </style>
+
     <script src="js/mainURL.js"></script>
     <script src="js/util.js"></script>
     <script src="js/index.js"></script>
@@ -131,157 +952,123 @@
     <script src="js/RoomRecycle.js"></script>
 </head>
 
-<body class="bg-gray-50 font-inter text-dark">
-<div class="container mx-auto px-4 py-8 max-w-7xl">
+<body class="lml-body">
+<div class="lml-wrap">
     <!-- 页面头部 -->
-    <header class="mb-8 animate-fade">
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <header class="lml-header">
+        <div class="lml-brand">
+            <div class="lml-logo"><i class="fa fa-television"></i></div>
             <div>
-                <h1 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-dark flex items-center">
-                    <i class="fa fa-television text-primary mr-3"></i>
-                    【星曦向荣】直播监听工具
-                </h1>
-                <p class="text-gray-500 mt-1">实时监控各平台直播状态与录制信息</p>
-            </div>
-
-            <!-- 数据更新时间、刷新状态和手动刷新按钮 -->
-            <div class="bg-white rounded-lg px-4 py-2 card-shadow flex items-center">
-                <i class="fa fa-clock-o text-primary mr-2"></i>
-                <span class="text-sm">最后更新:
-                        <span id="update-time" class="font-medium">加载中...</span>
-                </span>
-                <!-- 刷新状态指示器 -->
-                <span id="refresh-indicator" class="ml-3 text-xs text-primary hidden">
-                        <i class="fa fa-refresh fa-spin"></i> 正在刷新...
-                </span>
-                <span class="ml-3 text-xs text-success hidden" id="refresh-success">
-                        <i class="fa fa-check"></i> 刷新成功
-                </span>
-                <span class="ml-3 text-xs text-danger hidden" id="refresh-error">
-                        <i class="fa fa-exclamation-circle"></i> 刷新失败
-                </span>
-
-                <!-- 手动刷新按钮 -->
-                <button id="manual-refresh-btn"
-                        class="ml-4 p-1.5 rounded-full hover:bg-primary/10 text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30">
-                    <i class="fa fa-refresh"></i>
-                </button>
-                <span class="w-px h-5 bg-gray-200 mx-2"></span>
-                <!-- 退出程序：调用 action/exit，需要操作秘钥校验 -->
-                <button id="exit-app-btn" title="退出整个程序（需要操作秘钥校验）"
-                        class="p-1.5 rounded-full hover:bg-danger/10 text-danger transition-colors focus:outline-none focus:ring-2 focus:ring-danger/30">
-                    <i class="fa fa-power-off"></i>
-                </button>
+                <h1 class="lml-title">直播监听面板</h1>
+                <p class="lml-subtitle">实时监控各平台直播状态与录制信息</p>
             </div>
         </div>
 
-        <!-- 状态概览卡片 -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-            <div class="bg-white rounded-lg p-4 card-shadow">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-gray-500 text-sm">总监控房间数</p>
-                        <h3 class="text-2xl font-bold mt-1" id="total-rooms">0</h3>
-                    </div>
-                    <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                        <i class="fa fa-th-large text-xl"></i>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-white rounded-lg p-4 card-shadow">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-gray-500 text-sm">正在直播房间数</p>
-                        <h3 class="text-2xl font-bold mt-1 text-success" id="living-rooms">
-                            0
-                        </h3>
-                    </div>
-                    <div class="w-12 h-12 rounded-full bg-success/10 flex items-center justify-center text-success">
-                        <i class="fa fa-play-circle text-xl"></i>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-white rounded-lg p-4 card-shadow">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-gray-500 text-sm">正在录制房间数</p>
-                        <h3 class="text-2xl font-bold mt-1 text-primary" id="recording-rooms">
-                            0
-                        </h3>
-                    </div>
-                    <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                        <i class="fa fa-film text-xl"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="flex mt-5 flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <!-- 新增监听 -->
-            <button onclick="addRoom()"
-                    class="inline-flex items-center px-3 py-2.5 bg-green-500 border border-green-300 text-white text-xl rounded-xl hover:bg-green-800 transition-colors">
-                    <span class="text-white">
-                        <i class="fa fa-plus mr-1"></i>新增直播监听
-                    </span>
+        <!-- 数据更新时间、刷新状态和手动刷新按钮 -->
+        <div class="lml-statusbar">
+            <i class="fa fa-clock-o"></i>
+            <span>最后更新 <span id="update-time" class="lml-update-time">加载中…</span></span>
+            <!-- 刷新状态指示器 -->
+            <span id="refresh-indicator" class="lml-refresh-flag is-loading is-hidden">
+                <i class="fa fa-refresh fa-spin"></i>正在刷新
+            </span>
+            <span id="refresh-success" class="lml-refresh-flag is-ok is-hidden">
+                <i class="fa fa-check"></i>刷新成功
+            </span>
+            <span id="refresh-error" class="lml-refresh-flag is-error is-hidden">
+                <i class="fa fa-exclamation-circle"></i>刷新失败
+            </span>
+            <span class="lml-sep"></span>
+            <button id="manual-refresh-btn" class="lml-icon-btn" title="立即刷新">
+                <i class="fa fa-refresh"></i>
             </button>
-            <!-- 监听回收站 -->
-            <button onclick="roomRecycle()"
-                    class="inline-flex items-center px-3 py-2.5 bg-yellow-500 border border-yellow-100 text-white text-xl rounded-xl hover:bg-yellow-300 transition-colors">
-                    <span class="text-white">
-                        <i class="fa fa-recycle mr-1"></i>监听回收站
-                    </span>
+            <!-- 退出程序：调用 action/exit，需要操作秘钥校验 -->
+            <button id="exit-app-btn" class="lml-icon-btn is-danger" title="退出整个程序（需要操作秘钥校验）">
+                <i class="fa fa-power-off"></i>
             </button>
         </div>
     </header>
 
-    <!-- 主内容区 -->
-    <main class="animate-fade" style="animation-delay: 0.1s">
-        <!-- 直播中房间 -->
-        <section class="mb-8">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-xl font-bold flex items-center">
-                        <span class="status-badge bg-success/20 text-success mr-2">
-                            <i class="fa fa-circle text-xs mr-1 animate-pulse"></i>直播中
-                        </span>
-                    直播房间
-                </h2>
-                <span class="text-sm text-gray-500" id="living-count">0 个房间</span>
+    <!-- 状态概览 -->
+    <div class="lml-overview">
+        <div class="lml-stat">
+            <div>
+                <p class="lml-stat-label">总监控房间数</p>
+                <p class="lml-stat-value" id="total-rooms">0</p>
             </div>
+            <div class="lml-stat-icon"><i class="fa fa-th-large"></i></div>
+        </div>
+        <div class="lml-stat">
+            <div>
+                <p class="lml-stat-label">正在直播房间数</p>
+                <p class="lml-stat-value is-ok" id="living-rooms">0</p>
+            </div>
+            <div class="lml-stat-icon is-ok"><i class="fa fa-play-circle"></i></div>
+        </div>
+        <div class="lml-stat">
+            <div>
+                <p class="lml-stat-label">正在录制房间数</p>
+                <p class="lml-stat-value is-primary" id="recording-rooms">0</p>
+            </div>
+            <div class="lml-stat-icon"><i class="fa fa-film"></i></div>
+        </div>
+    </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6" id="living-rooms-container"></div>
+    <!-- 操作工具条 -->
+    <div class="lml-toolbar">
+        <div class="lml-toolbar-actions">
+            <button class="lml-btn lml-btn-primary" onclick="addRoom()">
+                <i class="fa fa-plus"></i><span>新增直播监听</span>
+            </button>
+            <button class="lml-btn lml-btn-ghost" onclick="roomRecycle()">
+                <i class="fa fa-recycle"></i><span>监听回收站</span>
+            </button>
+        </div>
+        <div class="lml-search" id="room-search-wrap">
+            <i class="fa fa-search"></i>
+            <input id="room-search" type="text" autocomplete="off" spellcheck="false"
+                   placeholder="搜索主播昵称 / 房间ID / 平台，支持模糊匹配">
+            <button id="room-search-clear" class="lml-search-clear" type="button" title="清空搜索">
+                <i class="fa fa-times"></i>
+            </button>
+        </div>
+        <span class="lml-hint">数据每 <span id="refresh-interval">30</span> 秒自动刷新</span>
+    </div>
+
+    <!-- 主内容区 -->
+    <main>
+        <!-- 直播中房间 -->
+        <section class="lml-section">
+            <div class="lml-section-head">
+                <h2 class="lml-section-title">
+                    <span class="lml-dot is-live"></span>直播房间
+                </h2>
+                <span class="lml-section-count" id="living-count">0 个房间</span>
+            </div>
+            <div class="lml-grid" id="living-rooms-container"></div>
         </section>
 
         <!-- 未直播房间 -->
-        <section>
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-xl font-bold flex items-center">
-                        <span class="status-badge bg-gray-200 text-gray-600 mr-2">
-                            <i class="fa fa-circle text-xs mr-1 animate-pulse"></i>未直播
-                        </span>
-                    离线房间
+        <section class="lml-section">
+            <div class="lml-section-head">
+                <h2 class="lml-section-title">
+                    <span class="lml-dot"></span>离线房间
                 </h2>
-                <span class="text-sm text-gray-500" id="not-living-count">0 个房间</span>
+                <span class="lml-section-count" id="not-living-count">0 个房间</span>
             </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6" id="not-living-rooms-container"></div>
+            <div class="lml-grid" id="not-living-rooms-container"></div>
         </section>
     </main>
 
     <!-- 页脚 -->
-    <footer class="mt-12 text-center text-sm text-gray-500 pb-8 animate-fade" style="animation-delay: 0.2s">
+    <footer class="lml-footer">
         <p>
             © 2025
-            <a class="text-primary"
-               href="https://mp.weixin.qq.com/s?__biz=MzIwMDQ2OTg4NA==&mid=2247484118&idx=1&sn=30dd3f7f2a4d93a6fdce4fb808e7c506&chksm=96fdfec5a18a77d35645d8e8f55477353aeb9a949fc73a2c302ca336155f8becae635e26f022#rd"
-               target="_blank">星曦向荣</a>直播监听工具 | 数据更新时间:
-            <span id="footer-update-time">加载中...</span>
+            <a href="https://mp.weixin.qq.com/s?__biz=MzIwMDQ2OTg4NA==&mid=2247484118&idx=1&sn=30dd3f7f2a4d93a6fdce4fb808e7c506&chksm=96fdfec5a18a77d35645d8e8f55477353aeb9a949fc73a2c302ca336155f8becae635e26f022#rd"
+               target="_blank">星曦向荣</a>直播监听工具 · 数据更新于
+            <span id="footer-update-time">加载中…</span>
         </p>
-        <p class="mt-1">
-            数据将每 <span id="refresh-interval">30</span> 秒自动刷新一次
-        </p>
-        <p class="mt-1" id="other-links"></p>
+        <p class="lml-footer-links" id="other-links"></p>
     </footer>
 </div>
 <!-- 弹窗结构 -->
@@ -303,9 +1090,9 @@
     const MainUrl = getMainUrl(fullUrl);
 
     function generateLink(links) {
-        let html = "相关链接:";
+        let html = "<span>相关链接：</span>";
         Object.keys(links).forEach((key) => {
-            html += `<a href="${links[key]}" target="_blank" class="ml-2 text-primary"><i class="fa fa-link pr-1"></i>${key}</a>`;
+            html += `<a href="${links[key]}" target="_blank"><i class="fa fa-link"></i>${key}</a>`;
         });
         return html;
     }
@@ -339,6 +1126,8 @@
         }
         // 卡片按钮统一走事件委托
         initRoomCardActions();
+        // 直播间模糊检索
+        initRoomSearch();
         // 首次进入先展示骨架屏
         renderSkeleton("living-rooms-container");
         renderSkeleton("not-living-rooms-container");
@@ -392,36 +1181,36 @@
         const container = document.getElementById(containerId);
         if (!container) return;
         container.innerHTML = `
-            <div class="bg-white rounded-xl overflow-hidden card-shadow animate-fade">
-                <div class="bg-primary/5 p-4 border-b border-gray-100">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center">
-                            <div class="w-10 h-10 rounded-full skeleton"></div>
-                            <div class="ml-3">
-                                <div class="w-32 h-5 skeleton rounded"></div>
-                                <div class="w-48 h-3 skeleton rounded mt-2"></div>
-                            </div>
+            <div class="lml-card">
+                <div class="lml-card-head">
+                    <div class="lml-author">
+                        <div class="lml-skel" style="width:2.5rem;height:2.5rem;border-radius:50%"></div>
+                        <div class="lml-author-meta">
+                            <div class="lml-skel" style="width:8rem;height:.9rem"></div>
+                            <div class="lml-skel" style="width:12rem;height:.55rem;margin-top:.4rem"></div>
                         </div>
-                        <div class="w-20 h-5 skeleton rounded"></div>
                     </div>
+                    <div class="lml-skel" style="width:4.2rem;height:1.1rem"></div>
                 </div>
-                <div class="p-4">
-                    <div class="flex flex-col md:flex-row gap-4 mb-4">
-                        <div class="w-full md:w-48 h-32 skeleton rounded-lg"></div>
-                        <div class="flex-1">
-                            <div class="w-full h-5 skeleton rounded mb-2"></div>
-                            <div class="grid grid-cols-2 gap-2">
-                                <div class="w-full h-4 skeleton rounded"></div>
-                                <div class="w-full h-4 skeleton rounded"></div>
-                                <div class="w-full h-4 skeleton rounded"></div>
-                                <div class="w-full h-4 skeleton rounded"></div>
+                <div class="lml-card-body">
+                    <div class="lml-main">
+                        <div class="lml-skel" style="width:11.5rem;height:6.5rem"></div>
+                        <div class="lml-detail">
+                            <div class="lml-skel" style="width:100%;height:.8rem"></div>
+                            <div class="lml-skel" style="width:70%;height:.8rem;margin-top:.35rem"></div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem;margin-top:.6rem">
+                                <div class="lml-skel" style="height:.55rem"></div>
+                                <div class="lml-skel" style="height:.55rem"></div>
+                                <div class="lml-skel" style="height:.55rem"></div>
+                                <div class="lml-skel" style="height:.55rem"></div>
                             </div>
                         </div>
                     </div>
-                    <div class="flex gap-2">
-                        <div class="w-24 h-8 skeleton rounded"></div>
-                        <div class="w-24 h-8 skeleton rounded"></div>
-                        <div class="w-24 h-8 skeleton rounded"></div>
+                    <div class="lml-skel" style="width:100%;height:2.6rem;margin-bottom:.7rem"></div>
+                    <div style="display:flex;gap:.4rem">
+                        <div class="lml-skel" style="width:5.5rem;height:1.6rem"></div>
+                        <div class="lml-skel" style="width:5.5rem;height:1.6rem"></div>
+                        <div class="lml-skel" style="width:5.5rem;height:1.6rem"></div>
                     </div>
                 </div>
             </div>`;
@@ -554,23 +1343,23 @@
     // 显示刷新状态
     function showRefreshStatus(status) {
         // 隐藏所有状态
-        document.getElementById("refresh-indicator").classList.add("hidden");
-        document.getElementById("refresh-success").classList.add("hidden");
-        document.getElementById("refresh-error").classList.add("hidden");
+        document.getElementById("refresh-indicator").classList.add("is-hidden");
+        document.getElementById("refresh-success").classList.add("is-hidden");
+        document.getElementById("refresh-error").classList.add("is-hidden");
 
         // 显示指定状态
         if (status === "loading") {
             document
                 .getElementById("refresh-indicator")
-                .classList.remove("hidden");
+                .classList.remove("is-hidden");
         } else if (status === "success") {
-            document.getElementById("refresh-success").classList.remove("hidden");
+            document.getElementById("refresh-success").classList.remove("is-hidden");
             // 3秒后隐藏成功提示
             setTimeout(() => {
-                document.getElementById("refresh-success").classList.add("hidden");
+                document.getElementById("refresh-success").classList.add("is-hidden");
             }, 3000);
         } else if (status === "error") {
-            document.getElementById("refresh-error").classList.remove("hidden");
+            document.getElementById("refresh-error").classList.remove("is-hidden");
         }
     }
 
@@ -639,12 +1428,17 @@
         // 如果没有数据，显示提示
         if (livingRooms === 0) {
             livingContainer.innerHTML =
-                '<div class="col-span-full text-center py-8 text-gray-500">暂无直播中的房间</div>';
+                '<div class="lml-empty">暂无直播中的房间</div>';
         }
 
         if (notLivingRooms === 0) {
             notLivingContainer.innerHTML =
-                '<div class="col-span-full text-center py-8 text-gray-500">暂无未直播的房间</div>';
+                '<div class="lml-empty">暂无未直播的房间</div>';
+        }
+
+        // 数据刷新后沿用当前检索关键词，避免过滤状态被重置
+        if (typeof applyRoomFilter === "function") {
+            applyRoomFilter();
         }
     }
 
@@ -657,6 +1451,16 @@
 
     modalClose.addEventListener("click", closeModal);
 
+    // 弹窗关闭通知：右上角 ✕ 直接关掉时，也要让「操作验证」这类 Promise 弹窗收到取消信号，
+    // 否则 promptActionKey 会一直挂着不 resolve，后续接口取不到令牌也不会再弹框。
+    const modalDismissHandlers = new Set();
+    window.onModalDismiss = function (fn) {
+        if (typeof fn === "function") modalDismissHandlers.add(fn);
+    };
+    window.offModalDismiss = function (fn) {
+        modalDismissHandlers.delete(fn);
+    };
+
     // 打开弹窗
     function openModal() {
         modal.classList.add("active");
@@ -667,6 +1471,18 @@
     function closeModal() {
         modal.classList.remove("active");
         document.body.style.overflow = "";
+        if (!modalDismissHandlers.size) return;
+        const handlers = Array.from(modalDismissHandlers);
+        // 延迟到微任务：点「确定」时是先 closeModal() 再执行 onSubmit，
+        // 这样提交结果能先落地，不会被误判成“用户取消”。
+        Promise.resolve().then(function () {
+            handlers.forEach(function (fn) {
+                try {
+                    fn();
+                } catch (e) {
+                }
+            });
+        });
     }
 
     // 清除弹窗内容
