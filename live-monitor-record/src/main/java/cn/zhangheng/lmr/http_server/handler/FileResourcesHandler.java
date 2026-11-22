@@ -11,6 +11,7 @@ import cn.zhangheng.lmr.FileModeMain;
 import cn.zhangheng.lmr.bean.RoomFileModel;
 import cn.zhangheng.lmr.http_server.util.AuthResolvers;
 import cn.zhangheng.lmr.util.FilePageUtils;
+import cn.zhangheng.lmr.util.MonitorLogParser;
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import com.zhangheng.bean.Message;
@@ -102,6 +103,46 @@ public class FileResourcesHandler extends AnnotationHandler {
             }
         }
         responseJson(httpExchange, message);
+    }
+
+    /**
+     * 监听日志统计：解析目录里的 ***监听.log，返回时间序列给前端画统计图。
+     * path 可以是日期目录，也可以直接指向某个 .log 文件。
+     */
+    @Endpoint(value = "/stats", auth = AuthPolicy.READ)
+    public void stats(RequestContext ctx) throws IOException {
+        Map<String, String> query = ctx.query();
+        Message<Object> message = ctx.message();
+        RoomFileModel model = checkRoomKey(query, message);
+        if (model == null) {
+            return;
+        }
+        String path = query.getOrDefault("path", "./");
+        Room room = model.getMain().getRoom();
+        String basePathStr = RoomUtils.getBasePathStr(room);
+        Path targetPath = Paths.get(basePathStr, path);
+        if (!Files.exists(targetPath)) {
+            message.setCode(1);
+            message.setMessage("路径不存在！" + targetPath);
+            return;
+        }
+        try {
+            MonitorLogParser.Result result = Files.isDirectory(targetPath)
+                    ? MonitorLogParser.parseDir(targetPath)
+                    : MonitorLogParser.parseFile(targetPath);
+            message.setData(result);
+            if (result.getSeries() == null || result.getSeries().isEmpty()) {
+                message.setCode(1);
+                message.setTitle("暂无可统计的日志");
+                message.setMessage("该目录下没有找到可解析的 ***监听.log 统计记录");
+            } else {
+                message.setMessage("解析日志 " + result.getFiles().size() + " 个，统计点 " + result.getSeries().size() + " 条");
+            }
+        } catch (Exception e) {
+            message.setCode(1);
+            message.setTitle("日志解析失败");
+            message.setMessage(ThrowableUtil.getAllCauseMessage(e));
+        }
     }
 
     // 限速：字节/毫秒，0=不限速，例如 100 代表 100KB/s
