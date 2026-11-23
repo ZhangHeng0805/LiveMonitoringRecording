@@ -1,0 +1,1108 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>【星曦向荣】访问日志可视化</title>
+    <script>
+        var _hmt = _hmt || [];
+        (function () {
+            var hm = document.createElement("script");
+            hm.src = "https://hm.baidu.com/hm.js?5087e13fa5fa20d0d364de6066042695";
+            var s = document.getElementsByTagName("script")[0];
+            s.parentNode.insertBefore(hm, s);
+        })();
+    </script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-soft: #eef0ff;
+            --text: #1f2330;
+            --text-2: #5b6172;
+            --line: #e9ebf2;
+            --bg: #f4f5f9;
+            --card: #fff;
+            --ok: #22c1a4;
+            --warn: #f5a524;
+            --err: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        html, body {
+            max-width: 100%;
+            overflow-x: hidden
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif
+        }
+
+        .page {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 22px 18px 40px
+        }
+
+        .hd {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 16px
+        }
+
+        .hd h1 {
+            margin: 0;
+            font-size: 22px;
+            letter-spacing: .2px
+        }
+
+        .hd p {
+            margin: 4px 0 0;
+            color: var(--text-2);
+            font-size: 13px
+        }
+
+        .meta {
+            text-align: right;
+            font-size: 12px;
+            color: var(--text-2);
+            line-height: 1.7
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 1px 8px;
+            border-radius: 999px;
+            background: var(--primary-soft);
+            color: var(--primary);
+            font-size: 12px
+        }
+
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 6px;
+            justify-content: flex-end
+        }
+
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--text-2)
+        }
+
+        .status .dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--text-2)
+        }
+
+        .status.live .dot {
+            background: var(--ok)
+        }
+
+        .status.snap .dot {
+            background: var(--warn)
+        }
+
+        .status.err .dot {
+            background: var(--err)
+        }
+
+        .btn {
+            height: 30px;
+            padding: 0 12px;
+            border-radius: 8px;
+            border: 1px solid #dfe2ec;
+            background: #fff;
+            color: var(--text);
+            font-size: 12.5px;
+            cursor: pointer;
+            transition: border-color .15s, color .15s
+        }
+
+        .btn:hover {
+            border-color: var(--primary);
+            color: var(--primary)
+        }
+
+        .btn[disabled] {
+            opacity: .5;
+            cursor: default
+        }
+
+        .chk {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+            color: var(--text-2);
+            cursor: pointer
+        }
+
+        .banner {
+            margin: 0 0 14px;
+            padding: 10px 14px;
+            border: 1px solid #f6d5d5;
+            background: #fef2f2;
+            color: #b42318;
+            border-radius: 10px;
+            font-size: 13px;
+            line-height: 1.6
+        }
+
+        .banner[hidden] {
+            display: none
+        }
+
+        .kpis {
+            display: grid;
+            grid-template-columns:repeat(6, minmax(0, 1fr));
+            gap: 12px;
+            margin-bottom: 14px
+        }
+
+        .kpi {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 12px 14px
+        }
+
+        .kpi b {
+            display: block;
+            font-size: 22px;
+            line-height: 1.2;
+            font-weight: 650
+        }
+
+        .kpi span {
+            font-size: 12px;
+            color: var(--text-2)
+        }
+
+        .kpi.accent b {
+            color: var(--primary)
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns:repeat(3, minmax(0, 1fr));
+            gap: 12px;
+            margin-bottom: 12px;
+            align-items: start
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 14px 16px
+        }
+
+        .card h3 {
+            margin: 0 0 12px;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px
+        }
+
+        .card h3 .dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--primary)
+        }
+
+        .span2 {
+            grid-column: span 2
+        }
+
+        #line-wrap {
+            position: relative
+        }
+
+        #line-wrap svg {
+            width: 100%;
+            height: 180px;
+            display: block
+        }
+
+        .tips {
+            position: absolute;
+            pointer-events: none;
+            background: rgba(31, 35, 48, .92);
+            color: #fff;
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            opacity: 0;
+            transition: opacity .12s;
+            white-space: nowrap
+        }
+
+        .hbars {
+            display: flex;
+            flex-direction: column;
+            gap: 9px
+        }
+
+        .hbar {
+            display: grid;
+            grid-template-columns:96px 1fr 46px;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px
+        }
+
+        .hbar .lbl {
+            color: var(--text-2);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap
+        }
+
+        .hbar .track {
+            display: block;
+            height: 8px;
+            border-radius: 5px;
+            background: #f0f1f6;
+            overflow: hidden
+        }
+
+        .hbar .fill {
+            display: block;
+            height: 100%;
+            border-radius: 5px;
+            background: linear-gradient(90deg, var(--primary), #8b8ff5);
+            transition: width .3s
+        }
+
+        .hbar .num {
+            text-align: right;
+            color: var(--text);
+            font-variant-numeric: tabular-nums
+        }
+
+        .vbars {
+            display: flex;
+            align-items: flex-end;
+            gap: 3px;
+            height: 150px;
+            padding-bottom: 14px
+        }
+
+        .vbars .col {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 4px;
+            height: 100%
+        }
+
+        .vbars .col .bar {
+            width: 100%;
+            max-width: 16px;
+            border-radius: 3px 3px 0 0;
+            background: var(--primary);
+            opacity: .85
+        }
+
+        .vbars .col .cap {
+            font-size: 9px;
+            color: #9aa0ae;
+            height: 10px;
+            line-height: 10px
+        }
+
+        .donut-wrap {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap
+        }
+
+        .donut-wrap svg {
+            width: 132px;
+            height: 132px;
+            flex: none
+        }
+
+        .donut-wrap .legend {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 12px;
+            min-width: 120px;
+            flex: 1
+        }
+
+        .legend .it {
+            display: flex;
+            align-items: center;
+            gap: 7px
+        }
+
+        .legend .sw {
+            width: 9px;
+            height: 9px;
+            border-radius: 3px;
+            flex: none
+        }
+
+        .legend .nm {
+            color: var(--text-2);
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap
+        }
+
+        .legend .vl {
+            font-variant-numeric: tabular-nums
+        }
+
+        .filters {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-bottom: 10px
+        }
+
+        .filters input, .filters select {
+            height: 32px;
+            border: 1px solid #dfe2ec;
+            border-radius: 8px;
+            background: #fff;
+            padding: 0 10px;
+            font-size: 13px;
+            color: var(--text);
+            outline: none
+        }
+
+        .filters input {
+            min-width: 220px;
+            flex: 1
+        }
+
+        .filters input:focus, .filters select:focus {
+            border-color: var(--primary)
+        }
+
+        .filters .cnt {
+            font-size: 12px;
+            color: var(--text-2)
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12.5px
+        }
+
+        thead th {
+            position: sticky;
+            top: 0;
+            background: #fafbfd;
+            color: var(--text-2);
+            font-weight: 500;
+            text-align: left;
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--line);
+            white-space: nowrap
+        }
+
+        tbody td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #f3f4f8;
+            vertical-align: top
+        }
+
+        tbody tr:hover {
+            background: #fafbff
+        }
+
+        td.mono {
+            font-variant-numeric: tabular-nums;
+            color: var(--text-2)
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 0 7px;
+            border-radius: 5px;
+            background: #f2f3f8;
+            color: var(--text-2);
+            font-size: 11px;
+            margin: 0 4px 0 2px
+        }
+
+        .tbl-wrap {
+            max-height: 420px;
+            overflow: auto;
+            border: 1px solid var(--line);
+            border-radius: 10px
+        }
+
+        .pager {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            justify-content: flex-end;
+            margin-top: 10px;
+            font-size: 12px;
+            color: var(--text-2)
+        }
+
+        .pager button {
+            height: 28px;
+            min-width: 28px;
+            border: 1px solid #dfe2ec;
+            background: #fff;
+            border-radius: 7px;
+            cursor: pointer;
+            color: var(--text-2)
+        }
+
+        .pager button:disabled {
+            opacity: .45;
+            cursor: default
+        }
+
+        .pager button.on {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: #fff
+        }
+
+        .empty {
+            padding: 28px;
+            text-align: center;
+            color: #9aa0ae;
+            font-size: 13px
+        }
+
+        @media (max-width: 980px) {
+            .kpis {
+                grid-template-columns:repeat(3, minmax(0, 1fr))
+            }
+
+            .grid {
+                grid-template-columns:1fr
+            }
+
+            .span2 {
+                grid-column: auto
+            }
+
+            .page {
+                padding: 16px 12px 28px
+            }
+
+            .meta {
+                text-align: left
+            }
+
+            .toolbar {
+                justify-content: flex-start
+            }
+        }
+
+        @media (max-width: 560px) {
+            .kpis {
+                grid-template-columns:repeat(2, minmax(0, 1fr))
+            }
+        }
+    </style>
+    <script src="js/mainURL.js"></script>
+    <script src="js/client-info.js"></script>
+</head>
+<body>
+<div class="page">
+    <header class="hd">
+        <div>
+            <h1>访问日志可视化</h1>
+            <p>数据源：<b>logs/client-info.log</b> · 【星曦向荣】直播监听工具 · 数据监控面板</p>
+        </div>
+        <div class="meta">
+            <div><span class="badge" id="mRange">—</span></div>
+            <div id="mCount">—</div>
+            <div id="mGen">—</div>
+            <div class="toolbar">
+                <span class="status" id="status"><span class="dot"></span><span id="statusText">加载中…</span></span>
+                <label class="chk"><input type="checkbox" id="autoRefresh" checked>每 30 秒自动刷新</label>
+                <button class="btn" id="btnFull">加载全量</button>
+                <button class="btn" id="btnRefresh">刷新</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="banner" id="banner" hidden></div>
+
+    <section class="kpis" id="kpis"></section>
+
+    <section class="grid">
+        <div class="card span2">
+            <h3><i class="dot"></i>访问趋势（按天）</h3>
+            <div id="line-wrap"></div>
+        </div>
+        <div class="card">
+            <h3><i class="dot"></i>24 小时分布</h3>
+            <div class="vbars" id="hours"></div>
+        </div>
+
+        <div class="card">
+            <h3><i class="dot"></i>浏览器占比</h3>
+            <div class="donut-wrap" id="browser"></div>
+        </div>
+        <div class="card">
+            <h3><i class="dot"></i>操作系统</h3>
+            <div class="hbars" id="os"></div>
+        </div>
+        <div class="card">
+            <h3><i class="dot"></i>设备 / 终端</h3>
+            <div class="hbars" id="device"></div>
+        </div>
+
+        <div class="card span2">
+            <h3><i class="dot"></i>地区分布（Top 10）</h3>
+            <div class="hbars" id="region"></div>
+        </div>
+        <div class="card">
+            <h3><i class="dot"></i>IP 访问次数（Top 10）</h3>
+            <div class="hbars" id="ipTop"></div>
+        </div>
+    </section>
+
+    <section class="card">
+        <h3><i class="dot"></i>访问明细</h3>
+        <div class="filters">
+            <input id="q" placeholder="搜索 IP / 地区 / 页面标题 / UA …">
+            <select id="fDev">
+                <option value="">全部终端</option>
+            </select>
+            <select id="fBr">
+                <option value="">全部浏览器</option>
+            </select>
+            <select id="fDay">
+                <option value="">全部日期</option>
+            </select>
+            <span class="cnt" id="cnt"></span>
+        </div>
+        <div class="tbl-wrap">
+            <table>
+                <thead>
+                <tr>
+                    <th style="width:138px">时间</th>
+                    <th style="width:118px">IP</th>
+                    <th style="width:162px">地区</th>
+                    <th style="width:86px">终端</th>
+                    <th style="width:110px">系统</th>
+                    <th style="width:110px">浏览器</th>
+                    <th>页面标题</th>
+                </tr>
+                </thead>
+                <tbody id="rows"></tbody>
+            </table>
+            <div class="empty" id="empty" hidden>没有匹配的记录</div>
+        </div>
+        <div class="pager" id="pager"></div>
+    </section>
+</div>
+
+<script>
+    /* 接口地址：同源情况走 /client-info/log；也可用 ?api=xxx 覆盖 */
+    const API_BASE = (function () {
+        const q = new URLSearchParams(location.search).get('api');
+        if (q) return q;
+        if (location.protocol === 'file:') return null;
+        return new URL('client-info/log', getMainUrl()).toString();
+    })();
+    const AUTO_MS = 30000;
+    /* 默认只取末尾 1000 行；limit=0 表示全量 */
+    const PAGE_LIMIT = 1000;
+    let limit = PAGE_LIMIT;
+
+    function apiUrl() {
+        return API_BASE + (API_BASE.indexOf('?') >= 0 ? '&' : '?') + 'maxLines=' + limit;
+    }
+
+    function limitLabel() {
+        return limit > 0 ? `末 ${fmt(limit)} 行` : '全量';
+    }
+
+    let DATA = [];
+    const PAGE_SIZE = 18;
+    let page = 1;
+    let filtered = [];
+    const $ = (s, r) => (r || document).querySelector(s);
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, m => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    }[m]));
+    const fmt = n => Number(n || 0).toLocaleString('zh-CN');
+    const PALETTE = ['#6366f1', '#22c1a4', '#f5a524', '#ec4899', '#38bdf8', '#a78bfa'];
+
+    /* ========== 日志解析（兼容旧两行格式 + 新 JSONL） ========== */
+    const TS_RE = /(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\s*(?:\[([^\]]*)\]|([0-9A-Fa-f.:]+))?\s*-\s*/;
+    const TS_SPLIT_RE = /(?=\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\s*(?:\[|\d))/;
+
+    function clean(v) {
+        return v == null ? '' : String(v).replace(/\r/g, ' ').replace(/\n/g, ' ').trim();
+    }
+
+    function join2() {
+        return Array.prototype.filter.call(arguments, x => x != null && String(x).trim() !== '').map(x => String(x).trim()).join(' ');
+    }
+
+    function findJson(text) {
+        const start = text.indexOf('{');
+        if (start < 0) return null;
+        let depth = 0, inStr = false, esc = false;
+        for (let i = start; i < text.length; i++) {
+            const ch = text[i];
+            if (inStr) {
+                if (esc) esc = false;
+                else if (ch === '\\') esc = true;
+                else if (ch === '"') inStr = false;
+                continue;
+            }
+            if (ch === '"') inStr = true;
+            else if (ch === '{') depth++;
+            else if (ch === '}') {
+                depth--;
+                if (depth === 0) return text.slice(start, i + 1);
+            }
+        }
+        return null;
+    }
+
+    function timeParts(t) {
+        const m = String(t || '').match(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/);
+        if (!m) return {day: '', hour: -1};
+        return {day: m[0].slice(0, 10), hour: +m[0].slice(11, 13)};
+    }
+
+    function buildRow(o) {
+        const tp = timeParts(o.t);
+        const geo = clean(o.geo);
+        const parts = geo ? geo.split(' ') : [];
+        const province = parts.length >= 2 ? parts[1] : '';
+        const city = parts.length >= 3 ? parts[2] : (province || geo);
+        return {
+            t: o.t, day: tp.day, hour: tp.hour, ip: clean(o.ip), geo: geo, isp: clean(o.isp),
+            province: province, city: city, cid: clean(o.cid), title: clean(o.title), url: clean(o.url),
+            ref: clean(o.ref), search: clean(o.search), kw: clean(o.kw), os: clean(o.os),
+            browser: clean(o.browser), lang: clean(o.lang), screen: clean(o.screen),
+            viewport: clean(o.viewport), device: clean(o.device), app: clean(o.app), ua: clean(o.ua)
+        };
+    }
+
+    function normalizeLegacy(client, ipinfo, headerIp, ua, t) {
+        const c = client || {}, ip = ipinfo || {};
+        let bs = clean(c.bs);
+        if (bs.toLowerCase() === 'edg') bs = 'Edge';
+        return buildRow({
+            t: t,
+            ip: clean(ip.ip) || clean(headerIp),
+            geo: join2(ip.country, ip.province, ip.city, ip.district),
+            isp: clean(ip.isp),
+            cid: c.cid, title: c.dt, url: c.dl, ref: c.dr, search: c.df, kw: c.dw,
+            os: join2(c.os, c.osv), browser: join2(bs, c.bsv), lang: c.ul,
+            screen: c.sr, viewport: c.vp, device: c.br, app: c.app, ua: ua
+        });
+    }
+
+    function parseLog(text) {
+        const rows = [];
+        const rest = [];
+        (text || '').split('\n').forEach(line => {
+            const s = line.trim();
+            if (s.startsWith('{') && s.endsWith('}') && s.slice(0, 40).indexOf('"t"') >= 0) {
+                try {
+                    const o = JSON.parse(s);
+                    if (o && (o.cid || o.geo || o.os || o.browser || o.title || o.ip)) {
+                        // 新格式字段已是扁平值，页面统一直接复制
+                        const row = buildRow({
+                            t: o.t, ip: o.ip, geo: o.geo, isp: o.isp, cid: o.cid, title: o.title,
+                            url: o.url, ref: o.ref, search: o.search, kw: o.kw, os: o.os, browser: o.browser,
+                            lang: o.lang, screen: o.screen, viewport: o.viewport, device: o.device,
+                            app: o.app, ua: o.ua
+                        });
+                        rows.push(row);
+                        return;
+                    }
+                } catch (e) { /* 落到下面的旧格式解析 */
+                }
+            }
+            rest.push(line);
+        });
+
+        const chunks = rest.join('\n').split(TS_SPLIT_RE).filter(c => c.trim());
+        chunks.forEach(chunk => {
+            const nl = chunk.indexOf('\n');
+            const first = (nl >= 0 ? chunk.slice(0, nl) : chunk).replace(/\r/, '');
+            const tail = nl >= 0 ? chunk.slice(nl + 1) : '';
+            const m = first.match(TS_RE);
+            if (!m) return;
+            const t = m[1];
+            const headerIp = (m[2] || m[3] || '').trim();
+            const ua = first.slice(m[0].length).trim();
+            const blob = tail.trim() ? tail : first;
+            const payload = findJson(blob);
+            if (!payload) return;
+            let obj;
+            try {
+                obj = JSON.parse(payload);
+            } catch (e) {
+                return;
+            }
+            if (!obj || typeof obj !== 'object') return;
+            const client = obj.client || null;
+            const ipinfo = obj.ip || null;
+            if (!client && !(ipinfo && ipinfo.ip)) return;
+            rows.push(normalizeLegacy(client, ipinfo, headerIp, ua, t));
+        });
+
+        const seen = {};
+        const out = [];
+        rows.forEach(r => {
+            const key = [r.t, r.cid, r.url, r.ip].join('|');
+            if (seen[key]) return;
+            seen[key] = 1;
+            out.push(r);
+        });
+        out.sort((a, b) => (a.t < b.t ? -1 : (a.t > b.t ? 1 : 0)));
+        return out;
+    }
+
+    /* ========== 渲染 ========== */
+    function counter(keyFn) {
+        const o = {};
+        DATA.forEach(r => {
+            const k = keyFn(r);
+            if (k) o[k] = (o[k] || 0) + 1;
+        });
+        return o;
+    }
+
+    function renderKpis() {
+        const total = DATA.length;
+        const cids = new Set(DATA.map(r => r.cid || r.ip).filter(Boolean));
+        const ips = new Set(DATA.map(r => r.ip).filter(Boolean));
+        const cities = new Set(DATA.map(r => r.city).filter(Boolean));
+        const days = new Set(DATA.map(r => r.day).filter(Boolean));
+        const last = total ? DATA[total - 1].t : '';
+        const kpis = [
+            ['总访问次数', fmt(total), '全部请求'],
+            ['独立访客', fmt(cids.size), '按 cid 去重'],
+            ['独立 IP', fmt(ips.size), '来源 IP 去重'],
+            ['覆盖城市', fmt(cities.size), days.size + ' 天有访问'],
+            ['平均每天', fmt(days.size ? Math.round(total / days.size) : 0), '次 / 天'],
+            ['最近访问', last ? last.slice(5, 16) : '—', last ? last.slice(0, 10) : ''],
+        ];
+        $('#kpis').innerHTML = kpis.map((k, i) =>
+            `<div class="kpi${i === 1 ? ' accent' : ''}"><b>${k[1]}</b><span>${k[0]} · ${k[2]}</span></div>`).join('');
+    }
+
+    function renderLine() {
+        const box = $('#line-wrap');
+        const byDay = new Map();
+        DATA.forEach(r => {
+            if (r.day) byDay.set(r.day, (byDay.get(r.day) || 0) + 1);
+        });
+        const days = [...byDay.keys()].sort();
+        const vals = days.map(d => byDay.get(d));
+        if (!days.length) {
+            box.innerHTML = '<div class="empty">暂无数据</div>';
+            return;
+        }
+        const W = 760, H = 180, P = 30;
+        const max = Math.max(...vals, 1);
+        const step = days.length > 1 ? (W - P * 2) / (days.length - 1) : 0;
+        const pts = vals.map((v, i) => [P + i * step, H - 22 - (v / max) * (H - 52)]);
+        const path = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+        const area = path + ` L${pts[pts.length - 1][0].toFixed(1)} ${H - 22} L${pts[0][0].toFixed(1)} ${H - 22} Z`;
+        const grid = [0, .25, .5, .75, 1].map(f => {
+            const y = H - 22 - f * (H - 52);
+            return `<line x1="${P - 6}" x2="${W - P + 6}" y1="${y}" y2="${y}" stroke="#f1f2f7"/>` +
+                `<text x="${P - 12}" y="${y + 3}" text-anchor="end" style="fill:#9aa0ae;font-size:10px">${Math.round(max * f)}</text>`;
+        }).join('');
+        const dots = pts.map((p, i) =>
+            `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="8" fill="transparent" data-i="${i}" class="hot"/>` +
+            `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="2.6" fill="#fff" stroke="#6366f1" stroke-width="2" pointer-events="none"/>`).join('');
+        const idx = [...new Set([0, Math.floor(days.length / 3), Math.floor(days.length * 2 / 3), days.length - 1])];
+        const labels = idx.map(i =>
+            `<text x="${pts[i][0].toFixed(1)}" y="${H - 6}" text-anchor="middle" style="fill:#9aa0ae;font-size:10px">${days[i].slice(5)}</text>`).join('');
+        box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${grid}
+    <path d="${area}" fill="#eef0ff" opacity=".55"/>
+    <path d="${path}" fill="none" stroke="#6366f1" stroke-width="2" stroke-linejoin="round"/>
+    ${dots}${labels}</svg><div class="tips" id="lineTip"></div>`;
+        const tip = $('#lineTip');
+        box.querySelectorAll('.hot').forEach(c => {
+            c.addEventListener('mouseenter', () => {
+                const i = +c.dataset.i;
+                tip.textContent = `${days[i]}　${vals[i]} 次访问`;
+                tip.style.opacity = 1;
+                tip.style.left = Math.min(c.getBoundingClientRect().left - box.getBoundingClientRect().left, box.clientWidth - 140) + 'px';
+                tip.style.top = (c.getBoundingClientRect().top - box.getBoundingClientRect().top - 30) + 'px';
+            });
+            c.addEventListener('mouseleave', () => {
+                tip.style.opacity = 0;
+            });
+        });
+    }
+
+    function renderHours() {
+        if (!DATA.length) {
+            $('#hours').innerHTML = '<div class="empty">暂无数据</div>';
+            return;
+        }
+        const cnt = new Array(24).fill(0);
+        DATA.forEach(r => {
+            if (r.hour >= 0) cnt[r.hour] += 1;
+        });
+        const max = Math.max(...cnt, 1);
+        $('#hours').innerHTML = cnt.map((v, h) =>
+            `<div class="col" title="${h}:00 - ${h}:59　${v} 次">
+       <div class="bar" style="height:${Math.max(2, v / max * 106).toFixed(1)}px"></div>
+       <div class="cap">${h % 3 === 0 ? h : ''}</div></div>`).join('');
+    }
+
+    function renderDonut(el, obj) {
+        const items = Object.entries(obj).sort((a, b) => b[1] - a[1]);
+        const sum = items.reduce((s, i) => s + i[1], 0) || 1;
+        const top = items.slice(0, 4);
+        const rest = items.slice(4).reduce((s, i) => s + i[1], 0);
+        if (rest > 0) top.push(['其他', rest]);
+        let acc = 0;
+        const R = 56, C = 2 * Math.PI * R;
+        const arcs = top.map((it, i) => {
+            const frac = it[1] / sum;
+            const dash = `${(frac * C).toFixed(2)} ${(C - frac * C).toFixed(2)}`;
+            const off = -acc * C;
+            acc += frac;
+            return `<circle cx="66" cy="66" r="${R}" fill="none" stroke="${PALETTE[i % PALETTE.length]}"
+      stroke-width="16" stroke-dasharray="${dash}" stroke-dashoffset="${off.toFixed(2)}"
+      transform="rotate(-90 66 66)"><title>${esc(it[0])} ${(frac * 100).toFixed(1)}%</title></circle>`;
+        }).join('');
+        const legend = top.map((it, i) =>
+            `<div class="it"><span class="sw" style="background:${PALETTE[i % PALETTE.length]}"></span>
+      <span class="nm" title="${esc(it[0])}">${esc(it[0])}</span>
+      <span class="vl">${fmt(it[1])} · ${(it[1] / sum * 100).toFixed(0)}%</span></div>`).join('');
+        el.innerHTML = items.length ? `<svg viewBox="0 0 132 132">
+      <circle cx="66" cy="66" r="${R}" fill="none" stroke="#f2f3f8" stroke-width="16"/>${arcs}
+      <text x="66" y="62" text-anchor="middle" style="font-size:18px;font-weight:600;fill:#1f2330">${fmt(sum)}</text>
+      <text x="66" y="80" text-anchor="middle" style="font-size:10px;fill:#8b91a1">总访问</text>
+    </svg><div class="legend">${legend}</div>` : '<div class="empty">暂无数据</div>';
+    }
+
+    function renderBars(el, obj, limit) {
+        const items = Object.entries(obj).sort((a, b) => b[1] - a[1]).slice(0, limit || 8);
+        if (!items.length) {
+            el.innerHTML = '<div class="empty">暂无数据</div>';
+            return;
+        }
+        const max = items[0][1] || 1;
+        el.innerHTML = items.map(([k, v]) =>
+            `<div class="hbar" title="${esc(k)}：${v} 次">
+       <span class="lbl">${esc(k || '未知')}</span>
+       <span class="track"><span class="fill" style="width:${(v / max * 100).toFixed(1)}%"></span></span>
+       <span class="num">${fmt(v)}</span>
+     </div>`).join('');
+    }
+
+    function renderTable() {
+        const total = filtered.length;
+        const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+        if (page > pages) page = pages;
+        const slice = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+        $('#cnt').textContent = `共 ${fmt(DATA.length)} 条 · 命中 ${fmt(total)} 条`;
+        $('#empty').hidden = total !== 0;
+        $('#rows').innerHTML = slice.map(r => `
+    <tr>
+      <td class="mono">${esc(r.t.slice(5, 16))}</td>
+      <td class="mono">${esc(r.ip || '—')}</td>
+      <td>${esc(r.geo || '—')}${r.isp ? `<span class="tag">${esc(r.isp)}</span>` : ''}</td>
+      <td>${esc(r.device || '—')}${r.app ? `<span class="tag">${esc(r.app)}</span>` : ''}</td>
+      <td>${esc(r.os || '—')}</td>
+      <td>${esc(r.browser || '—')}</td>
+      <td title="${esc(r.url)}">${esc(r.title || '—')}</td>
+    </tr>`).join('');
+        const btns = [`<button data-p="${page - 1}" ${page === 1 ? 'disabled' : ''}>上一页</button>`];
+        const win = [];
+        for (let i = 1; i <= pages; i++) {
+            if (i === 1 || i === pages || Math.abs(i - page) <= 1) win.push(i);
+            else if (win[win.length - 1] !== '…') win.push('…');
+        }
+        win.forEach(i => btns.push(i === '…' ? '<span>…</span>'
+            : `<button data-p="${i}" class="${i === page ? 'on' : ''}">${i}</button>`));
+        btns.push(`<button data-p="${page + 1}" ${page === pages ? 'disabled' : ''}>下一页</button>`);
+        btns.push(`<span>第 ${page} / ${pages} 页</span>`);
+        $('#pager').innerHTML = btns.join('');
+        $('#pager').querySelectorAll('button[data-p]').forEach(b => {
+            b.onclick = () => {
+                const p = +b.dataset.p;
+                if (p >= 1 && p <= pages) {
+                    page = p;
+                    renderTable();
+                }
+            };
+        });
+    }
+
+    function applyFilter() {
+        const q = $('#q').value.trim().toLowerCase();
+        const dev = $('#fDev').value, br = $('#fBr').value, day = $('#fDay').value;
+        filtered = DATA.filter(r => {
+            if (dev && r.device !== dev) return false;
+            if (br && r.browser !== br) return false;
+            if (day && r.day !== day) return false;
+            if (!q) return true;
+            return [r.ip, r.geo, r.title, r.ua, r.url, r.os, r.browser, r.cid]
+                .join(' ').toLowerCase().indexOf(q) >= 0;
+        });
+        // 明细按时间倒序：最新访问排在最前（DATA 本身仍按时间正序，供趋势图使用）
+        filtered.sort((a, b) => (a.t < b.t ? 1 : (a.t > b.t ? -1 : 0)));
+        page = 1;
+        renderTable();
+    }
+
+    function fillSelect(el, values) {
+        if (!values.length) return;
+        const first = el.options[0];
+        el.innerHTML = '';
+        el.appendChild(first);
+        values.forEach(v => {
+            const o = document.createElement('option');
+            o.value = v;
+            o.textContent = v;
+            el.appendChild(o);
+        });
+    }
+
+    function renderAll() {
+        renderKpis();
+        renderLine();
+        renderHours();
+        renderDonut($('#browser'), counter(r => r.browser));
+        renderBars($('#os'), counter(r => r.os), 6);
+        renderBars($('#device'), counter(r => r.app ? r.device + ' / ' + r.app : r.device), 6);
+        renderBars($('#region'), counter(r => r.city || r.geo), 10);
+        renderBars($('#ipTop'), counter(r => r.ip), 10);
+        const devs = [...new Set(DATA.map(r => r.device).filter(Boolean))].sort();
+        const brs = [...new Set(DATA.map(r => r.browser).filter(Boolean))].sort();
+        const dys = [...new Set(DATA.map(r => r.day).filter(Boolean))].sort().reverse();
+        fillSelect($('#fDev'), devs);
+        fillSelect($('#fBr'), brs);
+        fillSelect($('#fDay'), dys);
+        applyFilter();
+    }
+
+    function setMeta(data, meta) {
+        $('#mRange').textContent = meta.range || '无数据';
+        $('#mCount').textContent = `有效记录 ${fmt(data.length)} 条 · 载入 ${fmt(meta.loaded || 0)} 行 / 总计 ${fmt(meta.lines || 0)} 行`;
+        $('#mGen').textContent = meta.modified ? `日志更新于 ${meta.modified}` : '';
+    }
+
+    function setStatus(kind, text) {
+        const el = $('#status');
+        el.className = 'status ' + kind;
+        $('#statusText').textContent = text;
+    }
+
+    function setBanner(msg) {
+        const b = $('#banner');
+        b.textContent = msg || '';
+        b.hidden = !msg;
+    }
+
+    function fmtTime(ms) {
+        const d = new Date(ms);
+        const p = n => (n < 10 ? '0' + n : '' + n);
+        return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+    }
+
+    /* ========== 数据加载（只走接口，不做任何本地兜底数据） ========== */
+    async function load() {
+        const btn = $('#btnRefresh');
+        setStatus('', '正在拉取 logs/client-info.log（' + limitLabel() + '）…');
+        btn.disabled = true;
+        try {
+            if (!API_BASE) throw new Error('当前以 file:// 打开，浏览器不允许请求后端接口');
+            const res = await fetch(apiUrl(), {cache: 'no-store', credentials: 'include'});
+            if (!res.ok) throw new Error('HTTP ' + res.status + (res.status === 403 ? '（无权限）' : (res.status === 404 ? '（日志文件不存在）' : '')));
+            const text = await res.text();
+            const rows = parseLog(text);
+            if (!rows.length) throw new Error('日志为空或格式未识别');
+            const days = rows.map(r => r.day).filter(Boolean).sort();
+            const headerTotal = +(res.headers.get('X-Log-Total-Lines') || 0);
+            const loaded = +(res.headers.get('X-Log-Lines') || text.split('\n').filter(s => s.trim()).length);
+            const modMs = +(res.headers.get('X-Log-Modified') || 0);
+            DATA = rows;
+            setMeta(rows, {
+                range: days.length ? days[0] + ' ~ ' + days[days.length - 1] : '',
+                lines: headerTotal || loaded,
+                loaded: loaded,
+                modified: modMs ? fmtTime(modMs) : ''
+            });
+            renderAll();
+            setBanner('');
+            const now = new Date();
+            setStatus('live', '实时 · ' + ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2) + ':' + ('0' + now.getSeconds()).slice(-2) + ' 更新（' + limitLabel() + '）');
+        } catch (e) {
+            const msg = e.message || '未知错误';
+            setStatus('err', '接口不可用：' + msg);
+            setBanner('无法获取 logs/client-info.log（' + msg + '）。请确认服务已启动，并通过 http://<主机>:<端口>/client-info-report.html 打开本页；直接用本地文件打开无法访问接口。');
+            if (!DATA.length) {
+                setMeta([], {range: '', lines: 0, loaded: 0, modified: ''});
+                renderAll();
+            }
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    (function init() {
+        const fullBtn = $('#btnFull');
+        const syncFull = () => {
+            fullBtn.textContent = limit === 0 ? '仅看最近 ' + fmt(PAGE_LIMIT) + ' 行' : '加载全量';
+        };
+        syncFull();
+        $('#btnRefresh').onclick = load;
+        fullBtn.onclick = () => {
+            limit = limit === 0 ? PAGE_LIMIT : 0;
+            syncFull();
+            load();
+        };
+        $('#q').addEventListener('input', applyFilter);
+        ['#fDev', '#fBr', '#fDay'].forEach(s => $(s).addEventListener('change', applyFilter));
+        setInterval(() => {
+            if ($('#autoRefresh').checked && !document.hidden) load();
+        }, AUTO_MS);
+        load();
+    })();
+</script>
+</body>
+</html>

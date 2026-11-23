@@ -65,6 +65,7 @@ public class LocalMonitorHttpServer {
                 MyHandler.setGlobalSemaphore(globalSemaphore);//统一设置限流信号量
                 server.createContext("/", new TextFileHandler("index.html", "text/html"));
                 server.createContext("/DouYinVideoPares.html", new TextFileHandler("DouYinVideoPares.html", "text/html"));
+                server.createContext("/client-info-report.html", new TextFileHandler("client-info-report.html", "text/html"));
                 server.createContext("/FLVPlayer.html", new TextFileHandler("FLVPlayer.html", "text/html"));
                 server.createContext("/img", new StreamFileHandler("/img/"));
                 server.createContext("/js", new StreamFileHandler("/js/", "text/javascript"));
