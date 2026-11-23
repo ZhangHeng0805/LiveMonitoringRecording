@@ -760,7 +760,7 @@
         .lml-act .is-ok { color: var(--lml-ok); }
         .lml-act .is-folder { color: #eab308; }
 
-        /* 图标按钮（低频操作收成方块，靠 title 提示） */
+        /* 图标按钮（已被带文字的低频操作按钮取代，保留样式兼容旧模板） */
         .lml-act.is-icon {
             width: 1.95rem;
             padding: 0;
@@ -771,6 +771,15 @@
         .lml-act.is-icon:hover { color: var(--lml-text); }
         .lml-act.is-icon.is-danger:hover { color: var(--lml-danger); border-color: rgba(220, 38, 38, .3); background: #fff6f5; }
         .lml-act.is-icon.is-ok:hover { color: var(--lml-ok); border-color: rgba(22, 163, 74, .3); background: #f2fbf5; }
+
+        /* 危险操作（删除、停止监控）：和左侧按钮同样的胶囊样式，只换配色 */
+        .lml-act.is-danger {
+            color: #b42318;
+            background: rgba(220, 38, 38, .06);
+            border-color: rgba(220, 38, 38, .26);
+        }
+
+        .lml-act.is-danger:hover { background: rgba(220, 38, 38, .12); border-color: rgba(220, 38, 38, .4); }
 
         /* 录制/监控这类二态按钮：开态绿、关态红 */
         .lml-act.is-on {
@@ -790,6 +799,85 @@
         .lml-act.is-off:hover { background: rgba(220, 38, 38, .12); border-color: rgba(220, 38, 38, .4); }
 
         .lml-actions-spacer { flex: 1 1 auto; }
+
+        /* 「更多」下拉：把低频 / 危险操作按分类收进菜单，主行只留高频动作 */
+        .lml-more { position: relative; display: inline-block; }
+
+        .lml-more-toggle { padding: 0 .5rem 0 .6rem; }
+        .lml-more-toggle .lml-more-caret {
+            font-size: .68rem;
+            color: var(--lml-text-3);
+            transition: transform .18s ease;
+        }
+
+        .lml-more.is-open .lml-more-caret { transform: rotate(180deg); }
+        .lml-more.is-open .lml-more-toggle {
+            color: var(--lml-text);
+            background: #f6f7fb;
+            border-color: #dfe2ea;
+        }
+
+        .lml-more-menu {
+            position: absolute;
+            right: 0;
+            bottom: calc(100% + .35rem);
+            z-index: 60;
+            min-width: 10.2rem;
+            padding: .3rem;
+            background: #fff;
+            border: 1px solid var(--lml-line);
+            border-radius: .55rem;
+            box-shadow: 0 16px 32px -18px rgba(24, 30, 48, .35), 0 2px 6px rgba(24, 30, 48, .06);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(6px);
+            transition: opacity .16s ease, transform .16s ease, visibility .16s;
+        }
+
+        .lml-more.is-open .lml-more-menu {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        /* 菜单分组标题：按「房间 / 监听状态」分类，危险动作单独一组 */
+        .lml-more-label {
+            padding: .28rem .45rem .18rem;
+            font-size: .64rem;
+            font-weight: 700;
+            letter-spacing: .04em;
+            color: var(--lml-text-3);
+        }
+
+        .lml-more-sep { height: 1px; margin: .25rem .2rem; background: var(--lml-line); }
+
+        .lml-more-item {
+            display: flex;
+            align-items: center;
+            gap: .45rem;
+            width: 100%;
+            padding: .4rem .5rem;
+            font-family: inherit;
+            font-size: .73rem;
+            font-weight: 600;
+            color: var(--lml-text-2);
+            text-align: left;
+            background: none;
+            border: 0;
+            border-radius: .4rem;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background .15s ease, color .15s ease;
+        }
+
+        .lml-more-item .fa { width: .85rem; font-size: .78rem; text-align: center; }
+        .lml-more-item:hover { color: var(--lml-primary); background: #f4f6ff; }
+        .lml-more-item:hover .fa { color: var(--lml-primary); }
+
+        .lml-more-item.is-danger { color: #b42318; }
+        .lml-more-item.is-danger .fa { color: var(--lml-danger); }
+        .lml-more-item.is-danger:hover { color: #b42318; background: rgba(220, 38, 38, .1); }
+        .lml-more-item.is-danger:hover .fa { color: var(--lml-danger); }
 
         /* 纯享播放（hover 下拉） */
         .lml-drop { position: relative; display: inline-block; }
@@ -934,7 +1022,17 @@
             .lml-cover img { max-height: 26rem; }
             .lml-info-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .lml-record-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-            .lml-act { flex: 1 1 auto; justify-content: center; }
+            /* 移动端按钮两列排布：整行铺满会出现「设置」独占一行的怪样子 */
+            .lml-act { flex: 1 1 calc(50% - .2rem); max-width: calc(50% - .2rem); justify-content: center; }
+            /* 纯享播放是下拉容器，也按半宽栅格对齐，否则窄成一截 */
+            .lml-drop { flex: 1 1 calc(50% - .2rem); max-width: calc(50% - .2rem); }
+            .lml-drop-toggle { width: 100%; justify-content: center; }
+            /* 「更多」不限最大宽度：偶数个按钮时与左邻配对成半宽，奇数落单时自动撑满整行 */
+            .lml-more { flex: 1 1 calc(50% - .2rem); }
+            .lml-more-toggle { width: 100%; max-width: none; flex: none; justify-content: center; }
+            .lml-more-menu { left: 0; right: auto; min-width: 100%; }
+            .lml-actions-spacer { display: none; }
+            .lml-act.is-icon { flex: 0 0 auto; }
             .lml-nickname { max-width: 9rem; }
             .lml-card-head { padding: .7rem .75rem .6rem; }
             .lml-card-body { padding: .7rem .75rem .8rem; }

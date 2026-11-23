@@ -467,8 +467,13 @@
             display: flex;
             gap: .55rem;
             overflow-x: auto;
+            /* 父级 .dyx-stage 是 column + align-items:center，条带会按内容宽撑开并被居中，
+               导致首图连同左上角序号被裁到面板外；显式吃掉整行宽度即可对齐 */
+            width: 100%;
+            min-width: 0;
+            box-sizing: border-box;
             padding: .1rem .05rem .35rem;
-            scroll-snap-type: x proximity;
+            scroll-snap-type: none; /* 去掉吸附：吸附会把首图推离可视区，序号角标跟着被裁 */
             scrollbar-width: thin;
             scrollbar-color: #cfd3dc transparent;
         }
@@ -488,7 +493,7 @@
             border: 2px solid transparent;
             background: #fff;
             cursor: pointer;
-            scroll-snap-align: center;
+            scroll-snap-align: start;
             transition: border-color .15s ease;
         }
 
@@ -513,6 +518,74 @@
             color: #fff;
             background: linear-gradient(to top, rgba(0, 0, 0, .66), rgba(0, 0, 0, 0));
             text-align: center;
+        }
+
+        /* 图片快速定位导航 */
+        .dyx-image-nav {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: .4rem;
+            padding: .15rem 1rem .55rem;
+        }
+
+        .dyx-nav-arrow {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex: none;
+            width: 1.6rem;
+            height: 1.6rem;
+            border-radius: 50%;
+            border: 1px solid #e5e7ee;
+            background: #fff;
+            color: var(--dyx-text-2);
+            font-size: .9rem;
+            line-height: 1;
+            cursor: pointer;
+            transition: color .15s ease, border-color .15s ease, background .15s ease;
+        }
+
+        .dyx-nav-arrow:hover:not(:disabled) {
+            color: var(--dyx-primary);
+            border-color: rgba(99, 102, 241, .45);
+        }
+
+        .dyx-nav-arrow:disabled { opacity: .4; cursor: default; }
+
+        .dyx-nav-dots {
+            display: flex;
+            align-items: center;
+            gap: .3rem;
+            overflow-x: auto;
+            max-width: 100%;
+            padding: .1rem 0;
+            scrollbar-width: none;
+        }
+
+        .dyx-nav-dots::-webkit-scrollbar { display: none; }
+
+        .dyx-nav-dot {
+            flex: none;
+            min-width: 1.55rem;
+            height: 1.55rem;
+            padding: 0 .35rem;
+            border-radius: .8rem;
+            border: 1px solid #e5e7ee;
+            background: #fff;
+            color: var(--dyx-text-2);
+            font-size: .72rem;
+            line-height: 1;
+            cursor: pointer;
+            transition: color .15s ease, border-color .15s ease, background .15s ease;
+        }
+
+        .dyx-nav-dot:hover { color: var(--dyx-primary); border-color: rgba(99, 102, 241, .45); }
+
+        .dyx-nav-dot.is-active {
+            color: #fff;
+            background: var(--dyx-primary);
+            border-color: var(--dyx-primary);
         }
 
         /* 音频 */
@@ -724,6 +797,12 @@
             <div class="dyx-stage dyx-stage-light">
                 <div id="imageScrollWrap" class="dyx-image-strip"></div>
             </div>
+            <!-- 图片快速定位：左右箭头 + 序号点，点击直接跳到对应图 -->
+            <div id="imageNav" class="dyx-image-nav hidden">
+                <button type="button" class="dyx-nav-arrow" data-nav="prev" aria-label="上一张"><i class="fa fa-angle-left"></i></button>
+                <div id="imageNavDots" class="dyx-nav-dots"></div>
+                <button type="button" class="dyx-nav-arrow" data-nav="next" aria-label="下一张"><i class="fa fa-angle-right"></i></button>
+            </div>
             <div class="dyx-media-foot">
                 <div class="dyx-chips">
                     <span class="dyx-chip"><i class="fa fa-picture-o"></i>点选图片后下载</span>
@@ -882,9 +961,15 @@
     // 渲染图片
     function renderImageList(images) {
         const scrollWrap = document.getElementById('imageScrollWrap');
+        const navEl = document.getElementById('imageNav');
+        const dotsEl = document.getElementById('imageNavDots');
         scrollWrap.innerHTML = '';
+        dotsEl.innerHTML = '';
+        navEl.classList.add('hidden');
         selectedImgSrc = null;
         if (!images || images.length === 0) return;
+
+        const thumbs = [];
 
         images.forEach((image, index) => {
             const div = document.createElement('div');
@@ -893,21 +978,68 @@
             img.src = image.url || '';
             img.alt = `${image.specifications || ""} 图片`;
             img.loading = 'lazy';
+            // 图片解码会改变条带宽度，浏览器可能恢复旧的横向偏移，把首图连同左上角序号一起推出可视区
+            img.addEventListener('load', () => {
+                if (scrollWrap.scrollLeft !== 0) scrollWrap.scrollLeft = 0;
+            });
             div.appendChild(img);
+            // 与视频页一致：多张图时左上角标「序号 / 总数」
+            if (images.length > 1) {
+                const badge = document.createElement('span');
+                badge.className = 'dyx-media-badge';
+                badge.textContent = `${index + 1} / ${images.length}`;
+                div.appendChild(badge);
+            }
             if (image.specifications) {
                 const spec = document.createElement('span');
                 spec.className = 'dyx-thumb-spec';
                 spec.textContent = image.specifications;
                 div.appendChild(spec);
             }
-            div.addEventListener('click', () => {
-                scrollWrap.querySelectorAll('.dyx-thumb').forEach(el => el.classList.remove('is-selected'));
-                div.classList.add('is-selected');
-                selectedImgSrc = image.url;
-            });
+            div.addEventListener('click', () => selectImage(index));
             scrollWrap.appendChild(div);
+            thumbs.push(div);
         });
-        scrollWrap.firstElementChild?.click();
+
+        // 选中第 index 张，并把它滚到条带左端
+        let currentIndex = 0;
+        function selectImage(index, keepScroll = false) {
+            if (index < 0 || index >= thumbs.length) return;
+            currentIndex = index;
+            thumbs.forEach((el, i) => el.classList.toggle('is-selected', i === index));
+            selectedImgSrc = images[index].url;
+            dotsEl.querySelectorAll('.dyx-nav-dot').forEach((dot, i) => dot.classList.toggle('is-active', i === index));
+            prevArrow.disabled = index === 0;
+            nextArrow.disabled = index === thumbs.length - 1;
+            const activeDot = dotsEl.querySelector('.dyx-nav-dot.is-active');
+            if (activeDot && dotsEl.scrollWidth > dotsEl.clientWidth) {
+                dotsEl.scrollLeft = activeDot.offsetLeft - (dotsEl.clientWidth - activeDot.offsetWidth) / 2;
+            }
+            if (keepScroll) return;
+            const delta = thumbs[index].getBoundingClientRect().left - scrollWrap.getBoundingClientRect().left;
+            scrollWrap.scrollTo({ left: scrollWrap.scrollLeft + delta - 1, behavior: 'auto' });
+        }
+
+        // 多张图时才显示快速定位导航
+        if (images.length > 1) {
+            navEl.classList.remove('hidden');
+            images.forEach((_, index) => {
+                const dot = document.createElement('button');
+                dot.type = 'button';
+                dot.className = 'dyx-nav-dot';
+                dot.textContent = `${index + 1}`;
+                dot.addEventListener('click', () => selectImage(index));
+                dotsEl.appendChild(dot);
+            });
+        }
+
+        const prevArrow = navEl.querySelector('[data-nav="prev"]');
+        const nextArrow = navEl.querySelector('[data-nav="next"]');
+        prevArrow.onclick = () => selectImage(currentIndex - 1);
+        nextArrow.onclick = () => selectImage(currentIndex + 1);
+
+        selectImage(0, true);
+        scrollWrap.scrollLeft = 0;
         requestAnimationFrame(() => { scrollWrap.scrollLeft = 0; });
     }
 
@@ -1082,6 +1214,11 @@
         contentPanels.forEach(panel => {
             panel.classList.toggle('hidden', panel.id !== `${tabName}Tab`);
         });
+        if (tabName === 'image') {
+            // 切回图片 tab 时把条带复位，避免残留的横向偏移把首图序号挤出可视区
+            const wrap = document.getElementById('imageScrollWrap');
+            if (wrap) wrap.scrollLeft = 0;
+        }
     }
 
     document.addEventListener('DOMContentLoaded', () => {

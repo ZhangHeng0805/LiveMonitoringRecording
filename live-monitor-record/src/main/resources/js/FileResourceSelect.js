@@ -83,6 +83,9 @@ const FILE_TREE_STYLE = `
   .frx-row { display: flex; align-items: center; gap: .5rem; padding: .35rem .5rem; border-radius: .4rem;
     font-size: .82rem; color: #374151; text-decoration: none; cursor: pointer; transition: background .12s; }
   .frx-row:hover { background: #f1f5ff; }
+  /* 行用 display:flex 会盖掉 [hidden] 的 UA 样式，搜索过滤必须靠这条兜底 */
+  .frx-tree [hidden] { display: none !important; }
+  .frx-empty { padding: 1.2rem .5rem; text-align: center; font-size: .82rem; color: #9ca3af; }
   /* 文件行 + 单场统计图按钮：a 标签里不能嵌 button，所以外面再套一层 */
   .frx-filewrap { display: flex; align-items: center; gap: .1rem; }
   .frx-filewrap > .frx-row { flex: 1 1 auto; min-width: 0; }
@@ -209,16 +212,75 @@ function showFileSelectModal(key) {
   if (searchDom) {
     const applyFilter = debounce(function () {
       const keyword = searchDom.value.trim().toLowerCase();
-      treeDom.querySelectorAll(".frx-row").forEach(function (row) {
-        const name = (row.dataset.name || "").toLowerCase();
-        const hit = !keyword || name.indexOf(keyword) > -1;
-        row.hidden = !hit;
+
+      // 文件行：连外面的包装一起隐藏，避免只剩一个孤立的统计图按钮
+      treeDom.querySelectorAll(".frx-filewrap").forEach(function (wrap) {
+        const row = wrap.querySelector(".frx-row");
+        const name = ((row && row.dataset.name) || "").toLowerCase();
+        wrap.hidden = !!keyword && name.indexOf(keyword) === -1;
       });
+
+      // 搜索时隐藏分页按钮（后端分页的「加载更多」与本地过滤冲突）
       treeDom.querySelectorAll(".frx-more").forEach(function (btn) {
         btn.hidden = !!keyword;
       });
+
+      // 目录：自身命中则整体展开；否则只在已加载内容里有命中时展开，全无命中就隐藏
+      treeDom.querySelectorAll(".frx-folder").forEach(function (folder) {
+        const toggle = folder.querySelector(".frx-folder-toggle");
+        const child = folder.querySelector(".frx-child");
+        const name = ((toggle && toggle.dataset.name) || "").toLowerCase();
+        const loaded = folder.querySelectorAll(".frx-filewrap").length;
+        const childHit = Array.prototype.some.call(
+          folder.querySelectorAll(".frx-filewrap"),
+          function (wrap) { return !wrap.hidden; }
+        );
+
+        if (!keyword) {
+          folder.hidden = false;
+          return;
+        }
+
+        if (name.indexOf(keyword) > -1) {
+          // 目录名命中：整目录展示，内部文件全放出来
+          folder.hidden = false;
+          folder.querySelectorAll(".frx-filewrap").forEach(function (wrap) { wrap.hidden = false; });
+          if (child) child.hidden = false;
+          return;
+        }
+
+        if (loaded && childHit) {
+          folder.hidden = false;
+          if (child) child.hidden = false;
+        } else if (loaded) {
+          folder.hidden = true;
+        } else {
+          // 还没加载过的目录保持可见，用户可以自己展开再找
+          folder.hidden = false;
+        }
+      });
+
+      // 命中数量提示 + 空结果占位
+      const hits = treeDom.querySelectorAll(".frx-filewrap:not([hidden])").length;
+      const meta = document.getElementById("frxMeta");
+      let emptyDom = treeDom.querySelector(".frx-empty");
+      if (keyword && hits === 0) {
+        if (!emptyDom) {
+          emptyDom = document.createElement("div");
+          emptyDom.className = "frx-empty";
+          emptyDom.textContent = "没有匹配的文件名，换个关键词试试";
+          treeDom.appendChild(emptyDom);
+        }
+      } else if (emptyDom) {
+        emptyDom.remove();
+      }
+      if (meta) {
+        if (keyword) meta.textContent = `命中 ${hits} 个文件`;
+        else meta.textContent = `共 ${treeDom.dataset.total || 0} 项`;
+      }
     }, 180);
     searchDom.addEventListener("input", applyFilter);
+    searchDom.addEventListener("search", applyFilter);
   }
 
   if (refreshDom) {
@@ -353,10 +415,18 @@ async function renderContent(boxDom, path, isAppend) {
   if (isRoot && !isAppend) updateMeta(total);
   bindFolderToggle(boxDom);
   bindChartButtons(boxDom);
+
+  // 搜索状态下继续翻页 / 展开目录时，新渲染出来的行也要跟着过滤
+  const activeSearch = document.getElementById("frxSearch");
+  if (activeSearch && activeSearch.value.trim()) {
+    activeSearch.dispatchEvent(new Event("input"));
+  }
 }
 
 /** 更新右上角数量提示 */
 function updateMeta(count) {
+  const tree = document.getElementById("frxTree");
+  if (tree) tree.dataset.total = String(count || 0);
   const meta = document.getElementById("frxMeta");
   if (!meta) return;
   meta.textContent = count > 0 ? `共 ${count} 项` : "";

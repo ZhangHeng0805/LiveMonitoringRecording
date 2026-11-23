@@ -110,6 +110,9 @@ public class DouYinBrowserUtil {
      */
     public static Boolean extractRoomInfo(DouYinRoom room, Page page) {
         String title = safeGetTitle(page);
+        if (title == null) {
+            title = "";
+        }
         if (title.contains("验证码")) {
             log.warn("访问" + room.getRoomUrl() + "导致浏览器触发验证码验证机制！");
             return false;
@@ -142,12 +145,15 @@ public class DouYinBrowserUtil {
             String nickname = extractNickname(pageSource);
             room.setNickname(nickname);
         }
-        if (room.getAvatar() == null) {
+        if (StrUtil.isBlank(room.getAvatar())) {
             String avatarStr = extractStr(pageSource, AVATAR_PATTERN, null);
-            if (avatarStr.contains("\\u")) {
-                room.setAvatar(UnicodeUtil.toString(avatarStr.trim()));
+            // 未开播/页面结构变化时可能抽不到头像，不能让空值把整次刷新打断
+            if (StrUtil.isNotBlank(avatarStr)) {
+                room.setAvatar(avatarStr.contains("\\u")
+                        ? UnicodeUtil.toString(avatarStr.trim())
+                        : avatarStr.trim());
             } else {
-                room.setAvatar(avatarStr.trim());
+                log.debug("{} 未抽取到头像地址，本轮跳过头像更新", room.getId());
             }
         }
         return true;

@@ -98,14 +98,19 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             roomMonitor = getRoomMonitor(room);
             int i = 1;
             while (getIsRunning() && room.getNickname() == null) {
-                if (i == 6) {
+                if (i >= 6) {
                     throw new RuntimeException(room.getRoomUrl() + " 直播间初始化异常；获取直播间信息失败");
                 }
                 try {
                     TimeUnit.SECONDS.sleep(i);
                 } catch (InterruptedException ignored) {
                 }
-                roomMonitor.refresh(false);
+                try {
+                    roomMonitor.refresh(false);
+                } catch (Exception e) {
+                    // 单次刷新异常（页面结构变化、头像/昵称抽不到等）不应直接把整个监听判死，重试几轮再放弃
+                    log.warn("直播间初始化刷新失败（第{}次）：{}", i, ThrowableUtil.getAllCauseMessage(e));
+                }
                 i++;
             }
             Thread.currentThread().setName(room.getNickname() + "-main-" + room.getPlatform().name());
@@ -133,7 +138,9 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         } finally {
             isRunning.set(false);
             status = MonitorStatus.END;
-            roomMonitor.unregisterMBean();
+            if (roomMonitor != null) {
+                roomMonitor.unregisterMBean();
+            }
             if (logUtil != null) {
                 logUtil.close();
             }

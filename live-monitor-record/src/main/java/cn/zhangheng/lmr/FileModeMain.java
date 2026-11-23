@@ -183,10 +183,10 @@ public class FileModeMain {
             log.error("{} 监听发生异常:{}", file, e.getMessage(), e);
         } finally {
             endMonitor(model);
-            // 启动阶段失败（解析失败/平台为空/授权异常等）：回滚注册，避免占着 key 又无法再次添加
-            if (startFailed && model != null) {
-                roomFileMap.remove(file, model);
-                log.warn("{} 监听启动失败，已回滚监听注册状态", file);
+            // 启动阶段失败（解析失败/平台为空/授权异常等）只记录告警，保留注册的监听记录
+            // 否则房间会从列表里消失，用户既看不到也无法手动重启
+            if (startFailed) {
+                log.warn("{} 监听启动失败，已保留监听记录，可在页面手动重启", file);
             }
         }
     }

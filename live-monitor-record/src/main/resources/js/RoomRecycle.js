@@ -59,8 +59,16 @@ function showRoomRecycleModel(key, data) {
     const total = (data && data.total) || 0;
     setModalContent(
         "直播监听回收站",
-        `<div class="rounded-lg border border-gray-200 bg-gray-50/60">
-            <div id="roomRecycleList" data-key="${escapeHtml(key)}" class="divide-y divide-gray-200"></div>
+        `<div class="flex items-center gap-2 pb-3">
+            <div class="relative flex-1 min-w-[11rem]">
+                <i class="fa fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                <input id="recycleSearch" type="search" autocomplete="off" placeholder="搜索名称 / 房间ID / 平台"
+                       class="w-full pl-7 pr-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary">
+            </div>
+            <span id="recycleMeta" class="text-xs text-gray-400 whitespace-nowrap">${total ? `共 ${total} 个` : ""}</span>
+        </div>
+        <div class="rounded-lg border border-gray-200 bg-gray-50/60">
+            <div id="roomRecycleList" data-key="${escapeHtml(key)}" data-total="${total}" class="divide-y divide-gray-200"></div>
         </div>`,
         [
             {
@@ -76,6 +84,65 @@ function showRoomRecycleModel(key, data) {
     rootDom.dataset.currentPage = "1";
     rootDom.dataset.pageSize = "100";
     renderRoomRecycleContent(rootDom, data);
+
+    const searchDom = document.getElementById("recycleSearch");
+    if (searchDom) {
+        const run = debounce(applyRecycleFilter, 160);
+        searchDom.addEventListener("input", run);
+        searchDom.addEventListener("search", run);
+    }
+}
+
+/**
+ * 回收站本地过滤：只筛已加载的条目，不额外请求后端
+ * 关键词按空格拆分，多个词要求全部命中（与首页房间搜索口径一致）
+ */
+function applyRecycleFilter() {
+    const rootDom = document.getElementById("roomRecycleList");
+    const searchDom = document.getElementById("recycleSearch");
+    if (!rootDom || !searchDom) return;
+
+    const tokens = String(searchDom.value || "")
+        .toLowerCase()
+        .split(/\s+/)
+        .filter(Boolean);
+    const matcher = typeof fuzzyMatch === "function"
+        ? fuzzyMatch
+        : (text, q) => text.indexOf(q) > -1;
+
+    let hits = 0;
+    rootDom.querySelectorAll(".recycle-item").forEach((card) => {
+        const text = (card.dataset.search || "").toLowerCase();
+        const hit = tokens.length === 0 || tokens.every((t) => matcher(text, t));
+        card.style.display = hit ? "" : "none";
+        if (hit) hits++;
+    });
+
+    // 搜索时隐藏「加载更多」：后端分页和本地过滤会打架
+    const moreBtn = rootDom.querySelector(".load-more-btn");
+    if (moreBtn) moreBtn.style.display = tokens.length ? "none" : "";
+
+    // 空结果占位
+    let emptyDom = rootDom.querySelector(".recycle-empty");
+    if (tokens.length && hits === 0) {
+        if (!emptyDom) {
+            emptyDom = document.createElement("div");
+            emptyDom.className = "recycle-empty px-4 py-8 text-center text-gray-400 text-sm";
+            emptyDom.innerHTML = `<i class="fa fa-search text-xl block mb-2"></i>没有匹配的监听记录，换个关键词试试`;
+            rootDom.appendChild(emptyDom);
+        }
+    } else if (emptyDom) {
+        emptyDom.remove();
+    }
+
+    const meta = document.getElementById("recycleMeta");
+    if (meta) {
+        meta.textContent = tokens.length
+            ? `命中 ${hits} 个`
+            : (rootDom.dataset.total && Number(rootDom.dataset.total) > 0
+                ? `共 ${rootDom.dataset.total} 个`
+                : "");
+    }
 }
 
 async function renderRoomRecycleContent(rootDom, data, isAppend = false) {
@@ -94,6 +161,7 @@ async function renderRoomRecycleContent(rootDom, data, isAppend = false) {
     const list = data.list || [];
     const total = data.total || 0;
     const totalPage = Math.ceil(total / pageSize);
+    if (!isAppend) rootDom.dataset.total = String(total);
 
     if (!isAppend) {
         rootDom.innerHTML = "";
@@ -113,6 +181,15 @@ async function renderRoomRecycleContent(rootDom, data, isAppend = false) {
         const info = parseRecycleTitle(item.title);
         const card = document.createElement("div");
         card.className = "recycle-item";
+        // 搜索用的全量文本：名称 / 房间ID / 平台（含中文名）/ 标题 / 路径
+        card.dataset.search = [
+            info.name,
+            info.id,
+            info.platform,
+            platformLabel(info.platform),
+            item.title,
+            item.path,
+        ].filter(Boolean).join(" ").toLowerCase();
         card.innerHTML = `
             <button type="button"
                     class="recycle-toggle w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white transition-colors">
@@ -146,6 +223,8 @@ async function renderRoomRecycleContent(rootDom, data, isAppend = false) {
     }
 
     bindRecycleToggle(rootDom);
+    // 恢复/删除/加载更多后重渲染，关键词继续生效
+    if (document.getElementById("recycleSearch")) applyRecycleFilter();
 }
 
 // 展开/收起详情

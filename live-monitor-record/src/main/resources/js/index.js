@@ -149,7 +149,7 @@ function createLivingRoomElement(item, index) {
                                 <span>保存路径: ${escapeHtml(recorder.path || "无路径信息")}</span>
                             </div>` : ""}
                         </div>
-                        <!-- 操作按钮：常用动作带文字，低频动作收成图标 -->
+                        <!-- 操作按钮：常用动作平铺，低频/危险动作收进「更多」下拉 -->
                         <div class="lml-actions">
                             <a href="${safeUrl(room.roomUrl)}" target="_blank" rel="noopener noreferrer" class="lml-act is-primary">
                                 <i class="fa fa-external-link"></i><span>进入直播间</span>
@@ -164,14 +164,22 @@ function createLivingRoomElement(item, index) {
                                 <i class="fa ${isRecord ? "fa-stop" : "fa-video-camera"}"></i>
                                 <span>${isRecord ? "停止录制" : "开始录制"}</span>
                             </button>
-                            <button type="button" data-act="monitor" data-key="${key}" data-flag="false"
-                                    class="lml-act is-icon is-danger" title="停止监控">
-                                <i class="fa fa-stop-circle"></i>
-                            </button>
-                            <button type="button" data-act="setting" data-key="${key}"
-                                    class="lml-act is-icon" title="房间设置">
-                                <i class="fa fa-cog"></i>
-                            </button>
+                            <div class="lml-more">
+                                <button type="button" class="lml-act lml-more-toggle" data-more-toggle="1" title="更多操作">
+                                    <i class="fa fa-ellipsis-h"></i><span>更多</span><i class="fa fa-chevron-down lml-more-caret"></i>
+                                </button>
+                                <div class="lml-more-menu">
+                                    <div class="lml-more-label">房间</div>
+                                    <button type="button" class="lml-more-item" data-act="setting" data-key="${key}">
+                                        <i class="fa fa-cog"></i><span>房间设置</span>
+                                    </button>
+                                    <div class="lml-more-sep"></div>
+                                    <div class="lml-more-label">监听</div>
+                                    <button type="button" class="lml-more-item is-danger" data-act="monitor" data-key="${key}" data-flag="false">
+                                        <i class="fa fa-stop-circle"></i><span>停止监控</span>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>`;
     return div;
@@ -241,14 +249,22 @@ function createNotLivingRoomElement(item, index) {
                                 <i class="fa ${running ? "fa-stop" : "fa-play"}"></i>
                                 <span>${running ? "停止" : "开启"}监控</span>
                             </button>
-                            <button type="button" data-act="setting" data-key="${key}"
-                                    class="lml-act is-icon" title="房间设置">
-                                <i class="fa fa-cog"></i>
-                            </button>
-                            <button type="button" data-act="del" data-key="${key}"
-                                    class="lml-act is-icon is-danger" title="删除监听">
-                                <i class="fa fa-trash-o"></i>
-                            </button>
+                            <div class="lml-more">
+                                <button type="button" class="lml-act lml-more-toggle" data-more-toggle="1" title="更多操作">
+                                    <i class="fa fa-ellipsis-h"></i><span>更多</span><i class="fa fa-chevron-down lml-more-caret"></i>
+                                </button>
+                                <div class="lml-more-menu">
+                                    <div class="lml-more-label">房间</div>
+                                    <button type="button" class="lml-more-item" data-act="setting" data-key="${key}">
+                                        <i class="fa fa-cog"></i><span>房间设置</span>
+                                    </button>
+                                    <div class="lml-more-sep"></div>
+                                    <div class="lml-more-label">危险操作</div>
+                                    <button type="button" class="lml-more-item is-danger" data-act="del" data-key="${key}">
+                                        <i class="fa fa-trash-o"></i><span>删除监听</span>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>`;
     return div;
@@ -288,12 +304,31 @@ function getPlayVideoSelectButton(title, options) {
  * 房间对象从 roomCache 取，避免把 key 拼进 onclick 属性
  */
 function initRoomCardActions() {
+    // 「更多」下拉：点击展开，点空白/菜单项/滚动时收起
+    function closeAllMoreMenus(except) {
+        document.querySelectorAll(".lml-more.is-open").forEach(function (box) {
+            if (box !== except) box.classList.remove("is-open");
+        });
+    }
+
     document.addEventListener("click", function (event) {
+        const toggle = event.target.closest("[data-more-toggle]");
+        if (toggle) {
+            const box = toggle.closest(".lml-more");
+            const willOpen = !box.classList.contains("is-open");
+            closeAllMoreMenus();
+            box.classList.toggle("is-open", willOpen);
+            return;
+        }
+        // 点在菜单外：全部收起（菜单项自身带 data-act，交给下面的委托处理）
+        if (!event.target.closest(".lml-more-menu")) closeAllMoreMenus();
+
         const btn = event.target.closest("[data-act]");
         if (!btn) return;
         const act = btn.dataset.act;
         const key = btn.dataset.key;
         const item = roomCache.get(key);
+        closeAllMoreMenus();
         switch (act) {
             case "refresh":
                 actionRefresh(key);
