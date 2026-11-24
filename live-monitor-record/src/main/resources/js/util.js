@@ -34,6 +34,20 @@ function safeUrl(value, fallback) {
     return escapeHtml(fb);
 }
 
+/**
+ * 是否是可直接加载的远程图片地址（http/https 且像域名）
+ * 后端历史脏数据可能把头像写成 "url_list" 之类的字面量，这类值不能直接塞给 <img>，
+ * 否则只会显示一个破图图标；调用方应退回占位图。
+ * @param {*} value
+ * @returns {boolean}
+ */
+function isRemoteImageUrl(value) {
+    if (typeof value !== "string") return false;
+    const url = value.trim();
+    if (!/^https?:\/\/[^\/\s]+\.[^\/\s]+/i.test(url)) return false;
+    return !url.includes("\\");
+}
+
 /* ==========================================================================
  * 接口令牌（无状态鉴权）
  * 页面托管在 GitHub Pages、后端经 cpolar 暴露时属于跨站访问，浏览器会拦截

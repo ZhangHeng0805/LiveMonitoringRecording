@@ -233,11 +233,16 @@
             grid-column: span 2
         }
 
-        #line-wrap {
+        .span3 {
+            grid-column: span 3
+        }
+
+        /* 折线图容器（访问趋势 / 独立访客趋势共用，提示气泡相对它定位） */
+        .line-box {
             position: relative
         }
 
-        #line-wrap svg {
+        .line-box svg {
             width: 100%;
             height: 180px;
             display: block
@@ -500,6 +505,74 @@
             font-size: 13px
         }
 
+        /* 卡片标题右侧的分段切换（时段分布：整点 / 最近 24 小时） */
+        .seg {
+            margin-left: auto;
+            display: inline-flex;
+            border: 1px solid #dfe2ec;
+            border-radius: 999px;
+            overflow: hidden;
+            background: #fff;
+            flex: none
+        }
+
+        .seg button {
+            border: 0;
+            background: transparent;
+            height: 24px;
+            padding: 0 9px;
+            font-size: 11.5px;
+            color: var(--text-2);
+            cursor: pointer;
+            white-space: nowrap
+        }
+
+        .seg button.on {
+            background: var(--primary);
+            color: #fff
+        }
+
+        .hint {
+            margin: 0 0 10px;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #8b91a1
+        }
+
+        .hint[hidden] {
+            display: none
+        }
+
+        #hours-wrap {
+            position: relative
+        }
+
+        .vbars .col {
+            cursor: pointer;
+            border-radius: 6px;
+            padding-top: 3px;
+            transition: background .15s
+        }
+
+        .vbars .col:hover {
+            background: #f3f4fb
+        }
+
+        .vbars .col.on .bar {
+            background: #ec4899;
+            opacity: 1
+        }
+
+        .m-sub {
+            display: none;
+            margin-top: 3px;
+            font-size: 11px;
+            line-height: 1.5;
+            color: var(--text-2);
+            word-break: normal;
+            overflow-wrap: break-word
+        }
+
         @media (max-width: 980px) {
             .kpis {
                 grid-template-columns:repeat(3, minmax(0, 1fr))
@@ -510,6 +583,10 @@
             }
 
             .span2 {
+                grid-column: auto
+            }
+
+            .span3 {
                 grid-column: auto
             }
 
@@ -529,6 +606,101 @@
         @media (max-width: 560px) {
             .kpis {
                 grid-template-columns:repeat(2, minmax(0, 1fr))
+            }
+        }
+
+        /* ---- 移动端：表格收成两条信息（时间/IP/标题 + 次行元信息），图表按屏宽自适应 ---- */
+        @media (max-width: 720px) {
+            .page {
+                padding: 14px 10px 26px
+            }
+
+            .hide-sm {
+                display: none
+            }
+
+            .m-sub {
+                display: block
+            }
+
+            thead th, tbody td {
+                padding: 7px 6px
+            }
+
+            table {
+                table-layout: fixed;
+                font-size: 12px
+            }
+
+            /* 桌面端给时间/两列留的宽度在窄屏太长，压缩后把空间让给标题 */
+            thead th:first-child, tbody td:first-child {
+                width: 84px !important
+            }
+
+            thead th:nth-child(2), tbody td:nth-child(2) {
+                width: 96px !important
+            }
+
+            .tbl-wrap {
+                max-height: none
+            }
+
+            .card {
+                padding: 12px 12px
+            }
+
+            .card h3 {
+                flex-wrap: wrap;
+                row-gap: 6px
+            }
+
+            .seg {
+                margin-left: 0
+            }
+
+            .filters input {
+                min-width: 0;
+                width: 100%;
+                flex: 1 1 100%
+            }
+
+            .filters select {
+                flex: 1 1 28%;
+                min-width: 0
+            }
+
+            .filters .cnt {
+                width: 100%
+            }
+
+            .vbars {
+                gap: 2px
+            }
+
+            .vbars .col .bar {
+                max-width: none
+            }
+
+            .kpi b {
+                font-size: 20px
+            }
+
+            .donut-wrap {
+                justify-content: center
+            }
+
+            .donut-wrap svg {
+                width: 110px;
+                height: 110px
+            }
+
+            .hbar {
+                grid-template-columns:78px 1fr 38px;
+                gap: 6px
+            }
+
+            .pager {
+                justify-content: center
             }
         }
     </style>
@@ -562,17 +734,33 @@
     <section class="grid">
         <div class="card span2">
             <h3><i class="dot"></i>访问趋势（按天）</h3>
-            <div id="line-wrap"></div>
+            <div class="hint">每天的总访问次数（PV）</div>
+            <div id="line-wrap" class="line-box"></div>
         </div>
         <div class="card">
-            <h3><i class="dot"></i>24 小时分布</h3>
-            <div class="vbars" id="hours"></div>
+            <h3><i class="dot"></i>时段分布
+                <span class="seg" id="hourSeg">
+                    <button data-mode="clock" class="on">按整点</button>
+                    <button data-mode="last24">最近 24 小时</button>
+                </span>
+            </h3>
+            <div id="hours-wrap">
+                <div class="vbars" id="hours"></div>
+                <div class="tips" id="hourTip"></div>
+            </div>
+            <div class="hint" id="hourNote"></div>
         </div>
 
+        <div class="card span2">
+            <h3><i class="dot"></i>独立访客趋势（按天）</h3>
+            <div class="hint" id="uvNote">同一天内按 cid 去重；没有 cid 的老记录退回用 IP 去重</div>
+            <div id="uv-wrap" class="line-box"></div>
+        </div>
         <div class="card">
             <h3><i class="dot"></i>浏览器占比</h3>
             <div class="donut-wrap" id="browser"></div>
         </div>
+
         <div class="card">
             <h3><i class="dot"></i>操作系统</h3>
             <div class="hbars" id="os"></div>
@@ -581,14 +769,14 @@
             <h3><i class="dot"></i>设备 / 终端</h3>
             <div class="hbars" id="device"></div>
         </div>
-
-        <div class="card span2">
-            <h3><i class="dot"></i>地区分布（Top 10）</h3>
-            <div class="hbars" id="region"></div>
-        </div>
         <div class="card">
             <h3><i class="dot"></i>IP 访问次数（Top 10）</h3>
             <div class="hbars" id="ipTop"></div>
+        </div>
+
+        <div class="card span3">
+            <h3><i class="dot"></i>地区分布（Top 10）</h3>
+            <div class="hbars" id="region"></div>
         </div>
     </section>
 
@@ -613,10 +801,10 @@
                 <tr>
                     <th style="width:138px">时间</th>
                     <th style="width:118px">IP</th>
-                    <th style="width:162px">地区</th>
-                    <th style="width:86px">终端</th>
-                    <th style="width:110px">系统</th>
-                    <th style="width:110px">浏览器</th>
+                    <th class="hide-sm" style="width:162px">地区</th>
+                    <th class="hide-sm" style="width:86px">终端</th>
+                    <th class="hide-sm" style="width:110px">系统</th>
+                    <th class="hide-sm" style="width:110px">浏览器</th>
                     <th>页面标题</th>
                 </tr>
                 </thead>
@@ -826,14 +1014,12 @@
             `<div class="kpi${i === 1 ? ' accent' : ''}"><b>${k[1]}</b><span>${k[0]} · ${k[2]}</span></div>`).join('');
     }
 
-    function renderLine() {
-        const box = $('#line-wrap');
-        const byDay = new Map();
-        DATA.forEach(r => {
-            if (r.day) byDay.set(r.day, (byDay.get(r.day) || 0) + 1);
-        });
-        const days = [...byDay.keys()].sort();
-        const vals = days.map(d => byDay.get(d));
+    /* 通用折线图：按天的一条曲线，带 hover / 点击提示（点击后提示保留，方便手机上查看） */
+    function drawLine(box, days, vals, opt) {
+        opt = opt || {};
+        const color = opt.color || '#6366f1';
+        const fill = opt.fill || '#eef0ff';
+        const unit = opt.unit || '次访问';
         if (!days.length) {
             box.innerHTML = '<div class="empty">暂无数据</div>';
             return;
@@ -850,44 +1036,168 @@
                 `<text x="${P - 12}" y="${y + 3}" text-anchor="end" style="fill:#9aa0ae;font-size:10px">${Math.round(max * f)}</text>`;
         }).join('');
         const dots = pts.map((p, i) =>
-            `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="8" fill="transparent" data-i="${i}" class="hot"/>` +
-            `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="2.6" fill="#fff" stroke="#6366f1" stroke-width="2" pointer-events="none"/>`).join('');
+            `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="9" fill="transparent" data-i="${i}" class="hot"/>` +
+            `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="2.6" fill="#fff" stroke="${color}" stroke-width="2" pointer-events="none"/>`).join('');
         const idx = [...new Set([0, Math.floor(days.length / 3), Math.floor(days.length * 2 / 3), days.length - 1])];
         const labels = idx.map(i =>
             `<text x="${pts[i][0].toFixed(1)}" y="${H - 6}" text-anchor="middle" style="fill:#9aa0ae;font-size:10px">${days[i].slice(5)}</text>`).join('');
         box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${grid}
-    <path d="${area}" fill="#eef0ff" opacity=".55"/>
-    <path d="${path}" fill="none" stroke="#6366f1" stroke-width="2" stroke-linejoin="round"/>
-    ${dots}${labels}</svg><div class="tips" id="lineTip"></div>`;
-        const tip = $('#lineTip');
+    <path d="${area}" fill="${fill}" opacity=".55"/>
+    <path d="${path}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>
+    ${dots}${labels}</svg><div class="tips"></div>`;
+        const tip = box.querySelector('.tips');
+
+        const showTip = i => {
+            tip.textContent = `${days[i]}　${fmt(vals[i])} ${unit}`;
+            tip.style.opacity = 1;
+            const rect = box.getBoundingClientRect();
+            const el = box.querySelector(`.hot[data-i="${i}"]`);
+            const cr = el.getBoundingClientRect();
+            tip.style.left = Math.max(0, Math.min(cr.left - rect.left, box.clientWidth - 150)) + 'px';
+            tip.style.top = Math.max(0, cr.top - rect.top - 28) + 'px';
+        };
         box.querySelectorAll('.hot').forEach(c => {
-            c.addEventListener('mouseenter', () => {
-                const i = +c.dataset.i;
-                tip.textContent = `${days[i]}　${vals[i]} 次访问`;
-                tip.style.opacity = 1;
-                tip.style.left = Math.min(c.getBoundingClientRect().left - box.getBoundingClientRect().left, box.clientWidth - 140) + 'px';
-                tip.style.top = (c.getBoundingClientRect().top - box.getBoundingClientRect().top - 30) + 'px';
-            });
+            const i = +c.dataset.i;
+            c.addEventListener('mouseenter', () => showTip(i));
             c.addEventListener('mouseleave', () => {
                 tip.style.opacity = 0;
             });
+            c.addEventListener('click', () => showTip(i)); // 触屏没有 hover，点一下固定显示
         });
     }
 
-    function renderHours() {
-        if (!DATA.length) {
-            $('#hours').innerHTML = '<div class="empty">暂无数据</div>';
+    function renderLine() {
+        const byDay = new Map();
+        DATA.forEach(r => {
+            if (r.day) byDay.set(r.day, (byDay.get(r.day) || 0) + 1);
+        });
+        const days = [...byDay.keys()].sort();
+        drawLine($('#line-wrap'), days, days.map(d => byDay.get(d)), {color: '#6366f1', fill: '#eef0ff'});
+    }
+
+    /* 独立访客趋势：每天按 cid 去重（无 cid 的老记录退回 IP），只有当天没出现过的访客才计数 */
+    function renderUvTrend() {
+        const byDay = new Map();
+        DATA.forEach(r => {
+            if (!r.day) return;
+            const key = r.cid || r.ip;
+            if (!key) return;
+            let set = byDay.get(r.day);
+            if (!set) byDay.set(r.day, set = new Set());
+            set.add(key);
+        });
+        const days = [...byDay.keys()].sort();
+        const vals = days.map(d => byDay.get(d).size);
+        drawLine($('#uv-wrap'), days, vals,
+            {color: '#22c1a4', fill: '#e7f8f4', unit: '位访客'});
+        // 峰值直接写在说明里，不悬停也能看到数字
+        const note = $('#uvNote');
+        if (!days.length) {
+            note.textContent = '同一天内按 cid 去重；没有 cid 的老记录退回用 IP 去重';
             return;
         }
+        const peak = Math.max(...vals);
+        note.textContent = `同一天内按 cid 去重（无 cid 退回 IP）· 共 ${days.length} 天 · 单日峰值 ${peak} 位（${days[vals.indexOf(peak)].slice(5)}）· 点折线上的点看当天人数`;
+    }
+
+    /* ---------- 时段分布：0–23 整点 / 最近 24 小时（滚动） ---------- */
+    let hourMode = 'clock';   // clock = 按访问时间的整点聚合；last24 = 从现在往前推 24 小时
+    let hourSel = -1;
+    let hourBuckets = [];     // [{v, label, range}]
+
+    function parseTs(t) {
+        const d = new Date(String(t || '').replace(' ', 'T'));
+        return isNaN(d.getTime()) ? null : d;
+    }
+
+    function buildHourBuckets() {
+        const now = new Date();
         const cnt = new Array(24).fill(0);
+        if (hourMode === 'last24') {
+            DATA.forEach(r => {
+                const d = parseTs(r.t);
+                if (!d) return;
+                const ago = Math.floor((now - d) / 3600000); // 距今多少小时
+                if (ago >= 0 && ago < 24) cnt[23 - ago] += 1;  // 下标 0 = 23~24 小时前，23 = 当前这一小时
+            });
+            return cnt.map((v, i) => {
+                const ago = 23 - i;
+                const from = new Date(now.getTime() - (ago + 1) * 3600000);
+                const to = new Date(now.getTime() - ago * 3600000);
+                const hh = d => ('0' + d.getHours()).slice(-2);
+                return {
+                    v: v,
+                    cap: i % 4 === 0 ? (ago === 0 ? '现在' : ago + 'h前') : '',
+                    label: `${hh(from)}:00–${hh(to)}:00（${ago === 0 ? '当前小时' : ago + ' 小时前'}）`,
+                    range: `${ago === 0 ? '当前小时' : '约 ' + ago + ' 小时前'}`
+                };
+            });
+        }
         DATA.forEach(r => {
             if (r.hour >= 0) cnt[r.hour] += 1;
         });
-        const max = Math.max(...cnt, 1);
-        $('#hours').innerHTML = cnt.map((v, h) =>
-            `<div class="col" title="${h}:00 - ${h}:59　${v} 次">
-       <div class="bar" style="height:${Math.max(2, v / max * 106).toFixed(1)}px"></div>
-       <div class="cap">${h % 3 === 0 ? h : ''}</div></div>`).join('');
+        return cnt.map((v, h) => ({
+            v: v,
+            cap: h % 3 === 0 ? String(h) : '',
+            label: `${('0' + h).slice(-2)}:00–${('0' + h).slice(-2)}:59`,
+            range: `${('0' + h).slice(-2)} 点档`
+        }));
+    }
+
+    function renderHours() {
+        const box = $('#hours');
+        if (!DATA.length) {
+            hourBuckets = [];
+            box.innerHTML = '<div class="empty">暂无数据</div>';
+            $('#hourNote').textContent = '';
+            return;
+        }
+        hourBuckets = buildHourBuckets();
+        const max = Math.max(...hourBuckets.map(b => b.v), 1);
+        const total = hourBuckets.reduce((s, b) => s + b.v, 0) || 1;
+        box.innerHTML = hourBuckets.map((b, i) =>
+            `<div class="col${i === hourSel ? ' on' : ''}" data-i="${i}">
+       <div class="bar" style="height:${Math.max(2, b.v / max * 106).toFixed(1)}px"></div>
+       <div class="cap">${b.cap}</div></div>`).join('');
+
+        box.querySelectorAll('.col').forEach(el => {
+            el.addEventListener('click', () => selectHour(+el.dataset.i, total));
+        });
+        renderHourNote(total);
+    }
+
+    function renderHourNote(total) {
+        const note = $('#hourNote');
+        if (!hourBuckets.length) {
+            note.textContent = '';
+            return;
+        }
+        if (hourSel < 0 || !hourBuckets[hourSel]) {
+            note.textContent = hourMode === 'clock'
+                ? '按访问时间的整点归集（0–23 时），统计全部已加载日志，不是滚动 24 小时 · 点击柱子看具体次数'
+                : '从当前时间往前推 24 小时，每小时一格（最右为当前小时）· 点击柱子看具体次数';
+            return;
+        }
+        const b = hourBuckets[hourSel];
+        const pct = (b.v / (total || 1) * 100).toFixed(1);
+        note.textContent = `已选 ${b.label} · ${fmt(b.v)} 次访问（占 ${pct}%）`;
+    }
+
+    function selectHour(i, total) {
+        hourSel = i;
+        const box = $('#hours');
+        [...box.children].forEach((el, idx) => el.classList.toggle('on', idx === i));
+        const b = hourBuckets[i];
+        if (!b) return;
+        const tip = $('#hourTip');
+        const wrap = $('#hours-wrap');
+        tip.textContent = `${b.range}　${fmt(b.v)} 次`;
+        tip.style.opacity = 1;
+        const cr = box.children[i].getBoundingClientRect();
+        const wr = wrap.getBoundingClientRect();
+        tip.style.left = Math.max(0, Math.min(cr.left - wr.left, wrap.clientWidth - 130)) + 'px';
+        tip.style.top = Math.max(0, cr.top - wr.top - 30) + 'px';
+        renderHourNote(total);
     }
 
     function renderDonut(el, obj) {
@@ -940,16 +1250,21 @@
         const slice = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
         $('#cnt').textContent = `共 ${fmt(DATA.length)} 条 · 命中 ${fmt(total)} 条`;
         $('#empty').hidden = total !== 0;
-        $('#rows').innerHTML = slice.map(r => `
+        $('#rows').innerHTML = slice.map(r => {
+            // 手机上地区/终端/系统/浏览器四列被隐藏，改在标题下用一行小字合并展示
+            const sub = [r.geo, r.device && (r.app ? r.device + ' / ' + r.app : r.device), r.os, r.browser]
+                .filter(Boolean).join(' · ');
+            return `
     <tr>
       <td class="mono">${esc(r.t.slice(5, 16))}</td>
       <td class="mono">${esc(r.ip || '—')}</td>
-      <td>${esc(r.geo || '—')}${r.isp ? `<span class="tag">${esc(r.isp)}</span>` : ''}</td>
-      <td>${esc(r.device || '—')}${r.app ? `<span class="tag">${esc(r.app)}</span>` : ''}</td>
-      <td>${esc(r.os || '—')}</td>
-      <td>${esc(r.browser || '—')}</td>
-      <td title="${esc(r.url)}">${esc(r.title || '—')}</td>
-    </tr>`).join('');
+      <td class="hide-sm">${esc(r.geo || '—')}${r.isp ? `<span class="tag">${esc(r.isp)}</span>` : ''}</td>
+      <td class="hide-sm">${esc(r.device || '—')}${r.app ? `<span class="tag">${esc(r.app)}</span>` : ''}</td>
+      <td class="hide-sm">${esc(r.os || '—')}</td>
+      <td class="hide-sm">${esc(r.browser || '—')}</td>
+      <td title="${esc(r.url)}">${esc(r.title || '—')}${sub ? `<div class="m-sub">${esc(sub)}</div>` : ''}</td>
+    </tr>`;
+        }).join('');
         const btns = [`<button data-p="${page - 1}" ${page === 1 ? 'disabled' : ''}>上一页</button>`];
         const win = [];
         for (let i = 1; i <= pages; i++) {
@@ -1005,6 +1320,7 @@
     function renderAll() {
         renderKpis();
         renderLine();
+        renderUvTrend();
         renderHours();
         renderDonut($('#browser'), counter(r => r.browser));
         renderBars($('#os'), counter(r => r.os), 6);
@@ -1098,6 +1414,18 @@
         };
         $('#q').addEventListener('input', applyFilter);
         ['#fDev', '#fBr', '#fDay'].forEach(s => $(s).addEventListener('change', applyFilter));
+
+        /* 时段分布口径切换：按整点 / 最近 24 小时 */
+        $('#hourSeg').querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (btn.dataset.mode === hourMode) return;
+                hourMode = btn.dataset.mode;
+                hourSel = -1;
+                $('#hourSeg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b === btn));
+                $('#hourTip').style.opacity = 0;
+                renderHours();
+            });
+        });
         setInterval(() => {
             if ($('#autoRefresh').checked && !document.hidden) load();
         }, AUTO_MS);

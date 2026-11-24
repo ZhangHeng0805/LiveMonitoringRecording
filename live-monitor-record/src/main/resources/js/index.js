@@ -44,8 +44,8 @@ function createRoomHeadElement(item) {
     return `<!-- 卡片头部 -->
                 <div class="lml-card-head">
                     <div class="lml-author">
-                        ${room.avatar
-                            ? `<img src="${safeUrl(room.avatar, "img/favicon.ico")}" alt="${escapeHtml(room.nickname || "未知主播")}" class="lml-avatar" loading="lazy" referrerpolicy="no-referrer">`
+                        ${isRemoteImageUrl(room.avatar)
+                            ? `<img src="${safeUrl(room.avatar)}" alt="${escapeHtml(room.nickname || "未知主播")}" class="lml-avatar" loading="lazy" referrerpolicy="no-referrer">`
                             : `<div class="lml-avatar"><i class="fa fa-user"></i></div>`}
                         <div class="lml-author-meta">
                             <h3 class="lml-nickname" title="${escapeHtml(room.nickname || "未知主播")}">${escapeHtml(room.nickname || "未知主播")}</h3>

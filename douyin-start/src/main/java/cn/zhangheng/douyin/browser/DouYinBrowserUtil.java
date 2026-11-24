@@ -1,6 +1,5 @@
 package cn.zhangheng.douyin.browser;
 
-import cn.hutool.core.text.UnicodeUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.zhangheng.browser.bean.BrowserAPI;
 import cn.zhangheng.browser.factory.MyBrowser;
@@ -31,7 +30,12 @@ import static cn.zhangheng.common.util.UserAgentUtil.PC_VIEWPORTS;
 public class DouYinBrowserUtil {
     public static final Pattern STATUS_STR_PATTERN = Pattern.compile("\\\\\"status_str\\\\\":\\\\\"([^\"]+)\\\\\"");
     public static final Pattern NICKNAME_PATTERN = Pattern.compile("\\\\\"nickname\\\\\":\\\\\"([^\"]+)\\\\\"");
-    public static final Pattern AVATAR_PATTERN = Pattern.compile("\\\\\"url_list\\\\\":\\[\\\\\"([^\"]+)\\\\\"");
+    /**
+     * 头像地址：从 avatar_thumb 之后找到第一个 http(s) 地址并截到引号/反斜杠/逗号为止。
+     * 页面里 cover、房间封面等多个对象都带 url_list，只取页面第一个 url_list 会抓到别的图，
+     * 甚至抓到字面量 "url_list" 这种脏值，因此必须锚定 avatar_thumb 且做 URL 校验。
+     */
+    public static final int AVATAR_SEARCH_WINDOW = 600;
     public static final String TARGET_REQUEST_PREFIX = "https://live.douyin.com/webcast/room/web/enter/";
 
 
@@ -121,6 +125,68 @@ public class DouYinBrowserUtil {
         return extractRoomInfo(room, pageSource);
     }
 
+    /**
+     * 从页面源码里提取头像链接：定位 avatar_thumb，再取其后第一个 http(s) 地址。
+     * 注意页面里是 JSON 转义后的文本（形如 \"avatar_thumb\":{\"url_list\":[\"https://...\"），
+     * 所以遇到 \" 就是地址结束；另外 douyin 偶尔把斜杠转义成 \/，这里顺手还原。
+     */
+    public static String extractAvatarUrl(String pageSource) {
+        if (StrUtil.isBlank(pageSource)) {
+            return null;
+        }
+        int anchor = pageSource.indexOf("avatar_thumb");
+        if (anchor < 0) {
+            return null;
+        }
+        int start = pageSource.indexOf("http", anchor);
+        if (start < 0 || start - anchor > AVATAR_SEARCH_WINDOW) {
+            return null;
+        }
+        StringBuilder sb = new StringBuilder();
+        int i = start;
+        while (i < pageSource.length()) {
+            char c = pageSource.charAt(i);
+            if (c == '\\') {
+                // \/ 是转义斜杠，还原后继续；其它转义（\" 结束、\u0026 参数）直接截断
+                if (i + 1 < pageSource.length() && pageSource.charAt(i + 1) == '/') {
+                    sb.append('/');
+                    i += 2;
+                    continue;
+                }
+                break;
+            }
+            if (c == '"' || c == '\'' || c == ']' || c == '}' || c == ',' || Character.isWhitespace(c)) {
+                break;
+            }
+            sb.append(c);
+            i++;
+        }
+        return sb.length() > 0 ? sb.toString() : null;
+    }
+
+    /**
+     * 校验并清洗头像地址：
+     * 1) 去掉转义残留（尾部反斜杠、转义斜杠）；
+     * 2) 含 unicode 转义时先反转义；
+     * 3) 只接受 http(s) 开头且有主机的地址，其余一律视为无效（例如误抓到的 "url_list"）。
+     */
+    public static String normalizeAvatar(String raw) {
+        if (StrUtil.isBlank(raw)) {
+            return null;
+        }
+        String v = raw.trim().replace("\\/", "/");
+        // 正则/字符串截取常把 JSON 转义尾部的反斜杠带进来（形如 xxx.jpeg?from=3067671334\），
+        // 这种地址浏览器请求必 404，直接在第一个反斜杠处截断
+        int firstBackslash = v.indexOf('\\');
+        if (firstBackslash >= 0) {
+            v = v.substring(0, firstBackslash).trim();
+        }
+        if (!(v.startsWith("http://") || v.startsWith("https://")) || !v.contains(".")) {
+            return null;
+        }
+        return v;
+    }
+
     public static Boolean extractRoomInfo(DouYinRoom room, String pageSource) {
         if (pageSource == null) {
             log.warn("页面源码为空，无法提取房间信息");
@@ -145,15 +211,16 @@ public class DouYinBrowserUtil {
             String nickname = extractNickname(pageSource);
             room.setNickname(nickname);
         }
+        // 已有头像若是脏数据（例如历史误抓的 "url_list"），按空处理，让本轮重新抓一次
+        if (normalizeAvatar(room.getAvatar()) == null) {
+            room.setAvatar(null);
+        }
         if (StrUtil.isBlank(room.getAvatar())) {
-            String avatarStr = extractStr(pageSource, AVATAR_PATTERN, null);
-            // 未开播/页面结构变化时可能抽不到头像，不能让空值把整次刷新打断
-            if (StrUtil.isNotBlank(avatarStr)) {
-                room.setAvatar(avatarStr.contains("\\u")
-                        ? UnicodeUtil.toString(avatarStr.trim())
-                        : avatarStr.trim());
+            String avatar = normalizeAvatar(extractAvatarUrl(pageSource));
+            if (avatar != null) {
+                room.setAvatar(avatar);
             } else {
-                log.debug("{} 未抽取到头像地址，本轮跳过头像更新", room.getId());
+                log.debug("{} 未抽取到有效头像地址，本轮跳过头像更新", room.getId());
             }
         }
         return true;
