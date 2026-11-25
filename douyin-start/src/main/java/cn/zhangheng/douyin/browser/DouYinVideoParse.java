@@ -1,5 +1,6 @@
 package cn.zhangheng.douyin.browser;
 
+import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONConfig;
 import cn.hutool.json.JSONObject;
@@ -10,9 +11,11 @@ import cn.zhangheng.browser.factory.MyBrowser;
 import cn.zhangheng.browser.factory.PlaywrightBrowserFactory;
 import cn.zhangheng.browser.util.BrowserUtil;
 import cn.zhangheng.common.cache.CacheWithOnceLoadHelper;
+import cn.zhangheng.common.setting.ConfigKit;
 import cn.zhangheng.douyin.bean.work.DouYinWork;
 import cn.zhangheng.douyin.bean.work.DouYinWorkCounter;
 import cn.zhangheng.douyin.util.DouYinUtil;
+import cn.zhangheng.record.bean.Setting;
 import cn.zhangheng.record.bean.work.Author;
 import cn.zhangheng.record.bean.work.Work;
 import cn.zhangheng.record.okhttp.OkHttpShortLinkUtil;
@@ -82,7 +85,7 @@ public class DouYinVideoParse {
         String key;
         try {
             String finalUrl = OkHttpShortLinkUtil.resolveShortUrl(link);
-            key = finalUrl.substring(0,finalUrl.indexOf("/?"));
+            key = finalUrl.substring(0, finalUrl.indexOf("/?"));
         } catch (Exception e) {
             key = link;
         }
@@ -111,6 +114,7 @@ public class DouYinVideoParse {
         Throwable lastError = null;
         try {
             page = myBrowser.newPage(DouYinBrowserUtil.getDouyinFingerprintScript());
+            applyDouyinCookie(myBrowser);
             BrowserUtil.navigatePage(link, page, WaitUntilState.DOMCONTENTLOADED);
             htmlJson = extractHtmlJson(page.content());
             Response response;
@@ -121,9 +125,19 @@ public class DouYinVideoParse {
                 page.reload(new Page.ReloadOptions().setTimeout(10_000).setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
                 response = BrowserUtil.waitForTargetResponse(page, 15_000, urlVideoPrefix, urlImagePrefix, urlImagePrefix2);
             }
+            String body = response.text();
+            // 抖音在风控/未登录时会「200 但空 body」，这时不能当成功，否则只会报一句解析格式错误
+            if (isBlankBody(body)) {
+                log.warn("目标接口返回空 body（status={}，url={}），刷新页面重试一次", safeStatus(response), response.url());
+                response = retryAfterReload(page);
+                body = response == null ? null : response.text();
+            }
+            if (isBlankBody(body)) {
+                throw new RuntimeException(emptyBodyReason(response));
+            }
             browserApi.setDataUrl(response.url());
             browserApi.setHeaders(response.request().headers());
-            browserApi.setResponseBody(response.text());
+            browserApi.setResponseBody(body);
             success = true;
         } catch (PlaywrightException pe) {
             lastError = pe;
@@ -149,6 +163,68 @@ public class DouYinVideoParse {
         }
     }
 
+
+    /**
+     * 抖音作品页需要登录态才稳定返回详情，缺失 Cookie 时接口常见「200 + 空 body」。
+     * 这里把配置里的抖音 Cookie 注入到 douyin / iesdouyin 两个域，失败不影响主流程。
+     */
+    private static synchronized void applyDouyinCookie(MyBrowser myBrowser) {
+        try {
+            if (myBrowser.getContent().getCookie() != null) return;
+            Setting setting = ConfigKit.get(Setting.class);
+            String cookie = setting == null ? null : setting.getCookieDouYin();
+            cookie = Setting.parseCookie(cookie);
+            if (StrUtil.isBlank(cookie)) {
+                log.debug("未配置抖音 Cookie，作品解析以游客态进行，可能被风控");
+                return;
+            }
+            for (String host : new String[]{"www.douyin.com", "www.iesdouyin.com", "douyin.com"}) {
+                try {
+                    myBrowser.getContent().setCookie(host, cookie);
+                } catch (Exception ignored) {
+                    // 单个域注入失败不影响其它域
+                }
+            }
+            log.debug("已注入抖音 Cookie（长度 {}）", cookie.length());
+        } catch (Exception e) {
+            log.warn("注入抖音 Cookie 失败，继续无 Cookie 解析：{}", e.getMessage());
+        }
+    }
+
+    private static boolean isBlankBody(String body) {
+        return body == null || body.trim().isEmpty();
+    }
+
+    private static String safeStatus(Response response) {
+        if (response == null) return "null";
+        try {
+            return String.valueOf(response.status());
+        } catch (Exception e) {
+            return "unknown";
+        }
+    }
+
+    /**
+     * 空 body 时刷新页面再等一次目标响应，拿不到就返回 null
+     */
+    private static Response retryAfterReload(Page page) {
+        try {
+            page.reload(new Page.ReloadOptions().setTimeout(15_000).setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
+            return BrowserUtil.waitForTargetResponse(page, 15_000, urlVideoPrefix, urlImagePrefix, urlImagePrefix2);
+        } catch (Exception e) {
+            log.warn("空 body 重试未捕获到响应：{}", e.getMessage());
+            return null;
+        }
+    }
+
+    private static String emptyBodyReason(Response response) {
+        if (response == null) {
+            return "视频详情接口返回内容为空（刷新重试后仍未捕获到响应），可能是作品已删除、链接失效或触发了抖音风控";
+        }
+        String status = safeStatus(response);
+        return "视频详情接口返回内容为空（status=" + status + "，url=" + response.url()
+                + "），可能是作品已删除、链接失效、Cookie 失效或触发了抖音风控";
+    }
 
     public static JSONObject extractHtmlJson(String html) {
         String sub1 = html.substring(html.indexOf("{\\\"awemeId\\\":"));
@@ -231,7 +307,9 @@ public class DouYinVideoParse {
         return null;
     }
 
-    /** 截断错误上下文，避免把整段 JSON 塞进接口响应 */
+    /**
+     * 截断错误上下文，避免把整段 JSON 塞进接口响应
+     */
     private static String brief(String data) {
         if (data == null) return "null";
         String s = data.replaceAll("\\s+", " ").trim();

@@ -47,7 +47,7 @@ public class PlaywrightBrowserFactory {
     // key粒度锁，防止同一个key并发创建多个BrowserContext
 //    private static final ConcurrentHashMap<String, Lock> keyLockMap = new ConcurrentHashMap<>();
     // Browser空闲延时关闭配置：所有context清空后，等待多久再关闭浏览器进程
-    private static final long BROWSER_IDLE_DELAY_MS = 300_000; // 空闲到期后关Chromium
+    private static final long BROWSER_IDLE_DELAY_MS = 600_000; // 空闲到期后关Chromium
     private static ScheduledExecutorService idleScheduler;
     private static ScheduledFuture<?> idleCloseTask;
     //总计数

@@ -91,7 +91,7 @@ public class ApiHandler extends AnnotationHandler {
     public void videoParsing(RequestContext ctx) throws Exception {
         Message<Object> msg = ctx.message();
         Map<String, String> query = ctx.query();
-        parseVideo(msg, query, HandlerUtils.getRequestUserAgent(ctx.exchange()));
+        parseVideo(msg, query);
     }
 
     private static Map<String, Object> getRoomsMap(RoomFileModel model) {
@@ -184,7 +184,7 @@ public class ApiHandler extends AnnotationHandler {
         return out;
     }
 
-    private void parseVideo(Message msg, Map<String, String> query, String userAgent) {
+    private void parseVideo(Message msg, Map<String, String> query) {
         try {
             String url = query.get("url");
             String isRefresh = query.get("isRefresh");

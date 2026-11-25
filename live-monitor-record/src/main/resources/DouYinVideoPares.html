@@ -257,6 +257,28 @@
 
         .dyx-error { border-color: #fbd5d5; background: #fff8f8; }
         .dyx-error .dyx-state-icon { background: #fee2e2; color: #dc2626; }
+        /* 技术详情默认折叠，点开才看堆栈，避免报错卡被一大段异常文本撑满 */
+        .dyx-error-details {
+            margin: .6rem 0 0;
+            text-align: center;   /* 让「技术详情」胶囊在卡片里居中，和图标/文案/按钮同一条中轴 */
+        }
+        .dyx-error-details > summary {
+            display: inline-block;
+            cursor: pointer;
+            font-size: .75rem;
+            color: #b45309;
+            background: #fff;
+            border: 1px solid #fbd5d5;
+            border-radius: .45rem;
+            padding: .18rem .6rem;
+            list-style: none;
+            user-select: none;
+        }
+        .dyx-error-details > summary::-webkit-details-marker { display: none; }
+        .dyx-error-details > summary::before { content: "▸ "; }
+        .dyx-error-details[open] > summary::before { content: "▾ "; }
+        .dyx-error-details[open] > summary { background: #fff5f5; }
+        .dyx-error-details > summary:hover { background: #fff5f5; }
         .dyx-error-detail {
             font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
             font-size: .72rem;
@@ -265,9 +287,10 @@
             border: 1px solid #fbd5d5;
             border-radius: .45rem;
             padding: .5rem .6rem;
-            margin: .6rem auto 0;
+            margin: .4rem auto 0;
             max-width: 34rem;
             text-align: left;
+            white-space: pre-wrap;
             word-break: break-all;
             overflow-wrap: anywhere;
             max-height: 8rem;
@@ -721,7 +744,10 @@
     <div id="error" class="dyx-card dyx-state dyx-error hidden">
         <div class="dyx-state-icon"><i class="fa fa-exclamation-triangle"></i></div>
         <p id="errorMessage" class="dyx-state-title">解析链接失败，请检查链接是否有效</p>
-        <p id="errorDetail" class="dyx-error-detail hidden"></p>
+        <details id="errorDetailWrap" class="dyx-error-details hidden">
+            <summary>技术详情</summary>
+            <p id="errorDetail" class="dyx-error-detail"></p>
+        </details>
         <button id="retryBtn" class="dyx-btn dyx-btn-ghost"><i class="fa fa-refresh"></i>重新解析</button>
     </div>
 
@@ -847,6 +873,7 @@
     const emptyState = document.getElementById('emptyState');
     const errorMessage = document.getElementById('errorMessage');
     const errorDetail = document.getElementById('errorDetail');
+    const errorDetailWrap = document.getElementById('errorDetailWrap');
     const contentContainer = document.getElementById('contentContainer');
     const contentTabs = document.querySelectorAll('.dyx-tab');
     const contentPanels = document.querySelectorAll('.content-panel');
@@ -1188,13 +1215,34 @@
             contentContainer.classList.add('hidden');
             errorEl.classList.remove('hidden');
             errorMessage.textContent = error.message || '解析链接失败，请检查链接是否有效';
-            if (errorDetail) {
-                errorDetail.textContent = error.detail || "";
-                errorDetail.classList.toggle("hidden", !error.detail);
+            // 技术详情（异常链）默认折叠，只有真的带上来才显示折叠入口
+            const detailText = normalizeExceptionText(error.detail || "");
+            if (errorDetailWrap && errorDetail) {
+                errorDetail.textContent = detailText;
+                // 清洗后如果就是这句人话，再折叠也没信息量，直接不显示入口
+                const duplicated = !detailText || detailText === errorMessage.textContent.trim();
+                errorDetailWrap.classList.toggle("hidden", duplicated);
+                errorDetailWrap.open = false;
             }
         } finally {
             setBusy(false);
         }
+    }
+
+    /**
+     * 把后端抛上来的异常链整理成人能读的样子：
+     * ExecutionException: java.util.concurrent.ExecutionException: java.lang.RuntimeException: xxx ← RuntimeException: xxx
+     * 统一去掉类名包装、去掉重复段落，只留「→ 根因」。
+     */
+    function normalizeExceptionText(text) {
+        if (!text) return "";
+        let s = String(text).replace(/\s+/g, " ").trim();
+        // 去掉任何「包名.XxxException:」前缀，包括 ExecutionException / RuntimeException 这层包装
+        s = s.replace(/(?:(?:java|javax|cn|com|org)(?:\.\w+)*\.)?\w+Exception\s*:\s*/g, "");
+        // 后端会拼 "← 根因 ← 根因"，只保留最后一层（最内层原因）
+        const parts = s.split("←").map(p => p.trim()).filter(Boolean);
+        const innermost = parts.length ? parts[parts.length - 1] : s;
+        return innermost || s;
     }
 
     function isValidUrl(url) {

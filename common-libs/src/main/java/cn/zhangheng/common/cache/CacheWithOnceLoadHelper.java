@@ -247,6 +247,7 @@ public class CacheWithOnceLoadHelper<K, V> {
 
         /**
          * 失败冷却时间，失败后多久内不再发起真实加载
+         *
          * @param ms 毫秒，0 关闭冷却
          */
         public Builder<K, V> failCoolDownMs(long ms) {
@@ -327,10 +328,10 @@ public class CacheWithOnceLoadHelper<K, V> {
                                     break;
                                 } catch (TimeoutException e) {
                                     lastEx = new Exception("单次加载超时", e);
-                                    log.warn("[OnceLoad] 第{}次加载超时", attempt + 1, e);
+                                    log.warn("[OnceLoad] 第{}次加载超时", attempt + 1);
                                 } catch (Exception e) {
                                     lastEx = e;
-                                    log.warn("[OnceLoad] 第{}次加载异常", attempt + 1, e);
+                                    log.warn("[OnceLoad] 第{}次加载异常: {}", attempt + 1, e.getMessage());
                                 }
                                 if (attempt < maxRetry) {
                                     TimeUnit.MILLISECONDS.sleep(retrySleepMs);
@@ -445,7 +446,7 @@ public class CacheWithOnceLoadHelper<K, V> {
 
         @Override
         public Thread newThread(Runnable r) {
-            Thread t = new Thread(r,  prefix + "-" + seq.getAndIncrement());
+            Thread t = new Thread(r, prefix + "-" + seq.getAndIncrement());
             t.setDaemon(false);
             return t;
         }
