@@ -454,7 +454,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             public String playVideo(ActionEvent e) {
                 if (room.isLiving()) {
                     try {
-                        return "http://localhost:" + System.getProperty("monitor.port") + "/FLVPlayer.html?url=" + URLEncoder.encode(room.getFlvUrl(), "UTF-8");
+                        return "http://localhost:" + System.getProperty("monitor.port") + "/FLVPlayer.html?shared=" + URLEncoder.encode(room.getFlvUrl(), "UTF-8");
                     } catch (Exception ignored) {
                     }
                 } else {
@@ -538,8 +538,8 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                 try {
 //                String encode = URLEncoder.encode(flvUrl, "UTF-8");//使用URLEncoder编码
                     String encode = EncryptUtil.enBase64Str(flvUrl);//使用Base64Encoder编码
-                    String url = "https://zhangheng0805.github.io/FLVPlayer/?url=" + encode;
-                    content += "\t\n- 播放地址: [" + qn + " 纯享版点击在线观看](" + url + ")";
+                    String url = "https://zhangheng0805.github.io/FLVPlayer/?shared=" + encode;
+                    content += "\t\n- 播放地址: [" + qn + " 纯享版 点击在线观看 可截图和录制直播](" + url + ")";
                 } catch (Exception ignored) {
                 }
             }
@@ -550,8 +550,8 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         String footer = "\t\n------\t\n"
                 + "\t\n **个人链接:**\t " +
                 "[微信公众号](" + Constant.WeChatOfficialAccount + ")" +
-                " / [Bilibili](https://b23.tv/fmqmfNv)"
-                + " / [直播监控平台](https://zhangheng0805.github.io/LiveMonitoringRecordingPage/?redirect=redirect/json/config.json)"
+                " / [Bilibili](https://space.bilibili.com/520318232)"
+                + " / [直播监控平台](https://zhangheng0805.github.io/LiveMonitoringRecordingPage/)"
                 + " / [程序源码](https://github.com/ZhangHeng0805/LiveMonitoringRecording)";
 
         String msg = title + content + footer;

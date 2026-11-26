@@ -96,9 +96,9 @@ public class LocalMonitorHttpServer {
         String url = "http://localhost:" + port + "/";
 //        String apiUrl = url + "api/";
         try {
-            return url + "?url=" + URLEncoder.encode(url, "UTF-8");
+            return url + "?root=" + URLEncoder.encode(url, "UTF-8");
         } catch (UnsupportedEncodingException e) {
-            return url + "?url=" + url;
+            return url + "?root=" + url;
         }
     }
 

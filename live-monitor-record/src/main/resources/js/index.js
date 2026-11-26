@@ -291,7 +291,7 @@ function getPlayVideoSelectButton(title, options) {
         } catch (e) {
             param = url;
         }
-        html += `<a href="https://zhangheng0805.github.io/FLVPlayer/?url=${encodeURIComponent(param)}" class="lml-drop-item" target="_blank" rel="noopener noreferrer" title="${escapeHtml(url)}">
+        html += `<a href="https://zhangheng0805.github.io/FLVPlayer/?shared=${encodeURIComponent(param)}" class="lml-drop-item" target="_blank" rel="noopener noreferrer" title="${escapeHtml(url)}">
                     <i class="fa fa-video-camera"></i><span>${escapeHtml(key)}</span>
                 </a>`;
     });

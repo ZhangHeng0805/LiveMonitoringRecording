@@ -3,8 +3,8 @@ const REDIRECT_CONFIG_URL =
 const REDIRECT_CACHE_KEY = "lmr.redirect.config";
 const REDIRECT_CACHE_TTL = 10 * 60 * 1000; // 10 分钟内复用缓存，避免每次打开页面都同步请求外网
 
-function getMainUrl(fullUrl) {
-    fullUrl = fullUrl || window.location.href;
+function getMainUrl(fullUrl=window.location.href,isDefault=true) {
+    // fullUrl = fullUrl || window.location.href;
     // 初始化默认基础URL
     let mainUrl = "http://localhost:8005/";
     // 处理当前页面URL（如果是http开头）
@@ -13,21 +13,22 @@ function getMainUrl(fullUrl) {
     }
     // 处理URL参数中的url（优先级更高）
     const urlParams = new URLSearchParams(window.location.search);
-    const urlParam = urlParams.get("url");
+
+    const rootParam = urlParams.get("root");
     const redirectParam = urlParams.get("redirect");
 
-    if (urlParam) {
+    if (rootParam) {
         // 解码参数中的URL（支持http开头的明文和base64编码）
         try {
-            mainUrl = urlParam.startsWith("http")
-                ? decodeURIComponent(urlParam)
-                : atob(urlParam);
+            mainUrl = rootParam.startsWith("http")
+                ? decodeURIComponent(rootParam)
+                : atob(rootParam);
         } catch (e) {
             console.error("解析 url 参数失败", e);
         }
-    } else if (redirectParam) {
+    } else if (redirectParam || isDefault) {
         try {
-            const config = getRedirectConfig(redirectParam, true);
+            const config = getRedirectConfig(redirectParam || REDIRECT_CONFIG_URL, true);
             if (config && config.redirectUrl) {
                 mainUrl = config.redirectUrl;
             }
@@ -75,7 +76,12 @@ function writeConfigCache(data) {
         // localStorage 不可用（隐私模式等）时忽略缓存
     }
 }
-
+/**
+ * 获取配置
+ * @param {*} config_url 配置地址
+ * @param {*} sync 是否同步
+ * @returns 
+ */
 function getRedirectConfig(config_url, sync) {
     // 默认地址优先走缓存
     const cached = config_url === REDIRECT_CONFIG_URL ? readConfigCache() : null;

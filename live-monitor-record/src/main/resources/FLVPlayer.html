@@ -17,6 +17,8 @@
     <meta name="referrer" content="no-referrer">
     <script src="js/flv.min.js"></script>
     <link href="css/font-awesome.min-4.7.0.css" rel="stylesheet">
+    <script src="https://zhangheng0805.github.io/LiveMonitoringRecordingPage/js/mainURL.js"></script>
+    <script src="https://zhangheng0805.github.io/LiveMonitoringRecordingPage/js/client-info.js"></script>
 
     <style>
         :root {
@@ -299,6 +301,91 @@
         .flvx-status i { flex: none; margin-top: .1rem; }
         .flvx-status span { flex: 1 1 auto; min-width: 0; }
 
+        /* ---------- 视频规格 ---------- */
+        .flvx-spec {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: .35rem .7rem;
+            margin: 0 .9rem .85rem;
+            padding: .5rem .7rem;
+            font-size: .74rem;
+            color: var(--flvx-text-2);
+            background: #fff;
+            border: 1px solid var(--flvx-line);
+            border-radius: .45rem;
+        }
+
+        .flvx-spec.is-hidden { display: none; }
+
+        .flvx-spec .spec-item {
+            display: inline-flex;
+            align-items: center;
+            gap: .3rem;
+            white-space: nowrap;
+        }
+
+        .flvx-spec .spec-item i { color: var(--flvx-text-3); }
+
+        .flvx-spec .spec-sep { color: #dfe2ea; }
+
+        /* ---------- 微信内置浏览器引导 ---------- */
+        .flvx-wx {
+            position: fixed;
+            inset: 0;
+            z-index: 60;
+            display: flex;
+            justify-content: flex-end;
+            align-items: flex-start;
+            padding: 1rem 1.2rem;
+            background: rgba(12, 14, 18, .88);
+            color: #fff;
+        }
+
+        .flvx-wx.is-hidden { display: none; }
+
+        .flvx-wx-card {
+            max-width: 19rem;
+            margin-top: 3.4rem;
+            text-align: right;
+        }
+
+        .flvx-wx-arrow {
+            font-size: 1.7rem;
+            margin-bottom: .4rem;
+            animation: flvx-nudge 1.3s ease-in-out infinite;
+        }
+
+        @keyframes flvx-nudge { 50% { transform: translate(4px, -4px); } }
+
+        .flvx-wx-card h3 {
+            margin: 0 0 .4rem;
+            font-size: .95rem;
+            font-weight: 700;
+        }
+
+        .flvx-wx-card p {
+            margin: 0 0 .85rem;
+            font-size: .78rem;
+            line-height: 1.65;
+            color: rgba(255, 255, 255, .84);
+        }
+
+        .flvx-wx-btn {
+            height: 2.1rem;
+            padding: 0 1rem;
+            font-size: .78rem;
+            font-weight: 600;
+            font-family: inherit;
+            color: #fff;
+            background: rgba(255, 255, 255, .16);
+            border: 1px solid rgba(255, 255, 255, .32);
+            border-radius: .45rem;
+            cursor: pointer;
+        }
+
+        .flvx-wx-btn:hover { background: rgba(255, 255, 255, .26); }
+
         /* ---------- 播放区 ---------- */
         .flvx-stage {
             position: relative;
@@ -343,6 +430,88 @@
 
         .flvx-capture:hover:not(:disabled) { background: rgba(15, 17, 21, .85); }
         .flvx-capture:disabled { opacity: .45; cursor: not-allowed; }
+
+        /* ---------- 录制按钮 ---------- */
+        .flvx-record {
+            position: absolute;
+            top: .6rem;
+            left: .6rem;
+            z-index: 10;
+            display: inline-flex;
+            align-items: center;
+            gap: .35rem;
+            padding: .35rem .6rem;
+            font-size: .72rem;
+            font-family: inherit;
+            color: #fff;
+            background: rgba(15, 17, 21, .62);
+            border: 1px solid rgba(255, 255, 255, .18);
+            border-radius: .4rem;
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+            transition: background .15s ease, opacity .15s ease;
+        }
+
+        .flvx-record:hover:not(:disabled) { background: rgba(15, 17, 21, .85); }
+        .flvx-record:disabled { opacity: .45; cursor: not-allowed; }
+
+        .flvx-record.is-recording {
+            background: rgba(220, 38, 38, .88);
+            border-color: rgba(255, 255, 255, .32);
+        }
+
+        .flvx-record.is-recording i { animation: flvx-blink 1s ease-in-out infinite; }
+
+        @keyframes flvx-blink { 50% { opacity: .22; } }
+
+        /* ---------- 录制状态条 ---------- */
+        .flvx-recbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: .4rem .5rem;
+            margin: 0 .9rem .85rem;
+            padding: .45rem .7rem;
+            font-size: .74rem;
+            line-height: 1.5;
+            color: #b42318;
+            background: #fff6f5;
+            border: 1px solid #fbd9d4;
+            border-left: 3px solid #f1998e;
+            border-radius: .45rem;
+        }
+
+        .flvx-recbar.is-hidden { display: none; }
+
+        .flvx-recbar > span { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+
+        .flvx-rec-dot { color: var(--flvx-danger); animation: flvx-blink 1s ease-in-out infinite; }
+
+        .flvx-rec-result {
+            color: #15803d;
+            background: #f2fbf5;
+            border-color: #d8f0e0;
+            border-left-color: #86d9a6;
+        }
+
+        .flvx-share {
+            flex: none;
+            display: inline-flex;
+            align-items: center;
+            gap: .3rem;
+            height: 1.8rem;
+            padding: 0 .6rem;
+            font-size: .72rem;
+            font-weight: 600;
+            font-family: inherit;
+            color: #15803d;
+            background: #fff;
+            border: 1px solid #cde9d8;
+            border-radius: .35rem;
+            cursor: pointer;
+        }
+
+        .flvx-share:hover { background: #f1faf5; }
 
         .flvx-loading {
             position: absolute;
@@ -492,12 +661,22 @@
             .flvx-file { height: 2.6rem; }
             .flvx-stage { aspect-ratio: auto; height: 52vh; }
             .flvx-snaps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .flvx-spec { font-size: .7rem; gap: .3rem .55rem; padding: .45rem .6rem; }
             .flvx-foot { font-size: .7rem; }
             .flvx-help ul { padding-left: .95rem; }
         }
     </style>
 </head>
 <body>
+<!-- 微信内置浏览器：无法下载，引导跳系统浏览器 -->
+<div id="wechatTip" class="flvx-wx is-hidden">
+    <div class="flvx-wx-card">
+        <div class="flvx-wx-arrow"><i class="fa fa-location-arrow"></i></div>
+        <h3>微信内无法保存录制文件</h3>
+        <p id="wechatTipText">请点右上角「···」，选择“在浏览器打开”，再回到本页面开始录制。</p>
+        <button id="wechatTipClose" class="flvx-wx-btn">我知道了</button>
+    </div>
+</div>
 <div class="flvx-wrap">
     <header class="flvx-header">
         <div class="flvx-logo"><i class="fa fa-play"></i></div>
@@ -561,12 +740,27 @@
             <span id="status">请选择 FLV 文件或输入在线视频 URL…</span>
         </div>
 
+        <!-- 视频规格（分辨率 / 帧率 / 码率 / 时长） -->
+        <div id="specBar" class="flvx-spec is-hidden"></div>
+
+        <!-- 录制状态 -->
+        <div id="recordBar" class="flvx-recbar is-hidden">
+            <i class="fa fa-circle flvx-rec-dot"></i>
+            <span id="recordText">录制中</span>
+        </div>
+
+        <!-- 录制结果 -->
+        <div id="recordResult" class="flvx-recbar flvx-rec-result is-hidden"></div>
+
         <!-- 播放区 -->
         <div class="flvx-stage">
             <video id="videoElement" controls playsinline webkit-playsinline
                    x5-video-player-type="h5" x5-video-player-fullscreen="true"></video>
             <button id="captureBtn" class="flvx-capture" disabled>
                 <i class="fa fa-camera"></i><span>截取视频帧</span>
+            </button>
+            <button id="recordBtn" class="flvx-record" disabled>
+                <i class="fa fa-circle"></i><span>录制</span>
             </button>
             <div id="loadingOverlay" class="flvx-loading is-hidden">
                 <div class="flvx-spinner"></div>
@@ -592,15 +786,20 @@
         <h2>使用说明</h2>
         <ul>
             <li>支持播放本地 FLV 文件和在线 FLV 视频地址</li>
+            <li>播放后顶部规格栏实时显示分辨率、帧率、码率和时长（直播流显示为“直播”）</li>
+            <li>点左上角“录制”可把当前直播录成 mp4（浏览器支持时），单段满 10 分钟或 250MB 自动分段续录</li>
+            <li>切到后台会立刻把当前段落盘，回到页面自动接着录新的一段；锁屏、被系统回收仍会丢</li>
+            <li>录制时请保持页面在前台、屏幕常亮，切到后台或锁屏会中断</li>
             <li>视频编码要求：H.264；音频编码要求：AAC 或 MP3</li>
             <li>浏览器需支持 Media Source Extensions (MSE)，推荐 Chrome / Firefox / Edge</li>
             <li>在线播放时请确保视频服务器允许跨域访问（CORS）</li>
-            <li>可通过 URL 参数直接播放：<code>?url=http://example.com/video.flv</code></li>
+            <li>可通过 URL 参数直接播放：<code>?shared=http://example.com/video.flv</code></li>
         </ul>
     </section>
 </div>
 
 <script>
+    getMainUrl();
     const fileInput = document.getElementById('fileInput');
     const urlInput = document.getElementById('urlInput');
     const videoElement = document.getElementById('videoElement');
@@ -619,12 +818,528 @@
     const ctx = canvas.getContext('2d');
     const captureBtn = document.getElementById('captureBtn');
     const snapList = document.getElementById('snapList');
+    const specBar = document.getElementById('specBar');
+    const recordBtn = document.getElementById('recordBtn');
+    const recordBar = document.getElementById('recordBar');
+    const recordText = document.getElementById('recordText');
+    const recordResult = document.getElementById('recordResult');
+    const wechatTip = document.getElementById('wechatTip');
+    const wechatTipText = document.getElementById('wechatTipText');
+    const wechatTipClose = document.getElementById('wechatTipClose');
+    const isWeChat = /MicroMessenger/i.test(navigator.userAgent || '');
+    /* ---------------- 视频规格（分辨率 / 帧率 / 码率 / 时长） ---------------- */
+    let spec = {};
+    let specTimer = null;
+    let lastFrameSample = null;
+
+    function resetSpec() {
+        spec = { width: 0, height: 0, fps: 0, fpsMeta: 0, bitrateKbps: 0, duration: NaN };
+        lastFrameSample = null;
+        renderSpec();
+    }
+
+    function formatFps(value) {
+        if (!value || !isFinite(value) || value <= 0) return '—';
+        const rounded = value >= 10 ? Math.round(value * 10) / 10 : Math.round(value * 100) / 100;
+        return `${String(rounded).replace(/\.0$/, '')} fps`;
+    }
+
+    function formatBitrate(kbps) {
+        if (!kbps || !isFinite(kbps) || kbps <= 0) return '—';
+        return `${Math.round(kbps)} kbits/s`;
+    }
+
+    function renderSpec() {
+        const parts = [];
+        if (spec.width && spec.height) {
+            parts.push(`<span class="spec-item"><i class="fa fa-video-camera"></i>${spec.width}×${spec.height}</span>`);
+        }
+        if (spec.fps) {
+            parts.push(`<span class="spec-item"><i class="fa fa-tachometer"></i>${formatFps(spec.fps)}</span>`);
+        }
+        if (spec.bitrateKbps) {
+            parts.push(`<span class="spec-item"><i class="fa fa-signal"></i>${formatBitrate(spec.bitrateKbps)}</span>`);
+        }
+        const durationText = (Number.isFinite(spec.duration) && spec.duration > 0)
+            ? formatDuration(spec.duration)
+            : '直播';
+        parts.push(`<span class="spec-item"><i class="fa fa-clock-o"></i>${durationText}</span>`);
+
+        const hasRealData = !!(spec.width || spec.fps || spec.bitrateKbps);
+        specBar.innerHTML = parts.join('<span class="spec-sep">·</span>');
+        specBar.classList.toggle('is-hidden', !hasRealData);
+    }
+
+    // 从 video 元素同步基础信息
+    function syncSpecFromVideo() {
+        if (videoElement.videoWidth && videoElement.videoHeight) {
+            spec.width = videoElement.videoWidth;
+            spec.height = videoElement.videoHeight;
+        }
+        const d = videoElement.duration;
+        spec.duration = (isNaN(d) || !isFinite(d) || d <= 0) ? NaN : d;
+    }
+
+    // 取真实渲染帧数（播放质量统计），算实际 fps；取不到时退回元数据 fps
+    function frameCounter() {
+        try {
+            if (typeof videoElement.getVideoPlaybackQuality === 'function') {
+                return videoElement.getVideoPlaybackQuality().totalVideoFrames;
+            }
+            if (typeof videoElement.webkitGetVideoPlaybackQuality === 'function') {
+                return videoElement.webkitGetVideoPlaybackQuality().totalVideoFrames;
+            }
+            if (typeof videoElement.webkitDecodedFrameCount === 'number') {
+                return videoElement.webkitDecodedFrameCount;
+            }
+        } catch (e) { /* 忽略 */ }
+        return null;
+    }
+
+    function measureFps() {
+        const total = frameCounter();
+        const now = performance.now();
+        if (total !== null) {
+            if (lastFrameSample && now - lastFrameSample.t >= 800) {
+                const delta = total - lastFrameSample.frames;
+                const dt = (now - lastFrameSample.t) / 1000;
+                if (delta >= 0 && !videoElement.paused) {
+                    const fps = delta / dt;
+                    if (fps > 0) spec.fps = Math.min(fps, 240);
+                }
+                lastFrameSample = { t: now, frames: total };
+            } else if (!lastFrameSample) {
+                lastFrameSample = { t: now, frames: total };
+            }
+        }
+        if (!spec.fps && spec.fpsMeta) spec.fps = spec.fpsMeta;
+    }
+
+    function startSpecTimer() {
+        stopSpecTimer();
+        specTimer = setInterval(function () {
+            measureFps();
+            renderSpec();
+        }, 1000);
+    }
+
+    function stopSpecTimer() {
+        if (specTimer) {
+            clearInterval(specTimer);
+            specTimer = null;
+        }
+    }
+
+    /* ---------------- 直播录制（MediaRecorder → mp4 / webm） ---------------- */
+    const RECORD_MAX_MS = 10 * 60 * 1000;          // 单段最长 10 分钟：中断时最多丢这一段
+    const RECORD_MAX_BYTES = 250 * 1024 * 1024;    // 单段最大 250MB
+
+    let recorder = null;
+    let recordStream = null;
+    let recMime = '';
+    let recChunks = [];
+    let recBytes = 0;
+    let recSegNo = 0;
+    let recSegStart = 0;
+    let recStartedAt = 0;
+    let recTimer = null;
+    let recSwitching = false;
+    let recActive = false;   // 用户仍在“录制中”（含切后台暂停的那段）
+    let recPaused = false;   // 因切后台暂停，等回前台继续
+    let recCanvas = null;
+    let recCtx = null;
+    let recLoopId = 0;
+    let recAudioCtx = null;
+    let lastRecordFile = null;
+    let wakeLock = null;
+
+    function formatClock(seconds) {
+        const s = Math.max(0, Math.floor(seconds || 0));
+        const h = Math.floor(s / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        const sec = s % 60;
+        const p = (n) => String(n).padStart(2, '0');
+        return h > 0 ? `${p(h)}:${p(m)}:${p(sec)}` : `${p(m)}:${p(sec)}`;
+    }
+
+    function pickRecordMime() {
+        if (typeof MediaRecorder === 'undefined') return '';
+        const candidates = [
+            'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+            'video/mp4;codecs=avc1,mp4a.40.2',
+            'video/mp4',
+            'video/webm;codecs=h264,opus',
+            'video/webm;codecs=vp9,opus',
+            'video/webm'
+        ];
+        for (let i = 0; i < candidates.length; i++) {
+            try {
+                if (MediaRecorder.isTypeSupported(candidates[i])) return candidates[i];
+            } catch (e) { /* 继续尝试 */ }
+        }
+        return '';
+    }
+
+    // 优先直接抓视频元素的流（不重绘、音画同步）；iOS Safari 无此接口时退到 canvas + WebAudio
+    function buildRecordStream() {
+        let stream = null;
+        try {
+            if (typeof videoElement.captureStream === 'function') {
+                stream = videoElement.captureStream();
+            } else if (typeof videoElement.mozCaptureStream === 'function') {
+                stream = videoElement.mozCaptureStream();
+            }
+        } catch (e) {
+            stream = null;
+        }
+        if (stream && stream.getVideoTracks().length) return stream;
+
+        const vw = videoElement.videoWidth;
+        const vh = videoElement.videoHeight;
+        if (!vw || !vh) return null;
+
+        recCanvas = document.createElement('canvas');
+        recCanvas.width = Math.min(vw, 1920);
+        recCanvas.height = Math.round(recCanvas.width * (vh / vw));
+        recCtx = recCanvas.getContext('2d');
+
+        let fps = (spec.fps && spec.fps > 0 && spec.fps <= 60) ? Math.round(spec.fps) : 30;
+        const cs = recCanvas.captureStream(fps);
+
+        try {
+            const AC = window.AudioContext || window.webkitAudioContext;
+            recAudioCtx = new AC();
+            const src = recAudioCtx.createMediaElementSource(videoElement);
+            const dest = recAudioCtx.createMediaStreamDestination();
+            src.connect(dest);
+            src.connect(recAudioCtx.destination); // 保留外放声音
+            dest.stream.getAudioTracks().forEach((t) => cs.addTrack(t));
+            if (recAudioCtx.state === 'suspended') recAudioCtx.resume().catch(() => {});
+        } catch (e) {
+            console.warn('音频采集不可用，只录画面', e);
+        }
+
+        const draw = () => {
+            if (!recCanvas) return;
+            if (!videoElement.paused && videoElement.videoWidth) {
+                try { recCtx.drawImage(videoElement, 0, 0, recCanvas.width, recCanvas.height); } catch (e) { /* 忽略 */ }
+            }
+            recLoopId = requestAnimationFrame(draw);
+        };
+        recLoopId = requestAnimationFrame(draw);
+
+        return cs;
+    }
+
+    function startRecordSegment() {
+        const mime = pickRecordMime();
+        if (!mime) {
+            showStatus('当前浏览器不支持录制（MediaRecorder 不可用）', 'danger');
+            return false;
+        }
+        recMime = mime;
+        recChunks = [];
+        recBytes = 0;
+        recSegNo += 1;
+        recSegStart = Date.now();
+
+        try {
+            recorder = new MediaRecorder(recordStream, {
+                mimeType: mime,
+                videoBitsPerSecond: 2000000,
+                audioBitsPerSecond: 128000
+            });
+        } catch (e) {
+            showStatus(`录制启动失败：${e.message}`, 'danger');
+            return false;
+        }
+
+        recorder.ondataavailable = (e) => {
+            if (e.data && e.data.size) {
+                recChunks.push(e.data);
+                recBytes += e.data.size;
+            }
+        };
+        recorder.onerror = (e) => {
+            const name = (e.error && e.error.name) || e.type || '未知';
+            showStatus(`录制出错：${name}`, 'danger');
+        };
+        recorder.onstop = handleSegmentStop;
+        recorder.start(1000);
+        updateRecordBar();
+        return true;
+    }
+
+    function handleSegmentStop() {
+        const chunks = recChunks;
+        recChunks = [];
+        recBytes = 0;
+        recorder = null;
+
+        if (chunks.length) {
+            const type = (recMime || 'video/mp4').split(';')[0];
+            const blob = new Blob(chunks, { type: type });
+            const file = makeRecordFile(blob);
+            saveRecordFile(file);
+        }
+
+        if (recSwitching && recordStream && recordStream.active && !recPaused) {
+            recSwitching = false;
+            if (startRecordSegment()) {
+                showStatus('已自动分段，继续录制', 'success');
+                return;
+            }
+        }
+        recSwitching = false;
+
+        if (recPaused && recActive) {
+            // 切后台暂停：当前段已落盘，等回前台再开新段
+            updateRecordBar();
+            return;
+        }
+
+        teardownRecording();
+        if (chunks.length) showStatus('录制已保存', 'success');
+    }
+
+    function makeRecordFile(blob) {
+        const ext = /mp4/.test(recMime) ? 'mp4' : 'webm';
+        const d = new Date();
+        const p = (n) => String(n).padStart(2, '0');
+        const stamp = `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+        const name = `直播_${stamp}${recSegNo > 1 ? `_P${recSegNo}` : ''}.${ext}`;
+        try {
+            return new File([blob], name, { type: blob.type });
+        } catch (e) {
+            blob.name = name;
+            return blob;
+        }
+    }
+
+    function canShareFile(file) {
+        try {
+            return !!(navigator.canShare && navigator.canShare({ files: [file] }));
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function saveRecordFile(file) {
+        const url = URL.createObjectURL(file);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = file.name;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        // 下载需要时间读取，延迟释放；不支持分享时同步放掉内存
+        setTimeout(() => {
+            URL.revokeObjectURL(url);
+            if (!canShareFile(file)) lastRecordFile = null;
+        }, 180000);
+
+        lastRecordFile = file;
+        showRecordResult(file);
+    }
+
+    function showRecordResult(file) {
+        recordResult.classList.remove('is-hidden');
+        recordResult.innerHTML =
+            `<i class="fa fa-check-circle"></i><span>已保存 ${escapeHtml(file.name)} · ${formatFileSize(file.size)}</span>`;
+        if (canShareFile(file)) {
+            const btn = document.createElement('button');
+            btn.className = 'flvx-share';
+            btn.innerHTML = '<i class="fa fa-share-alt"></i>分享/存相册';
+            btn.onclick = () => {
+                navigator.share({ files: [lastRecordFile || file] }).catch(() => {});
+            };
+            recordResult.appendChild(btn);
+        }
+    }
+
+    function updateRecordBar() {
+        if (!recActive) {
+            recordBar.classList.add('is-hidden');
+            return;
+        }
+        if (recorder && recorder.state === 'recording') {
+            const seg = Math.floor((Date.now() - recSegStart) / 1000);
+            const total = Math.floor((Date.now() - recStartedAt) / 1000);
+            recordText.textContent = `录制中 ${formatClock(seg)} · ${formatFileSize(recBytes)} · 第 ${recSegNo} 段`
+                + (recSegNo > 1 ? `（累计 ${formatClock(total)}）` : '');
+            recordBar.classList.remove('is-hidden');
+            return;
+        }
+        if (recPaused) {
+            recordText.textContent = `已暂停：当前段已落盘，回到页面自动续录（累计 ${formatClock(Math.floor((Date.now() - recStartedAt) / 1000))}）`;
+            recordBar.classList.remove('is-hidden');
+            return;
+        }
+        recordBar.classList.add('is-hidden');
+    }
+
+    function startRecordTimer() {
+        stopRecordTimer();
+        recTimer = setInterval(function () {
+            if (!recorder || recorder.state !== 'recording') {
+                updateRecordBar();
+                return;
+            }
+            updateRecordBar();
+            if (Date.now() - recSegStart >= RECORD_MAX_MS || recBytes >= RECORD_MAX_BYTES) {
+                recSwitching = true;
+                try { recorder.stop(); } catch (e) { recSwitching = false; }
+            }
+        }, 500);
+    }
+
+    function stopRecordTimer() {
+        if (recTimer) {
+            clearInterval(recTimer);
+            recTimer = null;
+        }
+    }
+
+    function startRecording() {
+        if (isWeChat) {
+            wechatTip.classList.remove('is-hidden');
+            showStatus('微信内置浏览器无法保存录制文件，请先在系统浏览器中打开本页面', 'danger');
+            return;
+        }
+        if (!videoElement.videoWidth || !videoElement.videoHeight) {
+            showStatus('视频尚未加载完成，无法录制', 'danger');
+            return;
+        }
+        if (typeof MediaRecorder === 'undefined') {
+            showStatus('当前浏览器不支持录制（MediaRecorder 不可用）', 'danger');
+            return;
+        }
+        const mime = pickRecordMime();
+        if (!mime) {
+            showStatus('当前浏览器不支持 mp4 / webm 录制', 'danger');
+            return;
+        }
+
+        recordStream = buildRecordStream();
+        if (!recordStream || !recordStream.getVideoTracks().length) {
+            showStatus('无法获取视频轨道，录制不可用', 'danger');
+            teardownRecording();
+            return;
+        }
+
+        recSegNo = 0;
+        recStartedAt = Date.now();
+        recSwitching = false;
+        recPaused = false;
+        recActive = true;
+        recordResult.classList.add('is-hidden');
+        lastRecordFile = null;
+
+        if (!startRecordSegment()) {
+            teardownRecording();
+            return;
+        }
+
+        recordBtn.classList.add('is-recording');
+        recordBtn.querySelector('span').textContent = '停止并保存';
+        requestWakeLock();
+        startRecordTimer();
+        showStatus('开始录制：请保持页面在前台、屏幕常亮；切到后台会自动把当前段落盘', 'success');
+    }
+
+    function stopRecording() {
+        recActive = false;
+        recPaused = false;
+        recSwitching = false;
+        if (recorder && recorder.state !== 'inactive') {
+            showStatus('正在保存录制文件…', 'info');
+            try { recorder.stop(); } catch (e) { teardownRecording(); }
+            return;
+        }
+        teardownRecording();
+        showStatus('录制已停止', 'info');
+    }
+
+    function teardownRecording() {
+        stopRecordTimer();
+        recActive = false;
+        recPaused = false;
+        if (recLoopId) {
+            cancelAnimationFrame(recLoopId);
+            recLoopId = 0;
+        }
+        if (recAudioCtx) {
+            try { recAudioCtx.close(); } catch (e) { /* 忽略 */ }
+            recAudioCtx = null;
+        }
+        recCanvas = null;
+        recCtx = null;
+        if (recordStream) {
+            recordStream.getTracks().forEach((t) => {
+                try { t.stop(); } catch (e) { /* 忽略 */ }
+            });
+            recordStream = null;
+        }
+        recorder = null;
+        recChunks = [];
+        recBytes = 0;
+        recordBar.classList.add('is-hidden');
+        recordBtn.classList.remove('is-recording');
+        const label = recordBtn.querySelector('span');
+        if (label) label.textContent = '录制';
+        releaseWakeLock();
+    }
+
+    function toggleRecording() {
+        if (recActive) stopRecording();
+        else startRecording();
+    }
+
+    // 切后台 / 页面即将卸载：立刻结束当前段，把已有数据落盘
+    function pauseSegmentForBackground() {
+        if (!recActive || recPaused) return;
+        if (!recorder || recorder.state !== 'recording') return;
+        recPaused = true;
+        recSwitching = false;
+        try { recorder.stop(); } catch (e) { recPaused = false; }
+        updateRecordBar();
+    }
+
+    // 回到前台：接着开新的一段
+    function resumeSegmentFromBackground() {
+        if (!recActive || !recPaused) return;
+        recPaused = false;
+        if (recordStream && recordStream.active && startRecordSegment()) {
+            showStatus('已回到前台，继续录制（新分段）', 'success');
+            return;
+        }
+        teardownRecording();
+        showStatus('恢复录制失败，录制已停止', 'danger');
+    }
+
+    async function requestWakeLock() {
+        try {
+            if ('wakeLock' in navigator && !wakeLock) {
+                wakeLock = await navigator.wakeLock.request('screen');
+                wakeLock.addEventListener('release', () => { wakeLock = null; });
+            }
+        } catch (e) { /* 不支持或被拒绝，忽略 */ }
+    }
+
+    function releaseWakeLock() {
+        if (wakeLock) {
+            try { wakeLock.release(); } catch (e) { /* 忽略 */ }
+            wakeLock = null;
+        }
+    }
 
     // 视频元数据加载完成设置画布尺寸
     function setCanvasSize() {
         canvas.width = videoElement.videoWidth;
         canvas.height = videoElement.videoHeight;
         captureBtn.disabled = false;
+        recordBtn.disabled = false;
     }
 
     videoElement.addEventListener('loadedmetadata', setCanvasSize);
@@ -685,6 +1400,20 @@
     }
 
     captureBtn.addEventListener('click', captureFrame);
+    recordBtn.addEventListener('click', toggleRecording);
+
+    // 切后台立刻落盘，回前台自动续录
+    document.addEventListener('visibilitychange', function () {
+        if (!recActive) return;
+        if (document.visibilityState === 'hidden') {
+            pauseSegmentForBackground();
+        } else {
+            resumeSegmentFromBackground();
+            requestWakeLock();
+        }
+    });
+
+    window.addEventListener('pagehide', pauseSegmentForBackground);
 
 
     // 初始化
@@ -698,12 +1427,12 @@
         // 检查URL参数
         const urlParams = new URLSearchParams(window.location.search);
 
-        if (urlParams.get('url')) {
+        if (urlParams.get('shared')) {
             let videoUrl;
-            if (urlParams.get('url').startsWith("http")) {
-                videoUrl = decodeURIComponent(urlParams.get('url'));
+            if (urlParams.get('shared').startsWith("http")) {
+                videoUrl = decodeURIComponent(urlParams.get('shared'));
             } else {
-                videoUrl = atob(urlParams.get('url'));
+                videoUrl = atob(urlParams.get('shared'));
             }
 
             // 自动切换到在线播放标签页
@@ -772,17 +1501,25 @@
 
         // 视频元数据加载完成
         videoElement.addEventListener('loadedmetadata', function () {
-            // 检查视频时长是否有效
-            const duration = videoElement.duration;
-            if (isNaN(duration) || duration === Infinity) {
-                showStatus(`视频信息: ${videoElement.videoWidth}x${videoElement.videoHeight}px, 时长未知`, 'info');
-            } else {
-                showStatus(`视频信息: ${videoElement.videoWidth}x${videoElement.videoHeight}px, ${formatDuration(duration)}`, 'info');
-            }
+            syncSpecFromVideo();
+            renderSpec();
+            showStatus('视频已开始播放', 'success');
         });
 
         // 页面卸载时清理资源
         window.addEventListener('unload', releaseResources);
+
+        // 微信内置浏览器：下载被拦，先引导用户跳到系统浏览器
+        if (isWeChat) {
+            const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+            wechatTipText.textContent = isIOS
+                ? '微信内无法下载文件。请点右上角「···」选择“复制链接”，再在 Safari 中打开本页面录制。'
+                : '微信内无法下载文件。请点右上角「···」选择“在浏览器打开”，再回到本页面录制。';
+            wechatTip.classList.remove('is-hidden');
+        }
+        wechatTipClose.addEventListener('click', function () {
+            wechatTip.classList.add('is-hidden');
+        });
     }
 
     // 切换标签页
@@ -903,19 +1640,39 @@
             });
 
             flvPlayer.on(flvjs.Events.METADATA_PARSED, () => {
-                // 检查视频时长是否有效
-                const duration = videoElement.duration;
-                if (isNaN(duration) || duration === Infinity) {
-                    showStatus(`视频信息: ${videoElement.videoWidth}x${videoElement.videoHeight}px, 时长未知`, 'info');
-                } else {
-                    showStatus(`视频信息: ${videoElement.videoWidth}x${videoElement.videoHeight}px, ${formatDuration(duration)}`, 'info');
+                syncSpecFromVideo();
+                renderSpec();
+            });
+
+            // 规格来源一：FLV 元数据 / 序列头（fps、分辨率、码率）
+            flvPlayer.on(flvjs.Events.MEDIA_INFO, (info) => {
+                if (!info) return;
+                if (info.width && info.height) {
+                    spec.width = info.width;
+                    spec.height = info.height;
                 }
+                if (info.fps > 0) spec.fpsMeta = info.fps;
+                if (!spec.fps && spec.fpsMeta) spec.fps = spec.fpsMeta;
+                if (Number.isFinite(info.duration) && info.duration > 0) spec.duration = info.duration;
+                const md = info.metadata || {};
+                const metaKbps = (Number(md.videodatarate) || 0) + (Number(md.audiodatarate) || 0);
+                if (metaKbps > 0 && !spec.bitrateKbps) spec.bitrateKbps = metaKbps;
+                renderSpec();
+            });
+
+            // 规格来源二：flv.js 每秒统计的下载速率，KB/s 转 kbps
+            flvPlayer.on(flvjs.Events.STATISTICS_INFO, (info) => {
+                if (!info) return;
+                const kbps = Number(info.speed) * 8;
+                if (kbps > 0) spec.bitrateKbps = kbps;
+                renderSpec();
             });
 
             // 挂载播放器到视频元素
             flvPlayer.attachMediaElement(videoElement);
             flvPlayer.load();
             flvPlayer.play();
+            startSpecTimer();
             loadingOverlay.classList.add('is-hidden');
         } catch (error) {
             let msg = error.message;
@@ -932,6 +1689,16 @@
 
     // 清理资源
     function releaseResources() {
+        stopSpecTimer();
+        resetSpec();
+
+        // 切换视频前把正在录的内容落盘，避免丢片
+        if (recorder && recorder.state !== 'inactive') {
+            recSwitching = false;
+            try { recorder.stop(); } catch (e) { teardownRecording(); }
+        }
+        recordBtn.disabled = true;
+
         if (flvPlayer) {
             flvPlayer.unload();
             flvPlayer.detachMediaElement();

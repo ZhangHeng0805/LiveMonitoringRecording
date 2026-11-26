@@ -144,7 +144,7 @@
             padding: 26px 18px 0;
             color: var(--lml-text);
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
-                "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
             -webkit-font-smoothing: antialiased;
         }
 
@@ -1665,9 +1665,9 @@
     let refreshTimer = null;
     let isRefreshing = false; // 标记是否正在刷新中
     document.getElementById("other-links").innerHTML = generateLink({
-        "抖音作品解析": "DouYinVideoPares.html?url=" + encodeURIComponent(MainUrl),
+        "抖音作品解析": "DouYinVideoPares.html?root=" + encodeURIComponent(MainUrl),
         "FLV视频播放器": "https://zhangheng0805.github.io/FLVPlayer/",
-        "访问日志可视化": "client-info-report.html?url=" + encodeURIComponent(MainUrl),
+        "访问日志可视化": "client-info-report.html?root=" + encodeURIComponent(MainUrl),
     });
     // 页面加载完成后初始化
     document.addEventListener("DOMContentLoaded", function () {
