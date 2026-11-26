@@ -49,64 +49,110 @@ function isRemoteImageUrl(value) {
 }
 
 /* ==========================================================================
- * 接口令牌（无状态鉴权）
+ * 接口令牌（三级鉴权）
  * 页面托管在 GitHub Pages、后端经 cpolar 暴露时属于跨站访问，浏览器会拦截
- * 第三方 Cookie，因此鉴权改为「操作秘钥换令牌 + Authorization: Bearer」：
- *   1. 首次/令牌过期 → action/auth?actionKey=xxx 换取 JWT 令牌（localStorage 缓存）
- *   2. 之后所有接口带 Authorization: Bearer <token>
- *   3. 同源直连后端时仍兼容 Cookie 会话，服务端两种都认
+ * 第三方 Cookie，因此鉴权改为「令牌 + Authorization: Bearer」：
+ *   1. 普通令牌：action/token 公开签发（无需秘钥），只能访问普通/只读接口；
+ *   2. 秘钥令牌：action/auth?actionKey=xxx 用操作秘钥换取，可访问私密接口；
+ *   3. 同源直连后端时仍兼容 Cookie 会话，服务端两种都认。
  * ========================================================================== */
-const API_TOKEN_KEY = "lmr.api.token";
-const API_TOKEN_EXP_KEY = "lmr.api.tokenExp";
+const TOKEN_KIND = {NORMAL: "normal", SECRET: "secret"};
+const TOKEN_KEYS = {
+    normal: {token: "lmr.api.pubToken", exp: "lmr.api.pubTokenExp"},
+    // legacy* 是旧版单一令牌的存储键，读到后迁移成秘钥令牌（后端仍认旧令牌类型）
+    secret: {
+        token: "lmr.api.secretToken",
+        exp: "lmr.api.secretTokenExp",
+        legacyToken: "lmr.api.token",
+        legacyExp: "lmr.api.tokenExp",
+    },
+};
 const API_TOKEN_MIN_LEFT = 5 * 60 * 1000; // 剩余不足 5 分钟即提前续期
 
-function readApiToken() {
+function readToken(kind) {
+    const keys = TOKEN_KEYS[kind];
     try {
-        return {
-            token: window.localStorage.getItem(API_TOKEN_KEY),
-            exp: Number(window.localStorage.getItem(API_TOKEN_EXP_KEY) || 0),
-        };
+        let token = window.localStorage.getItem(keys.token);
+        let exp = Number(window.localStorage.getItem(keys.exp) || 0);
+        if (!token && keys.legacyToken) {
+            token = window.localStorage.getItem(keys.legacyToken);
+            exp = Number(window.localStorage.getItem(keys.legacyExp) || 0);
+        }
+        return {token: token, exp: exp};
     } catch (e) {
         return {token: null, exp: 0};
     }
 }
 
-function saveApiToken(token, expireSec) {
+function saveToken(kind, token, expireSec) {
+    const keys = TOKEN_KEYS[kind];
     try {
-        window.localStorage.setItem(API_TOKEN_KEY, token);
-        window.localStorage.setItem(API_TOKEN_EXP_KEY, String(Date.now() + expireSec * 1000));
+        window.localStorage.setItem(keys.token, token);
+        window.localStorage.setItem(keys.exp, String(Date.now() + expireSec * 1000));
     } catch (e) {
         // 隐私模式下 localStorage 不可用，退化为每次现取
     }
 }
 
-function clearApiToken() {
+function clearToken(kind) {
+    const keys = TOKEN_KEYS[kind];
     try {
-        window.localStorage.removeItem(API_TOKEN_KEY);
-        window.localStorage.removeItem(API_TOKEN_EXP_KEY);
+        window.localStorage.removeItem(keys.token);
+        window.localStorage.removeItem(keys.exp);
+        if (keys.legacyToken) {
+            window.localStorage.removeItem(keys.legacyToken);
+            window.localStorage.removeItem(keys.legacyExp);
+        }
     } catch (e) {
     }
 }
 
-function isApiTokenValid() {
-    const t = readApiToken();
+function isTokenValid(kind) {
+    const t = readToken(kind);
     return !!t.token && t.exp - Date.now() > API_TOKEN_MIN_LEFT;
 }
 
-let apiTokenTask = null;
+let publicTokenTask = null;
 
 /**
- * 确保拿到可用的接口令牌
+ * 确保拿到可用的普通令牌（公开接口签发，失败不弹秘钥框）
  * @param {boolean} [force] 强制重新换取（令牌被拒时使用）
  * @returns {Promise<string>}
  */
-function ensureApiToken(force) {
-    if (!force && isApiTokenValid()) return Promise.resolve(readApiToken().token);
-    if (apiTokenTask) return apiTokenTask;
-    apiTokenTask = (async function () {
-        let key = null;
+function ensurePublicToken(force) {
+    if (!force && isTokenValid(TOKEN_KIND.NORMAL)) return Promise.resolve(readToken(TOKEN_KIND.NORMAL).token);
+    if (publicTokenTask) return publicTokenTask;
+    publicTokenTask = (async function () {
+        const url = (window.MainUrl || "") + "action/token";
+        const res = await fetch(url, {credentials: "omit"});
+        if (!res.ok) throw new Error("获取普通接口令牌失败：" + res.status);
+        const msg = await res.json();
+        if (!msg || msg.code !== 0 || !msg.data || !msg.data.token) {
+            throw new Error((msg && msg.message) || "普通接口令牌签发失败");
+        }
+        saveToken(TOKEN_KIND.NORMAL, msg.data.token, msg.data.expireSec || 1800);
+        return msg.data.token;
+    })();
+    return publicTokenTask.finally(function () {
+        publicTokenTask = null;
+    });
+}
+
+let secretTokenTask = null;
+
+/**
+ * 确保拿到可用的秘钥令牌：没有秘钥时弹「操作验证」输入框
+ * @param {boolean} [force] 强制重新换取（令牌被拒时使用）
+ * @param {string} [presetKey] 调用方已经收集到的操作秘钥（如操作确认框刚输入的），优先使用，避免二次弹框
+ * @returns {Promise<string>}
+ */
+function ensureSecretToken(force, presetKey) {
+    if (!force && isTokenValid(TOKEN_KIND.SECRET)) return Promise.resolve(readToken(TOKEN_KIND.SECRET).token);
+    if (secretTokenTask) return secretTokenTask;
+    secretTokenTask = (async function () {
+        let key = presetKey || null;
         try {
-            key = window.localStorage.getItem("actionKey");
+            if (!key) key = window.localStorage.getItem("actionKey");
         } catch (e) {
         }
         if (!key && typeof window.promptActionKey === "function") {
@@ -120,53 +166,71 @@ function ensureApiToken(force) {
         }
         const url = (window.MainUrl || "") + "action/auth?actionKey=" + encodeURIComponent(key);
         const res = await fetch(url, {credentials: "omit"});
-        if (!res.ok) throw new Error("获取接口令牌失败：" + res.status);
+        if (!res.ok) throw new Error("获取秘钥令牌失败：" + res.status);
         const msg = await res.json();
         if (!msg || msg.code !== 0 || !msg.data || !msg.data.token) {
             throw new Error((msg && msg.message) || "操作秘钥错误");
         }
-        saveApiToken(msg.data.token, msg.data.expireSec || 3600);
+        saveToken(TOKEN_KIND.SECRET, msg.data.token, msg.data.expireSec || 3600);
         return msg.data.token;
     })();
-    return apiTokenTask.finally(function () {
-        apiTokenTask = null;
+    return secretTokenTask.finally(function () {
+        secretTokenTask = null;
     });
 }
 
+// 兼容旧调用名：老代码里的「接口令牌」就是秘钥令牌
+function ensureApiToken(force) {
+    return ensureSecretToken(force);
+}
+
 /* ==========================================================================
- * 接口鉴权规则表（前端可配置）
+ * 接口鉴权规则表（前端可配置，与后端三级鉴权一一对应）
  * --------------------------------------------------------------------------
- * 每条规则 = {match: "接口路径前缀", mode: "public" | "lazy" | "required"}
- *   public   ：公开接口，完全不带头、不弹框（如换令牌、埋点、只读统计）
- *   lazy     ：懒式（默认）。有令牌就带；被 401/403 才换令牌/弹框 —— 后端说了算
- *   required ：强制校验。发请求前没有可用令牌就先弹框/静默换令牌，再发
+ * 每条规则 = {match: "接口路径前缀", mode: "public" | "normal" | "private"}
+ *   public  ：公开接口，完全不带头、不弹框（换令牌、埋点、线程/计数）
+ *   normal  ：普通接口，带普通令牌（公开签发）；普通令牌不够时才升级秘钥令牌
+ *   private ：私密接口，直接带秘钥令牌（没有秘钥就弹「操作验证」）
+ * 兼容旧写法：lazy → normal，required → private
  * 匹配规则：先比路径前缀，多条命中时取最长前缀；都没命中用 API_AUTH_DEFAULT_MODE
  *
  * 运行期覆盖（不改代码即可调整）：
- *   localStorage.setItem("lmr.api.authRules", '[{"match":"action/","mode":"required"}]')
- *   或 {"action/":"required","api/videoParsing":"public"} 这种 map 写法
+ *   localStorage.setItem("lmr.api.authRules", '[{"match":"action/","mode":"private"}]')
+ *   或 {"action/":"private","api/videoParsing":"public"} 这种 map 写法
  *   覆盖项优先级高于内置表；mode 写 "auto" 表示撤销该条覆盖
- * 控制台调试：LmrAuthRules.list() / .set("action/monitor","required") / .resolve(url)
+ * 控制台调试：LmrAuthRules.list() / .set("action/monitor","private") / .resolve(url)
  * ========================================================================== */
-const API_AUTH_MODE = {PUBLIC: "public", LAZY: "lazy", REQUIRED: "required"};
+const API_AUTH_MODE = {PUBLIC: "public", NORMAL: "normal", PRIVATE: "private"};
 const API_AUTH_RULES_KEY = "lmr.api.authRules";
-const API_AUTH_DEFAULT_MODE = API_AUTH_MODE.LAZY;
+const API_AUTH_DEFAULT_MODE = API_AUTH_MODE.NORMAL;
 
 /**
- * 内置规则：只保留“绝对不能走鉴权弹框”的接口，
- * 业务接口默认 lazy（例如房间刷新由服务端 403 决定要不要弹框）。
- * 想强制的接口用 localStorage 覆盖，或直接在这里加 {match, mode:"required"}。
+ * 内置规则：显式声明每个接口的鉴权级别，与后端注解保持一致。
+ * 普通接口缺省即可（默认 normal），这里只列出公开/私密的边界。
  */
 const API_AUTH_RULES = [
-    {match: "action/auth", mode: API_AUTH_MODE.PUBLIC},      // 换令牌本身若再要令牌会死循环
-    {match: "client-info/", mode: API_AUTH_MODE.PUBLIC},     // 前端埋点
-    {match: "info/", mode: API_AUTH_MODE.PUBLIC},            // 线程/计数只读
+    {match: "action/auth", mode: API_AUTH_MODE.PUBLIC},              // 秘钥换秘钥令牌，本身必须公开
+    {match: "action/token", mode: API_AUTH_MODE.PUBLIC},             // 公开签发普通令牌
+    {match: "client-info/index", mode: API_AUTH_MODE.PUBLIC},        // 会话 Cookie 续期
+    // {match: "client-info/log", mode: API_AUTH_MODE.PRIVATE},         // 埋点日志原文含 IP，属私密
+    {match: "client-info/", mode: API_AUTH_MODE.PUBLIC},             // 埋点上报
+    // {match: "info/", mode: API_AUTH_MODE.PUBLIC},                    // 线程/计数只读
+    {match: "api/videoParsing", mode: API_AUTH_MODE.PUBLIC},         // 抖音作品解析
+    {match: "api/rooms", mode: API_AUTH_MODE.NORMAL},                // 房间列表（普通令牌，自动脱敏）
+    {match: "action/refresh", mode: API_AUTH_MODE.NORMAL},
+    {match: "action/parseDouYinLink", mode: API_AUTH_MODE.NORMAL},
+    // {match: "fileRes/", mode: API_AUTH_MODE.PRIVATE},                // 录制文件下载
+    {match: "room-recycle/", mode: API_AUTH_MODE.PRIVATE},           // 回收站管理
+    {match: "action/", mode: API_AUTH_MODE.PRIVATE},                 // 其余动作默认私密
 ];
 
 function normalizeApiAuthMode(mode) {
     if (!mode) return null;
     const m = String(mode).trim().toLowerCase();
-    if (m === "public" || m === "lazy" || m === "required") return m;
+    // 兼容旧版规则表写法
+    if (m === "lazy") return API_AUTH_MODE.NORMAL;
+    if (m === "required") return API_AUTH_MODE.PRIVATE;
+    if (m === "public" || m === "normal" || m === "private") return m;
     return null;
 }
 
@@ -293,15 +357,28 @@ window.LmrAuthRules = {
 };
 
 /**
- * 带令牌的 fetch，按接口规则决定行为：
+ * 从请求地址的查询参数里取操作秘钥（操作确认框会把 actionKey 带在 URL 上）
+ * @param {string} url
+ * @returns {string|null}
+ */
+function extractActionKey(url) {
+    try {
+        return new URL(String(url || ""), window.location.href).searchParams.get("actionKey") || null;
+    } catch (e) {
+        return null;
+    }
+}
+
+/**
+ * 带令牌的 fetch，按接口规则决定行为（与后端三级鉴权对应）：
  *   public  ：直接匿名请求，不带头、永不弹框
- *   required：先保证有令牌再发（没令牌→静默换/弹框），令牌被拒→清掉重新换一次
- *   lazy    ：有令牌就带；被 401/403 → 去头重试一次（避免失效令牌把公开接口打成 403）；
- *             匿名也 401/403 → 才换令牌（有 actionKey 静默换，没有才弹秘钥框）
+ *   normal  ：带普通令牌（公开接口自动获取）；被 403 时先换普通令牌，
+ *             仍不够再升级秘钥令牌（有 actionKey 静默换，没有才弹秘钥框）
+ *   private ：直接确保秘钥令牌再发；令牌被拒→重新换一次
  * 用户在任何一次验证框点 ✕/取消 → 抛 cancelled，调用方中止操作，不再回退请求。
  * @param {string} url
  * @param {RequestInit} [options]
- * @param {string} [authMode] 显式指定 public | lazy | required，省略则按规则表匹配
+ * @param {string} [authMode] 显式指定 public | normal | private，省略则按规则表匹配
  * @returns {Promise<Response>}
  */
 async function authFetch(url, options, authMode) {
@@ -321,40 +398,52 @@ async function authFetch(url, options, authMode) {
         return exec(null);
     }
 
-    // 2) 强制校验：先拿到令牌再发请求
-    if (mode === API_AUTH_MODE.REQUIRED) {
-        let token = isApiTokenValid() ? readApiToken().token : null;
-        // 没有可用令牌：有 actionKey 就静默换，没有才弹框（取消则抛 cancelled）
-        if (!token) token = await ensureApiToken(false);
-        let res = await exec(token);
+    // 2) 私密接口：先用秘钥令牌，被拒则清掉重换一次
+    if (mode === API_AUTH_MODE.PRIVATE) {
+        // 操作确认框刚输入的秘钥通常随 actionKey 参数带在 URL 上，直接拿它换令牌，避免二次弹框
+        const presetKey = extractActionKey(url);
+        let token = isTokenValid(TOKEN_KIND.SECRET) ? readToken(TOKEN_KIND.SECRET).token : null;
+        if (!token) token = await ensureSecretToken(false, presetKey);
+        const res = await exec(token);
         if (!needAuth(res)) return res;
-        // 令牌被判失效：清掉重新换取后重试一次，仍失败就把结果交回调用方
-        clearApiToken();
-        const fresh = await ensureApiToken(true);
-        return exec(fresh);
+        clearToken(TOKEN_KIND.SECRET);
+        return exec(await ensureSecretToken(true, presetKey));
     }
 
-    // 3) 懒式（默认）：后端 401/403 才升级为鉴权
-    const useToken = isApiTokenValid() ? readApiToken().token : null;
-    let res = await exec(useToken);
+    // 3) 普通接口：普通令牌即可，普通令牌不够再升级秘钥令牌
+    let token = null;
+    try {
+        token = await ensurePublicToken(false);
+    } catch (e) {
+        // 普通令牌签发失败（服务端关闭了公开签发/网络异常）不阻断：匿名先试，403 再升级
+        console.warn("[token] 普通令牌获取失败：", e && e.message ? e.message : e);
+    }
+    let res = await exec(token);
     if (!needAuth(res)) return res;
 
-    // 第一轮失败：令牌可能失效，清掉后按匿名/Cookie 再试一次
-    if (useToken) {
-        clearApiToken();
-        res = await exec(null);
+    // 令牌可能失效（如后端重启换了签名密钥）：清掉重新换普通令牌再试一次
+    if (token) {
+        clearToken(TOKEN_KIND.NORMAL);
+        try {
+            token = await ensurePublicToken(true);
+        } catch (e) {
+            token = null;
+        }
+        res = await exec(token);
         if (!needAuth(res)) return res;
     }
 
-    // 匿名也没权限：这才说明服务端确实要求校验
-    clearApiToken();
-    const fresh = await ensureApiToken(true);
-    return exec(fresh);
+    // 普通令牌仍不够（该接口实际是私密接口）：升级秘钥令牌
+    const secret = await ensureSecretToken(false, extractActionKey(url));
+    res = await exec(secret);
+    if (!needAuth(res)) return res;
+    clearToken(TOKEN_KIND.SECRET);
+    return exec(await ensureSecretToken(true, extractActionKey(url)));
 }
 
 /**
- * 公开只读 fetch：不带令牌直接请求（陌生人也能看到页面数据）
- * 若后端关闭了 server.auth.publicRead（返回 403），自动退回带令牌请求，弹出秘钥框
+ * 公开只读 fetch：先不带令牌直接请求（陌生人也能看到页面数据）
+ * 若后端把该接口划成普通/私密（返回 403），自动退回带令牌请求
  * @param {string} url
  * @param {RequestInit} [options]
  * @returns {Promise<Response>}
@@ -371,11 +460,16 @@ async function publicFetch(url, options) {
     return res;
 }
 
-// 无法带请求头的地址（<a>/<img>/<video>）用查询参数携带令牌
+// 无法带请求头的地址（<a>/<img>/<video>）用查询参数携带令牌：
+// 录制文件属私密接口，优先秘钥令牌；只拿到普通令牌时也带上，服务端会明确拒绝
 function withApiToken(url) {
-    const t = readApiToken();
-    if (!t.token) return url;
-    return url + (url.indexOf("?") > -1 ? "&" : "?") + "token=" + encodeURIComponent(t.token);
+    const secret = readToken(TOKEN_KIND.SECRET);
+    const normal = readToken(TOKEN_KIND.NORMAL);
+    const token = (secret.token && secret.exp - Date.now() > API_TOKEN_MIN_LEFT)
+        ? secret.token
+        : (normal.token && normal.exp - Date.now() > API_TOKEN_MIN_LEFT ? normal.token : null);
+    if (!token) return url;
+    return url + (url.indexOf("?") > -1 ? "&" : "?") + "token=" + encodeURIComponent(token);
 }
 
 // 单页（如抖音作品解析）没有加载 RoomAction.js 时的兜底秘钥输入；
@@ -408,7 +502,7 @@ function formatDateSafe(value) {
  * @param {string} path 接口路径（如 "action/monitor"）
  * @param {Object} [params] URL 参数
  * @param {number} [timeoutMs] 超时毫秒，默认 10000
- * @param {string} [authMode] 鉴权模式 public | lazy | required，省略则按接口规则表匹配
+ * @param {string} [authMode] 鉴权模式 public | normal | private，省略则按接口规则表匹配
  */
 async function getRequest(path, params, timeoutMs, authMode) {
     const limit = typeof timeoutMs === "number" && timeoutMs > 0 ? timeoutMs : 10000;
@@ -470,7 +564,7 @@ async function getRequest(path, params, timeoutMs, authMode) {
  * @param {string} path 接口路径（如 "action/record"）
  * @param {Object} [params] JSON 请求体
  * @param {number} [timeoutMs] 超时毫秒，默认 10000
- * @param {string} [authMode] 鉴权模式 public | lazy | required，省略则按接口规则表匹配
+ * @param {string} [authMode] 鉴权模式 public | normal | private，省略则按接口规则表匹配
  */
 async function postRequest(path, params, timeoutMs, authMode) {
     const limit = typeof timeoutMs === "number" && timeoutMs > 0 ? timeoutMs : 10000;

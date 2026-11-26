@@ -1701,7 +1701,7 @@
         if (!confirm("退出后所有直播监听都会停止，且网页服务一并关闭。确定要退出整个程序吗？")) {
             return;
         }
-        showActionBeforeModal(function (key) {
+        showActionBeforeModal("退出整个程序（所有监听停止、网页服务关闭）", function (key) {
             getRequest("action/exit", {actionKey: key})
                 .then(function (msg) {
                     if (msg.success) {
@@ -1804,8 +1804,8 @@
 
     let sessionExpiredShown = false;
 
-    // 取数：公开只读，陌生人无需秘钥即可看到房间列表；
-    // 后端关闭 server.auth.publicRead 时会 403，publicFetch 自动退回带令牌请求并弹秘钥框
+    // 取数：普通只读接口，前端自动拿普通令牌访问（陌生人也能看，但敏感字段已脱敏）；
+    // 未拿到令牌或服务端返回 403 时，publicFetch 会自动升级为普通/秘钥令牌请求
     async function requestRooms(isManual, signal) {
         return publicFetch(MainUrl + "api/rooms?manual=" + isManual, {
             signal: signal,

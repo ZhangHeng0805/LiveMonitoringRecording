@@ -62,7 +62,7 @@ public class ActionHandler extends AnnotationHandler {
     // ======================= 接口定义（路径/鉴权/限流由注解声明） =======================
 
     /**
-     * 换接口令牌：自身用 actionKey 校验，不能被前置鉴权拦掉
+     * 换秘钥令牌：用操作秘钥校验，接口本身必须公开，否则会死循环
      */
     @Endpoint(value = "/auth", auth = AuthPolicy.PUBLIC)
     public void auth(RequestContext ctx) {
@@ -71,9 +71,10 @@ public class ActionHandler extends AnnotationHandler {
         if (checkActionKey(query, msg)) {
             long expireSec = ConfigKit.get(Setting.class).getApiExpireSec();
             String token = JWTUtil.generateApiToken(expireSec);
-            msg.setMessage("接口令牌签发成功！");
+            msg.setMessage("秘钥令牌签发成功！");
             JSONObject data = new JSONObject();
             data.set("token", token);
+            data.set("type", JWTUtil.API_TOKEN_TYPE);
             data.set("expireSec", expireSec);
             data.set("expireAt", System.currentTimeMillis() + expireSec * 1000);
             msg.setData(data);
@@ -82,54 +83,90 @@ public class ActionHandler extends AnnotationHandler {
         }
     }
 
-    @Endpoint("/monitor")
+    /**
+     * 换普通令牌：公开接口，不需要秘钥，任何人可获取；只能访问普通（只读）接口，
+     * 有效期短（server.auth.publicTokenExpireSec），按来源 IP 限流避免被刷
+     */
+    @Endpoint(value = "/token", auth = AuthPolicy.PUBLIC)
+    @RateLimit(configKey = "server.api.publicTokenPerMinute", limit = 30)
+    public void token(RequestContext ctx) {
+        Message<Object> msg = ctx.message();
+        Setting setting = ConfigKit.get(Setting.class);
+        if (!setting.isPublicTokenEnabled()) {
+            msg.setCode(1);
+            msg.setMessage("普通令牌签发已关闭，请先通过操作秘钥换取秘钥令牌");
+            return;
+        }
+        long expireSec = setting.getPublicTokenExpireSec();
+        String token = JWTUtil.generatePublicToken(expireSec);
+        msg.setMessage("普通接口令牌签发成功！");
+        JSONObject data = new JSONObject();
+        data.set("token", token);
+        data.set("type", JWTUtil.PUBLIC_TOKEN_TYPE);
+        data.set("expireSec", expireSec);
+        data.set("expireAt", System.currentTimeMillis() + expireSec * 1000);
+        msg.setData(data);
+    }
+
+    /**
+     * 开始/停止监听：私密接口，必须有秘钥令牌
+     */
+    @Endpoint(value = "/monitor", auth = AuthPolicy.PRIVATE)
     public void monitor(RequestContext ctx) {
         Message<Object> msg = ctx.message();
         Map<String, String> query = ctx.query();
-        if (checkActionKey(query, msg) && checkRoomKey(query, msg)) {
+        if (checkRoomKey(query, msg)) {
             actionMonitor(msg, query);
         } else {
             msg.setCode(1);
         }
     }
 
-    @Endpoint("/record")
+    /**
+     * 开始/停止录制：私密接口
+     */
+    @Endpoint(value = "/record", auth = AuthPolicy.PRIVATE)
     public void record(RequestContext ctx) {
         Message<Object> msg = ctx.message();
         Map<String, String> query = ctx.query();
-        if (checkActionKey(query, msg) && checkRoomKey(query, msg)) {
+        if (checkRoomKey(query, msg)) {
             actionRecord(msg, query);
         } else {
             msg.setCode(1);
         }
     }
 
-    @Endpoint("/addRoom")
+    /**
+     * 新增监听房间：私密接口
+     */
+    @Endpoint(value = "/addRoom", auth = AuthPolicy.PRIVATE)
     public void addRoom(RequestContext ctx) throws IOException {
         Message<Object> msg = ctx.message();
-        if (checkActionKey(ctx.query(), msg)) {
-            addMonitor(msg, ctx.exchange());
-        } else {
-            msg.setCode(1);
-        }
+        addMonitor(msg, ctx.exchange());
     }
 
-    @Endpoint("/delRoom")
+    /**
+     * 删除监听房间：私密接口
+     */
+    @Endpoint(value = "/delRoom", auth = AuthPolicy.PRIVATE)
     public void delRoom(RequestContext ctx) {
         Message<Object> msg = ctx.message();
         Map<String, String> query = ctx.query();
-        if (checkActionKey(query, msg) && checkRoomKey(query, msg)) {
+        if (checkRoomKey(query, msg)) {
             delMonitor(msg, query);
         } else {
             msg.setCode(1);
         }
     }
 
-    @Endpoint("/setting")
+    /**
+     * 修改房间设置：私密接口
+     */
+    @Endpoint(value = "/setting", auth = AuthPolicy.PRIVATE)
     public void setting(RequestContext ctx) throws IOException {
         Message<Object> msg = ctx.message();
         Map<String, String> query = ctx.query();
-        if (checkActionKey(query, msg) && checkRoomKey(query, msg)) {
+        if (checkRoomKey(query, msg)) {
             actionSetting(msg, ctx.exchange(), query);
         } else {
             msg.setCode(1);
@@ -137,9 +174,9 @@ public class ActionHandler extends AnnotationHandler {
     }
 
     /**
-     * 刷新房间状态：只读操作，不要求 actionKey（前端也不再前置弹框）
+     * 刷新房间状态：只读操作，普通令牌即可（前端也不再前置弹框）
      */
-    @Endpoint(value = "/refresh",auth = AuthPolicy.READ)
+    @Endpoint(value = "/refresh", auth = AuthPolicy.NORMAL)
     public void refresh(RequestContext ctx) {
         Message<Object> msg = ctx.message();
         Map<String, String> query = ctx.query();
@@ -151,47 +188,44 @@ public class ActionHandler extends AnnotationHandler {
     }
 
     /**
-     * 抖音直播间链接解析：要开浏览器，成本高，按来源 IP 限流
+     * 抖音直播间链接解析：要开浏览器，成本高，普通令牌 + 按来源 IP 限流
      * 阈值读 server.api.parseLinkPerMinute（默认 10，0 为不限）
      */
-    @Endpoint(value = "/parseDouYinLink", auth = AuthPolicy.READ)
+    @Endpoint(value = "/parseDouYinLink", auth = AuthPolicy.NORMAL)
     @RateLimit(configKey = "server.api.parseLinkPerMinute", limit = 10)
     public void parseDouYinLink(RequestContext ctx) {
         parseDouYinRoomId(ctx.message(), ctx.query().get("shareLink"));
     }
 
-    @Endpoint(value = "/destroyBrowser",auth = AuthPolicy.READ)
+    /**
+     * 销毁浏览器实例：私密接口
+     */
+    @Endpoint(value = "/destroyBrowser", auth = AuthPolicy.PRIVATE)
     public void destroyBrowser(RequestContext ctx) {
         Message<Object> msg = ctx.message();
-        if (checkActionKey(ctx.query(), msg)) {
-            PlaywrightBrowserFactory.destroy();
-            msg.setMessage("浏览器销毁成功！");
-        } else {
-            msg.setCode(1);
-        }
+        PlaywrightBrowserFactory.destroy();
+        msg.setMessage("浏览器销毁成功！");
     }
 
-    @Endpoint(value = "/closeBrowser",auth = AuthPolicy.READ)
+    /**
+     * 关闭浏览器实例：私密接口
+     */
+    @Endpoint(value = "/closeBrowser", auth = AuthPolicy.PRIVATE)
     public void closeBrowser(RequestContext ctx) {
         Message<Object> msg = ctx.message();
-        if (checkActionKey(ctx.query(), msg)) {
-            PlaywrightBrowserFactory.closeBrowser();
-            msg.setMessage("浏览器关闭成功！");
-        } else {
-            msg.setCode(1);
-        }
+        PlaywrightBrowserFactory.closeBrowser();
+        msg.setMessage("浏览器关闭成功！");
     }
 
-    @Endpoint("/exit")
+    /**
+     * 退出程序：私密接口，仅凭秘钥令牌即可，不再额外要求 actionKey 参数
+     */
+    @Endpoint(value = "/exit", auth = AuthPolicy.PRIVATE)
     public void exit(RequestContext ctx) {
         Message<Object> msg = ctx.message();
-        if (checkActionKey(ctx.query(), msg)) {
-            msg.setMessage("退出指令已接收，程序将在数秒内停止！");
-            log.info("收到来自{}的退出指令，准备终止程序", ctx.exchange().getRemoteAddress());
-            FileModeMain.shutdown("http:" + ctx.exchange().getRemoteAddress());
-        } else {
-            msg.setCode(1);
-        }
+        msg.setMessage("退出指令已接收，程序将在数秒内停止！");
+        log.info("收到来自{}的退出指令，准备终止程序", ctx.exchange().getRemoteAddress());
+        FileModeMain.shutdown("http:" + ctx.exchange().getRemoteAddress());
     }
 
     private synchronized void delMonitor(Message msg, Map<String, String> query) {

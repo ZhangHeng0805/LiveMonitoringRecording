@@ -12,7 +12,7 @@ public interface AuthResolver {
 
     /**
      * @param exchange 当前请求
-     * @param policy   该接口声明的鉴权级别
+     * @param policy   该接口声明的鉴权级别（PUBLIC 公开 / NORMAL 普通令牌 / PRIVATE 秘钥令牌）
      * @return true 放行；false 由框架返回 403
      */
     boolean check(HttpExchange exchange, AuthPolicy policy);

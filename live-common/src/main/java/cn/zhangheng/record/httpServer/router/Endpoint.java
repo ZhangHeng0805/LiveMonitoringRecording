@@ -37,9 +37,9 @@ public @interface Endpoint {
     Match match() default Match.PREFIX;
 
     /**
-     * 鉴权级别，默认必须验证
+     * 鉴权级别，默认私密（必须秘钥令牌）；只读接口显式声明 {@link AuthPolicy#NORMAL}，公开接口声明 {@link AuthPolicy#PUBLIC}
      */
-    AuthPolicy auth() default AuthPolicy.REQUIRED;
+    AuthPolicy auth() default AuthPolicy.PRIVATE;
 
     /**
      * 限流规则，limit &lt;= 0 表示不限流

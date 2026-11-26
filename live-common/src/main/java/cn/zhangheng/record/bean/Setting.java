@@ -46,14 +46,27 @@ public class Setting {
     private long apiExpireSec = Constant.apiExpireSec;
 
     /**
-     * 是否允许匿名（陌生人）只读访问访问指定接口
-     * 开启后：页面可公开分享，房间列表/直播状态只读可见（路径、Cookie 等字段自动脱敏），
-     * 所有写操作、录制文件下载、退出程序仍需操作秘钥
-     * 关闭后：任何数据都要先输入操作秘钥
+     * 是否允许公开获取普通令牌（action/token）
+     * 关闭后普通接口也必须先用操作秘钥换秘钥令牌才能访问
      */
-    @JmxAttribute(desc = "允许匿名只读访问指定接口")
-    @PropertyValue("server.auth.publicRead")
-    private boolean authPublicRead = true;
+    @JmxAttribute(desc = "允许公开获取普通令牌")
+    @PropertyValue("server.auth.publicTokenEnabled")
+    private boolean publicTokenEnabled = true;
+
+    /**
+     * 普通令牌有效期（秒），默认 30 分钟
+     * 普通令牌由公开接口签发，只覆盖只读接口，短有效期可降低泄露风险
+     */
+    @JmxAttribute(desc = "普通令牌有效期（秒）")
+    @PropertyValue("server.auth.publicTokenExpireSec")
+    private long publicTokenExpireSec = Constant.publicTokenExpireSec;
+
+    /**
+     * 普通令牌签发接口的限流阈值（每个来源 IP 每分钟允许次数，0 表示不限制）
+     */
+    @JmxAttribute(desc = "普通令牌签发每IP每分钟次数（0为不限）")
+    @PropertyValue("server.api.publicTokenPerMinute")
+    private int publicTokenPerMinute = 30;
 
     /**
      * 抖音作品解析接口的限流阈值（每个来源 IP 每分钟允许的调用次数）

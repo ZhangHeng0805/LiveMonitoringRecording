@@ -28,7 +28,7 @@ import java.util.Map;
  * public class ActionHandler extends AnnotationHandler {
  *     public ActionHandler(String prefix) {
  *         super(prefix, (ex, policy) -> policy == AuthPolicy.PUBLIC
- *                 || (policy == AuthPolicy.READ ? checkReadAuth(ex) : checkRequestAuth(ex)));
+ *                 || (policy == AuthPolicy.NORMAL ? checkNormalAuth(ex) : checkSecretAuth(ex)));
  *     }
  *
  *     &#64;Endpoint("/refresh")
@@ -118,9 +118,10 @@ public abstract class AnnotationHandler extends JSONHandler {
             return;
         }
 
-        // 鉴权：规则来自注解，前端只在真正 403 时才弹秘钥框
+        // 鉴权：规则来自注解（公开 / 普通令牌 / 秘钥令牌），前端只在真正 403 时才升级鉴权
         if (!authResolver.check(httpExchange, route.endpoint.auth())) {
-            sendJson(httpExchange, 403, buildMessage(403, "需要操作秘钥/接口令牌验证"));
+            // 403 只回通用提示：不带接口级别、令牌名称与获取方式，避免向未授权请求泄露接口细节
+            sendJson(httpExchange, 403, buildMessage(403, "无权访问"));
             return;
         }
 

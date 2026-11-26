@@ -704,6 +704,91 @@
                 justify-content: center
             }
         }
+
+        /* ===== 操作验证弹窗 ===== */
+        .auth-mask {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+            background: rgba(20, 24, 36, .42)
+        }
+
+        .auth-mask[hidden] {
+            display: none
+        }
+
+        .auth-card {
+            width: 100%;
+            max-width: 360px;
+            padding: 20px 20px 16px;
+            border-radius: 14px;
+            background: var(--card);
+            box-shadow: 0 18px 46px rgba(22, 28, 45, .22)
+        }
+
+        .auth-card h3 {
+            margin: 0 0 6px;
+            font-size: 16px
+        }
+
+        .auth-card p {
+            margin: 0 0 12px;
+            color: var(--text-2);
+            font-size: 12.5px;
+            line-height: 1.6
+        }
+
+        .auth-card input[type=password] {
+            width: 100%;
+            height: 36px;
+            padding: 0 10px;
+            border: 1px solid #dfe2ec;
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 13px;
+            outline: none
+        }
+
+        .auth-card input[type=password]:focus {
+            border-color: var(--primary)
+        }
+
+        .auth-card .chk {
+            margin-top: 10px
+        }
+
+        .auth-tip {
+            margin-top: 8px;
+            color: var(--err);
+            font-size: 12px
+        }
+
+        .auth-tip[hidden] {
+            display: none
+        }
+
+        .auth-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 16px
+        }
+
+        .btn.primary {
+            border-color: var(--primary);
+            background: var(--primary);
+            color: #fff
+        }
+
+        .btn.primary:hover {
+            border-color: #4f46e5;
+            background: #4f46e5;
+            color: #fff
+        }
     </style>
     <script src="js/mainURL.js"></script>
     <script src="js/client-info.js"></script>
@@ -817,6 +902,21 @@
     </section>
 </div>
 
+<!-- 操作验证：client-info/log 是私密接口，需要操作秘钥换取的秘钥令牌 -->
+<div class="auth-mask" id="authMask" hidden>
+    <div class="auth-card" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+        <h3 id="authTitle">操作验证</h3>
+        <p>访问日志属于私密接口，需要验证操作秘钥（设备标识 ID）换取秘钥令牌后才能读取。</p>
+        <input id="authKey" type="password" autocomplete="off" placeholder="请输入操作秘钥">
+        <label class="chk"><input type="checkbox" id="authRemember">记住秘钥</label>
+        <div class="auth-tip" id="authTip" hidden></div>
+        <div class="auth-actions">
+            <button class="btn" id="authCancel" type="button">取消</button>
+            <button class="btn primary" id="authOk" type="button">验证并读取</button>
+        </div>
+    </div>
+</div>
+
 <script>
     /* 接口地址：同源情况走 /client-info/log；也可用 ?api=xxx 覆盖 */
     const API_BASE = (function () {
@@ -832,6 +932,134 @@
 
     function apiUrl() {
         return API_BASE + (API_BASE.indexOf('?') >= 0 ? '&' : '?') + 'maxLines=' + limit;
+    }
+
+    /* ===== 私密接口鉴权：秘钥令牌 =====
+     * client-info/log 属私密接口，必须带秘钥令牌（普通令牌/Cookie 都不够）。
+     * 存储键与首页保持一致，首页换到的秘钥令牌可直接复用，不用重复验证。 */
+    const TOKEN_STORE = {
+        token: 'lmr.api.secretToken',
+        exp: 'lmr.api.secretTokenExp',
+        legacyToken: 'lmr.api.token',
+        legacyExp: 'lmr.api.tokenExp',
+    };
+    const TOKEN_MIN_LEFT = 5 * 60 * 1000;
+
+    function readSecretToken() {
+        try {
+            let token = window.localStorage.getItem(TOKEN_STORE.token);
+            let exp = Number(window.localStorage.getItem(TOKEN_STORE.exp) || 0);
+            if (!token) {
+                token = window.localStorage.getItem(TOKEN_STORE.legacyToken);
+                exp = Number(window.localStorage.getItem(TOKEN_STORE.legacyExp) || 0);
+            }
+            return {token: token, exp: exp};
+        } catch (e) {
+            return {token: null, exp: 0};
+        }
+    }
+
+    function saveSecretToken(token, expireSec) {
+        try {
+            window.localStorage.setItem(TOKEN_STORE.token, token);
+            window.localStorage.setItem(TOKEN_STORE.exp, String(Date.now() + expireSec * 1000));
+        } catch (e) {
+            // 隐私模式不落盘，本次会话内仍可用
+        }
+    }
+
+    function hasSecretToken() {
+        const t = readSecretToken();
+        return !!t.token && t.exp - Date.now() > TOKEN_MIN_LEFT;
+    }
+
+    /**
+     * 操作验证弹窗：返回输入的秘钥，取消返回 null
+     * @param {string} [message] 顶部错误提示（如秘钥错误）
+     */
+    function askActionKey(message) {
+        return new Promise(function (resolve) {
+            const mask = $('#authMask');
+            const input = $('#authKey');
+            const tip = $('#authTip');
+            const okBtn = $('#authOk');
+            const cancelBtn = $('#authCancel');
+            tip.textContent = message || '';
+            tip.hidden = !message;
+            input.value = '';
+            mask.hidden = false;
+            setTimeout(function () { input.focus(); }, 30);
+
+            function close(value) {
+                mask.hidden = true;
+                okBtn.onclick = cancelBtn.onclick = input.onkeydown = mask.onclick = null;
+                resolve(value);
+            }
+
+            okBtn.onclick = function () {
+                const key = input.value.trim();
+                if (!key) {
+                    tip.textContent = '请输入操作秘钥（设备标识 ID）';
+                    tip.hidden = false;
+                    input.focus();
+                    return;
+                }
+                try {
+                    if ($('#authRemember').checked) window.localStorage.setItem('actionKey', key);
+                    else window.localStorage.removeItem('actionKey');
+                } catch (e) {
+                }
+                close(key);
+            };
+            cancelBtn.onclick = function () { close(null); };
+            mask.onclick = function (e) { if (e.target === mask) close(null); };
+            input.onkeydown = function (e) {
+                if (e.key === 'Enter') { e.preventDefault(); okBtn.click(); }
+                if (e.key === 'Escape') close(null);
+            };
+        });
+    }
+
+    /**
+     * 换取秘钥令牌：优先用已记住的秘钥静默换，被拒或没有秘钥时才弹窗
+     * @param {boolean} interactive 是否允许弹窗（后台自动刷新传 false，避免打扰）
+     * @param {string} [message] 弹窗内的错误提示
+     * @returns {Promise<string|null>}
+     */
+    async function requestSecretToken(interactive, message) {
+        if (!interactive) return null;
+        let key = null;
+        try {
+            key = window.localStorage.getItem('actionKey');
+        } catch (e) {
+        }
+        let needAsk = !key;
+        while (true) {
+            if (needAsk) {
+                key = await askActionKey(message);
+                if (!key) return null;
+            }
+            try {
+                const res = await fetch(new URL('action/auth?actionKey=' + encodeURIComponent(key), getMainUrl()).toString(),
+                    {cache: 'no-store', credentials: 'omit'});
+                const msg = await res.json();
+                if (msg && msg.code === 0 && msg.data && msg.data.token) {
+                    saveSecretToken(msg.data.token, msg.data.expireSec || 7200);
+                    return msg.data.token;
+                }
+                message = (msg && msg.message) || '操作秘钥错误';
+            } catch (e) {
+                message = '换取秘钥令牌失败：' + (e.message || e);
+            }
+            // 静默尝试失败（记住的秘钥已改）→ 弹窗重输
+            needAsk = true;
+            key = null;
+        }
+    }
+
+    function fetchLog(token) {
+        const headers = token ? {Authorization: 'Bearer ' + token} : {};
+        return fetch(apiUrl(), {cache: 'no-store', credentials: 'include', headers: headers});
     }
 
     function limitLabel() {
@@ -1362,14 +1590,23 @@
     }
 
     /* ========== 数据加载（只走接口，不做任何本地兜底数据） ========== */
-    async function load() {
+    async function load(opts) {
+        const manual = !!(opts && opts.manual);
         const btn = $('#btnRefresh');
         setStatus('', '正在拉取 logs/client-info.log（' + limitLabel() + '）…');
         btn.disabled = true;
         try {
             if (!API_BASE) throw new Error('当前以 file:// 打开，浏览器不允许请求后端接口');
-            const res = await fetch(apiUrl(), {cache: 'no-store', credentials: 'include'});
-            if (!res.ok) throw new Error('HTTP ' + res.status + (res.status === 403 ? '（无权限）' : (res.status === 404 ? '（日志文件不存在）' : '')));
+            let token = hasSecretToken() ? readSecretToken().token : null;
+            let res = await fetchLog(token);
+            if (res.status === 401 || res.status === 403) {
+                // 私密接口：没有令牌或令牌失效 → 用记住的秘钥静默换；
+                // 手动刷新/首次加载才弹「操作验证」，后台自动刷新不打扰
+                token = await requestSecretToken(manual || !DATA.length,
+                    token ? '秘钥令牌已失效，请重新验证操作秘钥' : '');
+                if (token) res = await fetchLog(token);
+            }
+            if (!res.ok) throw new Error('HTTP ' + res.status + (res.status === 403 ? '（无权限：需要操作秘钥换取的秘钥令牌）' : (res.status === 404 ? '（日志文件不存在）' : '')));
             const text = await res.text();
             const rows = parseLog(text);
             if (!rows.length) throw new Error('日志为空或格式未识别');
@@ -1391,7 +1628,11 @@
         } catch (e) {
             const msg = e.message || '未知错误';
             setStatus('err', '接口不可用：' + msg);
-            setBanner('无法获取 logs/client-info.log（' + msg + '）。请确认服务已启动，并通过 http://<主机>:<端口>/client-info-report.html 打开本页；直接用本地文件打开无法访问接口。');
+            if (String(msg).indexOf('403') >= 0) {
+                setBanner('访问日志属于私密接口，读取需要秘钥令牌。请点击右上角「刷新」完成操作验证；若已在验证框中取消，可再次刷新重新输入操作秘钥。');
+            } else {
+                setBanner('无法获取 logs/client-info.log（' + msg + '）。请确认服务已启动，并通过 http://<主机>:<端口>/client-info-report.html 打开本页；直接用本地文件打开无法访问接口。');
+            }
             if (!DATA.length) {
                 setMeta([], {range: '', lines: 0, loaded: 0, modified: ''});
                 renderAll();
@@ -1407,11 +1648,11 @@
             fullBtn.textContent = limit === 0 ? '仅看最近 ' + fmt(PAGE_LIMIT) + ' 行' : '加载全量';
         };
         syncFull();
-        $('#btnRefresh').onclick = load;
+        $('#btnRefresh').onclick = () => load({manual: true});
         fullBtn.onclick = () => {
             limit = limit === 0 ? PAGE_LIMIT : 0;
             syncFull();
-            load();
+            load({manual: true});
         };
         $('#q').addEventListener('input', applyFilter);
         ['#fDev', '#fBr', '#fDay'].forEach(s => $(s).addEventListener('change', applyFilter));

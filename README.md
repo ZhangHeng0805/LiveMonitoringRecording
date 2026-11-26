@@ -65,7 +65,7 @@
 
 - **取数双通道**：抖音优先走 Playwright 模拟真实页面拿 `dataUrl`，再切 OkHttp 请求；B站 / 快手直接走接口或页面内嵌 State，不常驻浏览器。
 - **录制双实现**：`FlvStreamRecorder` 纯 Java 拉流写文件，无外部依赖；`FFmpegFlvRecorder` 走 ffmpeg 子进程，可读录制进度。二者由 `record.type`（`JAVA` / `FFMPEG`）切换。
-- **控制面与文件面同端口**：`/api`、`/action` 管理监听，`/fileRes` 提供带 Range 分片的录制文件下载，`/room-recycle` 管理回收站，鉴权为设备标识 ID。
+- **控制面与文件面同端口**：`/api`、`/action` 管理监听，`/fileRes` 提供带 Range 分片的录制文件下载，`/room-recycle` 管理回收站，鉴权按「公开 / 普通令牌 / 秘钥令牌」三级收敛。
 - **弹幕与录制解耦**：弹幕连接只在开播期间建立，录制异常由 `RecorderTask` 重试恢复，两者互不阻塞。
 - **线程模型**：业务侧使用 `record.bean.Task` 的可重建线程池（每个监听 / 录制任务一个池），队列侧使用 `common.task.AsyncTaskQueue`，二者语义不同，改动时注意区分。
 
@@ -231,57 +231,53 @@ pause
 程序默认**常驻**：所有监听结束（下播、停止监控）后不再自动退出，网页服务与接口继续运行，可以随时再新增或恢复监听。
 
 1. **网页「退出程序」（推荐）**：监控界面右上角的电源按钮，需二次确认并输入**操作秘钥**（即设备唯一 ID，与页面其它操作同一套秘钥）；确认后程序按「停监听 → 关浏览器 → 收线程池 → 停 HTTP/cpolar 服务」的顺序优雅退出。用 FFmpeg 录制时建议走这个入口，直接 `taskkill` 结束 JVM 可能残留 `ffmpeg.exe`。
-2. **接口调用**：`GET/POST action/exit?actionKey=<设备唯一ID>`，秘钥错误会被拒绝，返回 `操作秘钥错误！`。适合远程或脚本调用。
+2. **接口调用**：`action/exit` 是私密接口，先 `GET action/auth?actionKey=<设备唯一ID>` 换秘钥令牌，再带 `Authorization: Bearer <令牌>` 调用 `GET/POST action/exit`。适合远程或脚本调用。
 3. **托盘「退出监听」**：只结束当前房间的监听，进程继续常驻（`COMMAND` 模式除外）。
 4. **强制结束**：`taskkill /f /im javaw.exe`，仅在前几种方式失效时使用，结束后需检查是否有残留的 `ffmpeg.exe` / `chromium` 进程。
 
 ## 接口鉴权与远程访问
 
-控制台支持两种访问形态，鉴权统一收敛成「操作秘钥 → 接口令牌」：
+控制台支持两种访问形态，鉴权统一收敛成三级令牌：
 
 | 形态 | 前端位置 | 鉴权方式 |
 | --- | --- | --- |
 | 本地直连 | 后端自带页面 `http://127.0.0.1:8005/` | Cookie 会话（`_token`）或 Bearer 令牌，二者都认 |
 | 跨站远程 | GitHub Pages / 任意静态托管 + cpolar 域名 | `Authorization: Bearer <令牌>`（浏览器会拦截第三方 Cookie，不能依赖 Cookie） |
 
-**公开访问范围（谁能看到什么）**
+**三级鉴权**
 
-页面本身可公开分享，陌生人打开就能看到实时监视面板；秘钥只拦敏感操作，由 `server.auth.publicRead` 控制只读权限：
+| 级别 | 访问凭证 | 凭怎么拿 | 覆盖接口 |
+| --- | --- | --- | --- |
+| 公开 `PUBLIC` | 不需要令牌 | — | 页面/脚本/皮肤、`info/*`、`client-info/index`、`client-info/*` 埋点、`api/videoParsing` |
+| 普通 `NORMAL` | 普通令牌 | `action/token` 公开签发，无需秘钥 | `api/rooms`（返回体自动脱敏）、`action/refresh`、`action/parseDouYinLink` |
+| 私密 `PRIVATE` | 秘钥令牌 | `action/auth?actionKey=<设备标识ID>` 用操作秘钥换取 | `action/*` 写操作（监听/录制/新增/删除/设置/浏览器/退出）、`fileRes/*`、`room-recycle/*`、`client-info/log` |
 
-| 内容 / 操作 | 陌生人（无秘钥） | 说明 |
-| --- | --- | --- |
-| 页面、脚本、皮肤 | ✅ 可访问 | 静态资源不含任何秘钥与房间数据 |
-| 房间列表、直播/录制状态、观众统计 | ✅ 只读可见 | 需 `server.auth.publicRead=true`（默认开启） |
-| 房间本地录制路径、平台 Cookie、息知通知地址 | ❌ 匿名请求自动剔除 | 匿名返回体脱敏，授权请求才返回完整字段 |
-| 新增/修改/删除房间、开始/停止监听、刷新、关闭浏览器实例 | ❌ 需秘钥 | 走 `action/*`，无令牌一律 403 |
-| 录制文件下载、监听回收站 | ❌ 需秘钥 | 文件名与录制内容都属于私密数据 |
-| 抖音作品解析 `api/videoParsing` | ✅ 完全公开 | 不占用秘钥体系，任何人可直接调用 |
-| 退出整个程序 | ❌ 需秘钥 | `action/exit` 只认秘钥，不认令牌 |
-
-把 `server.auth.publicRead=false` 写进全局配置，页面就回到「先输秘钥、否则只能看到空壳」的严格模式；前端会自动在首次请求被 403 时弹出「操作验证」，无需改代码。
+秘钥令牌也能访问普通接口；普通令牌访问私密接口一律 403。页面本身可公开分享，陌生人拿到普通令牌即可看实时面板，但敏感字段已脱敏。
 
 **令牌怎么来的**
 
-1. 前端首次访问（或令牌过期）调用 `action/auth?actionKey=<设备标识ID>`，服务端校验秘钥后用 `JWT` 签发令牌，返回 `{token, expireSec, expireAt}`；
-2. 令牌有效期等于 `server.api.expireSec`（默认 7200 秒），前端缓存在 `localStorage`，剩余不足 5 分钟自动续期；
-3. 页面没有秘钥时会弹出「操作验证」输入框，勾选「记住秘钥」后写入 `localStorage`，下次不再询问；
-4. `img` / `video` / `<a>` 这类无法带请求头的地址（如录制文件下载），用查询参数 `token=<令牌>` 携带。
+1. 普通令牌：`GET action/token` → `{token, type:"public", expireSec, expireAt}`，有效期 `server.auth.publicTokenExpireSec`（默认 1800 秒），按来源 IP 限流 `server.api.publicTokenPerMinute`（默认 30 次/分钟，`0` 为不限）；
+2. 秘钥令牌：`GET action/auth?actionKey=<设备标识ID>` → `{token, type:"api", expireSec, expireAt}`，有效期 `server.api.expireSec`（默认 7200 秒）；
+3. 两种令牌都由 `JWT` 签发，前端缓存在 `localStorage`，剩余不足 5 分钟自动续期；
+4. 普通接口用普通令牌访问，失败/被拒时自动升级秘钥令牌；私密接口弹「操作验证」输入框，用刚输入的秘钥换取秘钥令牌（同一把秘钥不会重复弹框）；
+5. `img` / `video` / `<a>` 这类无法带请求头的地址（如录制文件下载），用查询参数 `token=<令牌>` 携带，录制文件需要秘钥令牌。
 
 **本地存储键**
 
 | 键 | 说明 |
 | --- | --- |
 | `actionKey` | 操作秘钥（设备标识 ID），勾选「记住秘钥」后写入 |
-| `lmr.api.token` | 接口令牌（JWT） |
-| `lmr.api.tokenExp` | 令牌到期时间戳（毫秒） |
+| `lmr.api.pubToken` / `lmr.api.pubTokenExp` | 普通令牌及其到期时间戳（毫秒） |
+| `lmr.api.secretToken` / `lmr.api.secretTokenExp` | 秘钥令牌及其到期时间戳（毫秒） |
+| `lmr.api.token` / `lmr.api.tokenExp` | 旧版单一令牌键，读取后自动迁移为秘钥令牌 |
 
 **接口侧规则**
 
-- 鉴权失败返回 `403`，响应体为空；前端收到 403 会自动重新换令牌并重试一次，仍失败才提示；
-- 只读接口 `api/rooms` 在 `server.auth.publicRead=true` 时允许匿名访问并自动脱敏；`api/videoParsing`（抖音作品解析）完全公开，任何人可直接调用，但按来源 IP 限流（`server.api.parsePerMinute`，默认 3 次/分钟，超限返回 `429` + `Retry-After`）；写操作 `action/*`、`fileRes`、`room-recycle` 必须带令牌；
+- 鉴权失败返回 `403` + JSON 提示（私密接口提示需要秘钥令牌，普通接口提示可调用 `action/token` 获取）；前端收到 403 会自动换令牌并重试一次，仍失败才提示；
 - 服务端按顺序尝试：`Authorization: Bearer` → `?token=` → `_token` Cookie，任一通过即放行；
+- `api/rooms` 匿名/普通令牌访问时自动脱敏（剔除录制路径、平台 Cookie、通知地址），只有秘钥令牌或同源会话返回全量；`api/videoParsing`（抖音作品解析）完全公开，任何人可直接调用，但按来源 IP 限流（`server.api.parsePerMinute`，默认 3 次/分钟，超限返回 `429` + `Retry-After`）；
 - 跨域响应已放开 `Authorization`、`Range` 请求头与 `Content-Range`、`Content-Length` 等响应头，录制文件的分片下载/断点续传在跨站下同样可用；`OPTIONS` 预检直接返回 `204`；
-- 退出接口 `action/exit?actionKey=<ID>` 用的是同一把秘钥，不接收令牌，避免令牌泄露后被人远程关停；
+- 退出接口 `action/exit` 是私密接口，只认秘钥令牌，不再额外校验 `actionKey` 参数，避免令牌泄露后被人远程关停；
 - `action/parseDouYinLink?shareLink=` 会对解析结果做校验：入参是纯数字时直接原样返回并提示「已是直播间号」；启动无头浏览器跳转后，只有最终地址命中 `live.douyin.com/{数字}`（或本身是纯数字）才回填房间号，否则返回 `code=1` 并说明返回内容，不会把普通网页地址当房间号写入；
 - `/proxy` 流媒体代理拒绝远程客户端访问内网/本机地址（本机请求不受限），避免被当作内网探测跳板。
 
@@ -360,8 +356,10 @@ Cookie.KuaiShou=
 | `Cookie.Bilibili` / `Cookie.DouYin` / `Cookie.KuaiShou` | — | 空 | 支持 `file:xxx.txt` 文件引用，按平台分别配置 |
 | `living.start.shortcut` / `living.end.shortcut` | — | 空 | 开播 / 下播触发的快捷键，小写、多个用逗号分隔（如 `alt+tab,ctrl+s`） |
 | `monitor.maxMonitorThreads` | — | 10 | 同时监听上限，1-100，模板未列出需手动添加 |
-| `server.api.expireSec` | — | 7200 | 控制台接口会话有效期（秒），模板未列出需手动添加 |
-| `server.auth.publicRead` | — | true | 允许匿名只读访问房间列表；设 `false` 则任何数据都要先输操作秘钥，模板未列出需手动添加 |
+| `server.api.expireSec` | — | 7200 | 秘钥令牌有效期（秒），模板未列出需手动添加 |
+| `server.auth.publicTokenEnabled` | — | true | 是否允许公开签发普通令牌；设 `false` 后普通接口也必须先换秘钥令牌 |
+| `server.auth.publicTokenExpireSec` | — | 1800 | 普通令牌有效期（秒），模板未列出需手动添加 |
+| `server.api.publicTokenPerMinute` | — | 30 | 普通令牌签发限流：同一 IP 每分钟最多次数，`0` 为不限，模板未列出需手动添加 |
 | `server.api.parsePerMinute` | — | 3 | 抖音作品解析限流：同一 IP 每分钟最多调用次数，`0` 为不限，模板未列出需手动添加 |
 
 > 浏览器上下文清理策略已改为代码内置固定值（`isPageClear=false`、`updateContextCounts=50`），不再提供配置项。

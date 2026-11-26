@@ -30,8 +30,8 @@ import static cn.zhangheng.record.httpServer.util.HandlerUtils.*;
 /**
  * 客户端信息采集 + 会话 Cookie 刷新。
  * <p>
- * 两个接口都是公开的（不涉及业务数据，只写日志/下发会话 Cookie），
- * 规则直接写在方法注解上。
+ * 会话刷新与埋点上报是公开接口（不涉及业务数据，只写日志/下发会话 Cookie）；
+ * 埋点日志原文是私密接口，需要秘钥令牌。
  *
  * @author: ZhangHeng
  * @email: zhangheng_0805@163.com
@@ -85,7 +85,7 @@ public class ClientHandler extends AnnotationHandler {
      * @param ctx ctx.query().get("maxLines") 只取末尾 N 行；省略时默认只取末尾 {@value #DEFAULT_LOG_TAIL_LINES} 行，
      *                 传 0 表示全量（日志会一直增长，默认限量避免一次拉太多）
      */
-    @Endpoint(value = "/log", auth = AuthPolicy.READ)
+    @Endpoint(value = "/log", auth = AuthPolicy.PRIVATE)
     public void logContent(RequestContext ctx) throws IOException {
         Path path = logPath;
         if (!Files.exists(path)) {

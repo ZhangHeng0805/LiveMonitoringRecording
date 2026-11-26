@@ -3,7 +3,8 @@
  * 结构：列表（每行一个房间，点击展开配置详情）→ 恢复监听 / 彻底删除
  */
 function roomRecycle() {
-    showActionBeforeModal((key) => {
+    // 已验证过直接拉列表；没验证过才弹一次验证；取消静默退出，不弹任何提示
+    requireVerified((key) => {
         getRequest("room-recycle/getList", {
             actionKey: key,
             pageNum: 1,
@@ -56,6 +57,14 @@ async function fetchRecycleContents(pageNum = 1, pageSize = 100) {
 }
 
 function showRoomRecycleModel(key, data) {
+    // 打开回收站不再先验证秘钥，这里补一个默认值，避免 data-key 写成 undefined
+    if (key === undefined || key === null || key === "") {
+        try {
+            key = (window.localStorage && window.localStorage.getItem("actionKey")) || "";
+        } catch (e) {
+            key = "";
+        }
+    }
     const total = (data && data.total) || 0;
     setModalContent(
         "直播监听回收站",
@@ -342,6 +351,7 @@ async function renderRecycleDetail(wrapDom) {
 function recoverRoom(path, data) {
     const rootDom = document.getElementById("roomRecycleList");
     const key = rootDom.dataset.key;
+    if (!confirm("恢复后该房间会重新加入监听列表并自动启用，确定恢复吗？")) return;
     postRequest(`room-recycle/recover?actionKey=${encodeURIComponent(key)}&path=${encodeURIComponent(path)}`, data)
         .then(msg => {
             if (msg.success) {

@@ -1,9 +1,66 @@
 /**
- * 操作秘钥验证弹窗
+ * 是否已持有可用的秘钥令牌：有效期内的令牌说明本次会话已经通过操作验证
+ */
+function hasSecretTokenReady() {
+    try {
+        return typeof isTokenValid === "function"
+            && typeof TOKEN_KIND !== "undefined"
+            && isTokenValid(TOKEN_KIND.SECRET);
+    } catch (e) {
+        return false;
+    }
+}
+
+/**
+ * 已通过验证时的二次确认：不再重复输入秘钥，只确认本次操作，防误触
+ * @param actionLabel 操作描述（如“开始监听 · 房间 123”）
+ * @param onSubmit 确认回调，入参为记住的秘钥（可能为空字符串）
+ * @param onCancel 取消回调
+ */
+function showConfirmBeforeAction(actionLabel, onSubmit, onCancel) {
+    const label = actionLabel || "该操作";
+    setModalContent(
+        "操作确认",
+        `<div class="text-sm text-gray-700 leading-relaxed">
+            <p class="mb-3">本次操作已通过验证，确认执行？</p>
+            <p class="mb-3"><span class="inline-flex items-center px-2.5 py-1 rounded-md bg-gray-100 text-gray-800 font-medium break-all">${escapeHtml(label)}</span></p>
+            <p class="text-xs text-gray-500 mb-0">该确认仅用于防误操作，秘钥令牌有效期内不再重复输入秘钥。</p>
+         </div>`,
+        [
+            {
+                text: "取消",
+                className:
+                    "bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-gray-400",
+                onClick: () => {
+                    closeModal();
+                    if (typeof onCancel === "function") onCancel();
+                },
+            },
+            {
+                text: "确认执行",
+                className:
+                    "bg-primary text-white hover:bg-primary/90 focus:ring-primary",
+                onClick: () => {
+                    let key = "";
+                    try {
+                        key = (window.localStorage && window.localStorage.getItem("actionKey")) || "";
+                    } catch (e) {
+                        key = "";
+                    }
+                    closeModal();
+                    onSubmit(key);
+                },
+            },
+        ]
+    );
+}
+
+/**
+ * 操作秘钥输入弹窗（纯输入，不做二次确认）
  * @param onSubmit 校验通过回调，入参为秘钥
  * @param onCancel 取消回调（Promise 场景需要）
  */
-function showActionBeforeModal(onSubmit, onCancel) {
+function showActionKeyModal(onSubmit, onCancel) {
     setModalContent(
         "操作验证",
         `<div id="inputContainer" class="mb-4">
@@ -64,6 +121,157 @@ function showActionBeforeModal(onSubmit, onCancel) {
     );
 }
 
+/**
+ * 操作前置弹窗：
+ * 1. 还没通过验证（无有效秘钥令牌）→ 弹秘钥输入；
+ * 2. 已通过验证 → 弹二次确认，避免验证一次后私密操作被静默执行。
+ * @param actionLabel 操作描述，用于二次确认弹窗展示具体动作
+ * @param onSubmit 确认/校验通过回调，入参为秘钥（二次确认分支可能为空字符串）
+ * @param onCancel 取消回调
+ */
+function showActionBeforeModal(actionLabel, onSubmit, onCancel) {
+    if (hasSecretTokenReady()) {
+        showConfirmBeforeAction(actionLabel, onSubmit, onCancel);
+        return;
+    }
+    showActionKeyModal(onSubmit, onCancel);
+}
+
+/**
+ * 打开弹窗前的验证：已经持有有效秘钥令牌就直接放行（不再弹框），否则弹一次秘钥验证
+ * 取消时静默返回，不发起后续动作
+ * @param onReady 放行回调，入参为记住的秘钥（可能为空字符串）
+ */
+function requireVerified(onReady) {
+    if (hasSecretTokenReady()) {
+        let key = "";
+        try {
+            key = (window.localStorage && window.localStorage.getItem("actionKey")) || "";
+        } catch (e) {
+            key = "";
+        }
+        onReady(key);
+        return;
+    }
+    showActionKeyModal(onReady);
+}
+
+/**
+ * 提交类动作的二次确认/验证：用独立浮层，不占用主弹窗容器，
+ * 这样「新增/设置」正在填写的表单不会被顶掉，取消后还能接着改。
+ * @param actionLabel 提交动作描述
+ * @returns {Promise<string|null>} 确认通过返回秘钥（已验证时是记住的秘钥或空串）；取消返回 null
+ */
+function confirmSubmitAuth(actionLabel) {
+    return new Promise(function (resolve) {
+        const ready = hasSecretTokenReady();
+        let remembered = "";
+        if (ready) {
+            try {
+                remembered = (window.localStorage && window.localStorage.getItem("actionKey")) || "";
+            } catch (e) {
+                remembered = "";
+            }
+        }
+
+        const mask = document.createElement("div");
+        mask.setAttribute("style", "position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(17,24,39,.45);");
+
+        const card = document.createElement("div");
+        card.setAttribute("style", "width:100%;max-width:380px;background:#fff;border-radius:14px;box-shadow:0 18px 46px rgba(22,28,45,.2);padding:20px;color:#1f2937;font-size:14px;line-height:1.6;");
+
+        const title = ready ? "操作确认" : "操作验证";
+        const desc = ready ? "本次提交已通过验证，确认执行？" : "提交前需要验证操作秘钥。";
+        const okText = ready ? "确认提交" : "验证并提交";
+        const inputBlock = ready ? "" : `
+            <input id="submitAuthKey" type="password" autocomplete="off" placeholder="请输入操作秘钥"
+                   style="width:100%;height:36px;padding:0 10px;border:1px solid #dfe2ec;border-radius:8px;font-size:13px;outline:none;box-sizing:border-box;">
+            <label style="display:flex;align-items:center;gap:6px;margin-top:10px;font-size:12px;color:#5b6172;cursor:pointer;">
+              <input id="submitAuthRemember" type="checkbox" checked style="width:16px;height:16px;margin:0;">
+              <span>记住秘钥</span>
+            </label>`;
+
+        card.innerHTML = `
+            <div style="font-size:16px;font-weight:600;margin-bottom:6px;">${title}</div>
+            <div style="color:#5b6172;font-size:13px;margin-bottom:10px;">${desc}</div>
+            <div style="margin-bottom:12px;">
+              <span style="display:inline-block;padding:4px 10px;border-radius:6px;background:#f3f4f6;font-weight:500;word-break:break-all;">${escapeHtml(actionLabel || "该提交操作")}</span>
+            </div>
+            ${inputBlock}
+            <div id="submitAuthError" style="display:none;margin-top:8px;color:#ef4444;font-size:12px;"></div>
+            <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+              <button type="button" id="submitAuthCancel" style="height:32px;padding:0 12px;border-radius:8px;border:1px solid #dfe2ec;background:#fff;color:#1f2937;font-size:13px;cursor:pointer;">取消</button>
+              <button type="button" id="submitAuthOk" style="height:32px;padding:0 12px;border-radius:8px;border:1px solid #6366f1;background:#6366f1;color:#fff;font-size:13px;cursor:pointer;">${okText}</button>
+            </div>`;
+
+        mask.appendChild(card);
+        document.body.appendChild(mask);
+
+        const errEl = card.querySelector("#submitAuthError");
+        const showErr = function (msg) {
+            errEl.textContent = msg || "";
+            errEl.style.display = msg ? "block" : "none";
+        };
+        const finish = function (value) {
+            if (mask.parentNode) mask.parentNode.removeChild(mask);
+            resolve(value);
+        };
+        const cancel = function () {
+            finish(null);
+        };
+
+        card.querySelector("#submitAuthCancel").addEventListener("click", cancel);
+        mask.addEventListener("click", function (e) {
+            if (e.target === mask) cancel();
+        });
+
+        const okBtn = card.querySelector("#submitAuthOk");
+        okBtn.addEventListener("click", function () {
+            if (ready) {
+                finish(remembered);
+                return;
+            }
+            const input = card.querySelector("#submitAuthKey");
+            const value = input ? input.value.trim() : "";
+            if (!value) {
+                showErr("请输入操作秘钥");
+                if (input) input.focus();
+                return;
+            }
+            const remember = card.querySelector("#submitAuthRemember");
+            const shouldRemember = !!(remember && remember.checked);
+            okBtn.disabled = true;
+            const origText = okBtn.textContent;
+            okBtn.textContent = "验证中…";
+            showErr("");
+            Promise.resolve()
+                .then(function () {
+                    // 先用秘钥换令牌：秘钥错误直接在本浮层提示，不把用户弹回主弹窗
+                    return ensureSecretToken(true, value);
+                })
+                .then(function () {
+                    // 校验通过后才记住秘钥，避免把错误秘钥写进 localStorage
+                    try {
+                        if (shouldRemember && window.localStorage) window.localStorage.setItem("actionKey", value);
+                        else if (window.localStorage) window.localStorage.removeItem("actionKey");
+                    } catch (e) {
+                    }
+                    finish(value);
+                })
+                .catch(function (e) {
+                    okBtn.disabled = false;
+                    okBtn.textContent = origText;
+                    showErr((e && e.message) || "操作秘钥错误");
+                });
+        });
+
+        if (!ready) {
+            const input = card.querySelector("#submitAuthKey");
+            if (input) setTimeout(function () { input.focus(); }, 30);
+        }
+    });
+}
+
 // 供 util.js 换取接口令牌时弹出秘钥输入的 Promise 包装
 // 注意：右上角 ✕ 关闭弹窗时也必须 resolve(null)，否则 Promise 永久 pending，
 // apiTokenTask 会被一直复用，后续请求既不发出去也不再弹验证框。
@@ -88,7 +296,8 @@ window.promptActionKey = function () {
             window.onModalDismiss(onDismiss);
         }
 
-        showActionBeforeModal(
+        // 换取令牌时必须是真输入秘钥，不能走“已通过验证”的二次确认分支
+        showActionKeyModal(
             function (key) {
                 finish(key);
             },
@@ -144,7 +353,7 @@ async function actionRequest(path, params, timeoutMs) {
 
 //直播监听操作
 function actionMonitor(roomKey, isOpen) {
-    showActionBeforeModal((key) => {
+    showActionBeforeModal((isOpen ? "开始监听" : "停止监听") + " · 房间 " + roomKey, (key) => {
         console.log("操作监听", roomKey, isOpen, key);
         actionRequest("monitor", {
             key: roomKey,
@@ -166,7 +375,7 @@ function actionMonitor(roomKey, isOpen) {
 
 //直播录制操作
 function actionRecord(roomKey, isRecord) {
-    showActionBeforeModal((key) => {
+    showActionBeforeModal((isRecord ? "开始录制" : "停止录制") + " · 房间 " + roomKey, (key) => {
         console.log("操作录制", roomKey, isRecord, key);
         actionRequest("record", {
             key: roomKey,
@@ -185,7 +394,7 @@ function actionRecord(roomKey, isRecord) {
 
 //删除
 function delRoom(roomKey) {
-    showActionBeforeModal((key) => {
+    showActionBeforeModal("删除监听 · 房间 " + roomKey, (key) => {
         actionRequest("delRoom", {
             key: roomKey,
             actionKey: key,
@@ -217,8 +426,17 @@ function extractDouYinRoomId(raw) {
 }
 
 function addRoom() {
-    showActionBeforeModal((key) => {
-        let submitting = false;
+    // 已验证过（有有效秘钥令牌）直接打开表单；没验证过才弹「操作验证」；取消静默
+    requireVerified(function () {
+        openAddRoomForm();
+    });
+}
+
+/**
+ * 打开「新增直播监听」表单：打开阶段不做任何验证/确认，提交时才确认
+ */
+function openAddRoomForm() {
+    let submitting = false;
 
         setModalContent(
             "新增直播监听",
@@ -380,30 +598,37 @@ function addRoom() {
                             }
                         };
 
-                        postRequest("action/addRoom?actionKey=" + encodeURIComponent(key), {
-                            id: roomIDInput,
-                            name: roomNameInput.length > 0 ? roomNameInput : null,
-                            platform: platformSelect,
-                            isAutoRecord: document.getElementById("isRecord").checked,
-                            setting: {
-                                delayIntervalSec: delayIntervalSec,
-                                convertFlvToMp4: document.getElementById("convertFlvToMp4").checked,
-                                openSubtitle: document.getElementById("openSubtitle").checked,
-                                isLoop: document.getElementById("isLoop").checked,
-                                cookie: document.getElementById("cookieValue").value.trim() || null,
-                                xiZhiUrl: document.getElementById("xiZhiUrl").value.trim() || null,
-                            },
-                        }).then((msg) => {
-                            restore();
-                            if (!msg.success) {
-                                showError(msg.message || "添加失败，请稍后重试");
+                        // 打开表单不验证，提交前才二次确认：已验证弹确认框，未验证先输秘钥
+                        confirmSubmitAuth("新增直播监听 · 房间 " + roomIDInput).then(function (submitKey) {
+                            if (submitKey === null) {
+                                restore();
                                 return;
                             }
-                            closeModal();
-                            showActionAfterModal(msg, () => handleManualRefresh());
-                        }).catch((err) => {
-                            restore();
-                            showError("添加失败：" + (err && err.message ? err.message : err));
+                            postRequest("action/addRoom?actionKey=" + encodeURIComponent(submitKey), {
+                                id: roomIDInput,
+                                name: roomNameInput.length > 0 ? roomNameInput : null,
+                                platform: platformSelect,
+                                isAutoRecord: document.getElementById("isRecord").checked,
+                                setting: {
+                                    delayIntervalSec: delayIntervalSec,
+                                    convertFlvToMp4: document.getElementById("convertFlvToMp4").checked,
+                                    openSubtitle: document.getElementById("openSubtitle").checked,
+                                    isLoop: document.getElementById("isLoop").checked,
+                                    cookie: document.getElementById("cookieValue").value.trim() || null,
+                                    xiZhiUrl: document.getElementById("xiZhiUrl").value.trim() || null,
+                                },
+                            }).then((msg) => {
+                                restore();
+                                if (!msg.success) {
+                                    showError(msg.message || "添加失败，请稍后重试");
+                                    return;
+                                }
+                                closeModal();
+                                showActionAfterModal(msg, () => handleManualRefresh());
+                            }).catch((err) => {
+                                restore();
+                                showError("添加失败：" + (err && err.message ? err.message : err));
+                            });
                         });
                     },
                 },
@@ -527,20 +752,28 @@ function addRoom() {
 
         syncParseBtn();
         roomIDDom.focus();
-    });
 }
 
 //直播间设置操作
 function actionSetting(roomKey, room) {
+    // 已验证过直接打开设置表单；没验证过才弹「操作验证」；取消静默
+    requireVerified(function () {
+        openRoomSettingForm(roomKey, room);
+    });
+}
+
+/**
+ * 打开「监听设置」表单：打开阶段不做验证/确认，保存时才确认
+ */
+function openRoomSettingForm(roomKey, room) {
     let setting = room.setting || {};
     const platformText = (typeof platformName !== "undefined" && platformName[room.platform]) || room.platform || "";
     const roomHint = [platformText, roomKey].filter(Boolean).join(" · ");
     let submitting = false;
 
-    showActionBeforeModal((key) => {
-        const delayValue = setting.delayIntervalSec === null || setting.delayIntervalSec === undefined ? "" : setting.delayIntervalSec;
-        const hasXiZhi = !!setting.xiZhiUrl;
-        const hasCookie = !!setting.cookie;
+    const delayValue = setting.delayIntervalSec === null || setting.delayIntervalSec === undefined ? "" : setting.delayIntervalSec;
+    const hasXiZhi = !!setting.xiZhiUrl;
+    const hasCookie = !!setting.cookie;
 
         setModalContent(
             `${room.nickname || roomKey} 监听设置`,
@@ -660,29 +893,36 @@ function actionSetting(roomKey, room) {
                             }
                         };
 
-                        postRequest(`action/setting?actionKey=${encodeURIComponent(key)}&key=${encodeURIComponent(roomKey)}`, {
-                            isAutoRecord: document.getElementById("isAutoRecord").checked,
-                            platform: room.platform,
-                            setting: {
-                                delayIntervalSec: delayIntervalSec,
-                                convertFlvToMp4: document.getElementById("convertFlvToMp4").checked,
-                                openSubtitle: document.getElementById("openSubtitle").checked,
-                                isLoop: document.getElementById("isLoop").checked,
-                                cookie: cookieValueInput.length > 0 ? cookieValueInput : null,
-                                xiZhiUrl: xiZhiUrlInput.length > 0 ? xiZhiUrlInput : null,
+                        // 保存前才二次确认：已验证弹确认框，未验证先输秘钥
+                        confirmSubmitAuth("保存监听设置 · " + roomHint).then(function (submitKey) {
+                            if (submitKey === null) {
+                                restore();
+                                return;
                             }
-                        }).then((msg) => {
-                            restore();
-                            closeModal();
-                            showActionAfterModal(msg, () => {
-                                if (msg.success) {
-                                    handleManualRefresh();
+                            postRequest(`action/setting?actionKey=${encodeURIComponent(submitKey)}&key=${encodeURIComponent(roomKey)}`, {
+                                isAutoRecord: document.getElementById("isAutoRecord").checked,
+                                platform: room.platform,
+                                setting: {
+                                    delayIntervalSec: delayIntervalSec,
+                                    convertFlvToMp4: document.getElementById("convertFlvToMp4").checked,
+                                    openSubtitle: document.getElementById("openSubtitle").checked,
+                                    isLoop: document.getElementById("isLoop").checked,
+                                    cookie: cookieValueInput.length > 0 ? cookieValueInput : null,
+                                    xiZhiUrl: xiZhiUrlInput.length > 0 ? xiZhiUrlInput : null,
                                 }
+                            }).then((msg) => {
+                                restore();
+                                closeModal();
+                                showActionAfterModal(msg, () => {
+                                    if (msg.success) {
+                                        handleManualRefresh();
+                                    }
+                                });
+                            }).catch((err) => {
+                                restore();
+                                errorElement.textContent = "保存失败：" + (err && err.message ? err.message : err);
+                                errorElement.classList.remove("hidden");
                             });
-                        }).catch((err) => {
-                            restore();
-                            errorElement.textContent = "保存失败：" + (err && err.message ? err.message : err);
-                            errorElement.classList.remove("hidden");
                         });
                     },
                 },
@@ -725,7 +965,6 @@ function actionSetting(roomKey, room) {
         }
         bindChip("xiZhiUrl", "xiZhiChip", hasXiZhi);
         bindChip("cookieValue", "cookieChip", hasCookie);
-    });
 }
 
 /** 监听设置弹窗样式（setx- 前缀，互不影响） */

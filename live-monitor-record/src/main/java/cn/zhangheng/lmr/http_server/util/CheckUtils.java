@@ -1,9 +1,7 @@
 package cn.zhangheng.lmr.http_server.util;
 
 import cn.hutool.core.util.StrUtil;
-import cn.zhangheng.common.setting.ConfigKit;
 import cn.zhangheng.record.bean.Constant;
-import cn.zhangheng.record.bean.Setting;
 import cn.zhangheng.record.httpServer.util.JWTUtil;
 import cn.zhangheng.lmr.FileModeMain;
 import cn.zhangheng.lmr.bean.RoomFileModel;
@@ -17,6 +15,15 @@ import static cn.zhangheng.record.httpServer.util.HandlerUtils.getRequestCookies
 import static cn.zhangheng.record.httpServer.util.HandlerUtils.parseQuery;
 
 /**
+ * 接口鉴权工具：三级令牌体系
+ * <p>
+ * 1. 公开（PUBLIC）：完全不校验；
+ * 2. 普通（NORMAL）：需要普通令牌，普通令牌由公开接口 action/token 直接签发，无需秘钥；
+ * 3. 私密（PRIVATE）：需要秘钥令牌，只能由 action/auth?actionKey=&lt;操作秘钥&gt; 换取。
+ * <p>
+ * 令牌来源（按顺序尝试）：Authorization: Bearer &lt;token&gt; → URL 参数 token=&lt;token&gt; → 同源 Cookie 会话。
+ * Cookie 会话只算普通级，私密接口必须显式携带秘钥令牌，避免被跨站请求（CSRF）利用。
+ *
  * @author: ZhangHeng
  * @email: zhangheng_0805@163.com
  * @date: 2026/07/06 星期一 14:30
@@ -26,51 +33,92 @@ import static cn.zhangheng.record.httpServer.util.HandlerUtils.parseQuery;
 public class CheckUtils {
 
     /**
-     * 请求鉴权结果标记（挂在 HttpExchange 上，供后续处理判断当前请求是否已通过秘钥校验）
+     * 请求已达到的鉴权级别（挂在 HttpExchange 上，供后续处理判断脱敏/权限）
      */
-    private static final String AUTH_ATTR = "lmr.auth";
+    private static final String AUTH_LEVEL_ATTR = "lmr.auth.level";
+    /** 未通过任何鉴权 */
+    public static final int LEVEL_NONE = 0;
+    /** 通过普通令牌（只读权限） */
+    public static final int LEVEL_NORMAL = 1;
+    /** 通过秘钥令牌或同源会话（完整权限） */
+    public static final int LEVEL_SECRET = 2;
 
     /**
-     * 统一请求鉴权（本地同源 + 远程跨站都能用）：
-     * 1. Authorization: Bearer &lt;接口令牌&gt;（跨站推荐，页面托管在 GitHub Pages 时用这个）
-     * 2. URL 参数 token=&lt;接口令牌&gt;（img/video/a 之类无法带头部的请求）
-     * 3. Cookie 会话（同源页面直接访问后端时沿用，保持兼容）
+     * 普通接口鉴权：普通令牌、秘钥令牌、同源会话都放行
      */
-    public static boolean checkRequestAuth(HttpExchange httpExchange) {
-        String token = getBearerToken(httpExchange);
-        if (StrUtil.isBlank(token)) {
-            String query = httpExchange.getRequestURI().getQuery();
-            if (StrUtil.isNotBlank(query)) {
-                token = parseQuery(query, java.nio.charset.StandardCharsets.UTF_8).get("token");
+    public static boolean checkNormalAuth(HttpExchange httpExchange) {
+        return authenticate(httpExchange, false);
+    }
+
+    /**
+     * 私密接口鉴权：只认秘钥令牌与同源会话，普通令牌一律拒绝
+     */
+    public static boolean checkSecretAuth(HttpExchange httpExchange) {
+        return authenticate(httpExchange, true);
+    }
+
+    private static boolean authenticate(HttpExchange httpExchange, boolean secretOnly) {
+        String token = resolveToken(httpExchange);
+        if (StrUtil.isNotBlank(token)) {
+            if (JWTUtil.checkApiToken(token)) {
+                mark(httpExchange, LEVEL_SECRET);
+                return true;
+            }
+            if (!secretOnly && JWTUtil.checkPublicToken(token)) {
+                mark(httpExchange, LEVEL_NORMAL);
+                return true;
             }
         }
-        if (StrUtil.isNotBlank(token) && JWTUtil.checkApiToken(token)) {
-            httpExchange.setAttribute(AUTH_ATTR, Boolean.TRUE);
-            return true;
+        // 同源 Cookie 会话只代表「普通级」：浏览器会自动携带，若把它当私密凭证会留下 CSRF 面。
+        // 私密接口必须显式带秘钥令牌（Authorization 头跨站不会自动附加，天然防 CSRF）。
+        if (checkCookie(httpExchange)) {
+            mark(httpExchange, LEVEL_NORMAL);
+            return !secretOnly;
         }
-        // 兜底：同源 Cookie 会话
-        boolean ok = checkCookie(httpExchange);
-        if (ok) {
-            httpExchange.setAttribute(AUTH_ATTR, Boolean.TRUE);
-        }
-        return ok;
+        return false;
     }
 
     /**
-     * 只读接口鉴权：带令牌直接放行；不带令牌时，若开启 server.auth.publicRead 则匿名可读（返回体需脱敏）
+     * 取请求携带的令牌：Authorization: Bearer → ?token=
      */
-    public static boolean checkReadAuth(HttpExchange httpExchange) {
-        if (checkRequestAuth(httpExchange)) {
-            return true;
+    private static String resolveToken(HttpExchange httpExchange) {
+        String token = getBearerToken(httpExchange);
+        if (StrUtil.isNotBlank(token)) {
+            return token;
         }
-        return ConfigKit.get(Setting.class).isAuthPublicRead();
+        String query = httpExchange.getRequestURI().getQuery();
+        if (StrUtil.isNotBlank(query)) {
+            return parseQuery(query, java.nio.charset.StandardCharsets.UTF_8).get("token");
+        }
+        return null;
+    }
+
+    private static void mark(HttpExchange httpExchange, int level) {
+        if (level > authLevel(httpExchange)) {
+            httpExchange.setAttribute(AUTH_LEVEL_ATTR, level);
+        }
     }
 
     /**
-     * 当前请求是否已通过秘钥/令牌校验（匿名只读时为 false，用于决定是否脱敏）
+     * 当前请求已达到的鉴权级别：0 无 / 1 普通 / 2 秘钥
+     */
+    public static int authLevel(HttpExchange httpExchange) {
+        Object level = httpExchange.getAttribute(AUTH_LEVEL_ATTR);
+        return level instanceof Integer ? (Integer) level : LEVEL_NONE;
+    }
+
+    /**
+     * 是否已达到秘钥级（普通令牌不算，用于决定敏感字段是否脱敏）
+     */
+    public static boolean isSecretAuthenticated(HttpExchange httpExchange) {
+        return authLevel(httpExchange) >= LEVEL_SECRET;
+    }
+
+    /**
+     * 是否已通过任意令牌校验（普通级即可）
      */
     public static boolean isAuthenticated(HttpExchange httpExchange) {
-        return Boolean.TRUE.equals(httpExchange.getAttribute(AUTH_ATTR));
+        return authLevel(httpExchange) >= LEVEL_NORMAL;
     }
 
     private static String getBearerToken(HttpExchange httpExchange) {
@@ -110,6 +158,7 @@ public class CheckUtils {
         }
         return true;
     }
+
     public static boolean checkCookie(HttpExchange httpExchange) {
         Map<String, String> cookies = getRequestCookies(httpExchange);
         String token = cookies.get("_token");

@@ -22,7 +22,9 @@ public class Constant {
     public final static int maxMonitorThreads = 10;
     //设备标识ID
     public final static String deviceUniqueId = new DeviceInfoCollector().getDeviceUniqueId();
-    //api接口会话有效期
+    //api接口会话有效期（秘钥令牌）
     public final static long apiExpireSec = 2 * 60 * 60;
+    //普通令牌有效期（公开签发，30 分钟足够只读浏览，过期自动换新）
+    public final static long publicTokenExpireSec = 30 * 60;
 
 }

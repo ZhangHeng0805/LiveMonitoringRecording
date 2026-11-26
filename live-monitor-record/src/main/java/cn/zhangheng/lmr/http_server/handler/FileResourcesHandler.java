@@ -51,9 +51,9 @@ public class FileResourcesHandler extends AnnotationHandler {
     }
 
     /**
-     * 录制文件浏览/下载：整个 /fileRes 前缀共用一套鉴权（必须令牌/秘钥）
+     * 录制文件浏览/下载：整个 /fileRes 前缀共用一套鉴权
      */
-    @Endpoint(value = "/", auth = AuthPolicy.READ)
+    @Endpoint(value = "/", auth = AuthPolicy.NORMAL)
     public void fileResource(RequestContext ctx) throws IOException {
         HttpExchange httpExchange = ctx.exchange();
         Map<String, String> query = ctx.query();
@@ -109,7 +109,7 @@ public class FileResourcesHandler extends AnnotationHandler {
      * 监听日志统计：解析目录里的 ***监听.log，返回时间序列给前端画统计图。
      * path 可以是日期目录，也可以直接指向某个 .log 文件。
      */
-    @Endpoint(value = "/stats", auth = AuthPolicy.READ)
+    @Endpoint(value = "/stats", auth = AuthPolicy.NORMAL)
     public void stats(RequestContext ctx) throws IOException {
         Map<String, String> query = ctx.query();
         Message<Object> message = ctx.message();

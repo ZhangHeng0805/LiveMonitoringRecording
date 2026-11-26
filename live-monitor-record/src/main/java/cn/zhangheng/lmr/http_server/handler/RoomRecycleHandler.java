@@ -3,6 +3,7 @@ package cn.zhangheng.lmr.http_server.handler;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import cn.zhangheng.record.httpServer.router.AnnotationHandler;
+import cn.zhangheng.record.httpServer.router.AuthPolicy;
 import cn.zhangheng.record.httpServer.router.Endpoint;
 import cn.zhangheng.record.httpServer.router.RequestContext;
 import cn.zhangheng.lmr.FileModeMain;
@@ -24,10 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static cn.zhangheng.record.httpServer.util.HandlerUtils.parseQuery;
 import static cn.zhangheng.record.httpServer.util.HandlerUtils.parseRequestBodyStr;
-import static cn.zhangheng.lmr.http_server.util.CheckUtils.checkActionKey;
-import static cn.zhangheng.lmr.http_server.util.CheckUtils.checkRequestAuth;
 
 /**
  * @author: ZhangHeng
@@ -42,44 +40,40 @@ public class RoomRecycleHandler extends AnnotationHandler {
         super(prefix, AuthResolvers.defaults());
     }
 
-    @Endpoint("/getList")
+    /**
+     * 回收站列表：私密接口（回收站属于管理功能，必须秘钥令牌）
+     */
+    @Endpoint(value = "/getList", auth = AuthPolicy.PRIVATE)
     public void list(RequestContext ctx) throws IOException {
         Message<Object> msg = ctx.message();
-        if (checkActionKey(ctx.query(), msg)) {
-            getList(ctx.query(), msg);
-        } else {
-            msg.setCode(1);
-        }
+        getList(ctx.query(), msg);
     }
 
-    @Endpoint("/getDetails")
+    /**
+     * 回收站详情：私密接口
+     */
+    @Endpoint(value = "/getDetails", auth = AuthPolicy.PRIVATE)
     public void details(RequestContext ctx) {
         Message<Object> msg = ctx.message();
-        if (checkActionKey(ctx.query(), msg)) {
-            getDetails(ctx.query(), msg);
-        } else {
-            msg.setCode(1);
-        }
+        getDetails(ctx.query(), msg);
     }
 
-    @Endpoint("/recover")
+    /**
+     * 恢复房间：私密接口
+     */
+    @Endpoint(value = "/recover", auth = AuthPolicy.PRIVATE)
     public void recoverRoom(RequestContext ctx) throws IOException {
         Message<Object> msg = ctx.message();
-        if (checkActionKey(ctx.query(), msg)) {
-            recover(ctx.exchange(), ctx.query(), msg);
-        } else {
-            msg.setCode(1);
-        }
+        recover(ctx.exchange(), ctx.query(), msg);
     }
 
-    @Endpoint("/delete")
+    /**
+     * 彻底删除：私密接口
+     */
+    @Endpoint(value = "/delete", auth = AuthPolicy.PRIVATE)
     public void deleteRoom(RequestContext ctx) {
         Message<Object> msg = ctx.message();
-        if (checkActionKey(ctx.query(), msg)) {
-            delete(ctx.query(), msg);
-        } else {
-            msg.setCode(1);
-        }
+        delete(ctx.query(), msg);
     }
 
     /**

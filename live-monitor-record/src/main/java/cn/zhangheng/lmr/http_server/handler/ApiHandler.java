@@ -68,9 +68,10 @@ public class ApiHandler extends AnnotationHandler {
     }
 
     /**
-     * 房间列表：带令牌直接看全量；匿名访问时按 server.auth.publicRead 决定是否放行，并自动脱敏
+     * 房间列表：普通接口（普通令牌即可查看，但自动脱敏）；
+     * 带秘钥令牌时返回全量数据
      */
-    @Endpoint(value = "/rooms", auth = AuthPolicy.READ)
+    @Endpoint(value = "/rooms", auth = AuthPolicy.NORMAL)
     public void rooms(RequestContext ctx) throws Exception {
         Message<Object> msg = ctx.message();
         String roomsKey = "rooms";
@@ -79,8 +80,8 @@ public class ApiHandler extends AnnotationHandler {
             roomsQueryHelper.invalidate(roomsKey);
         }
         List<Map<String, Object>> collect = roomsQueryHelper.get(roomsKey, 5000);
-        // 匿名访问时脱敏：去掉本地录制路径、Cookie、通知地址等隐私字段
-        msg.setData(CheckUtils.isAuthenticated(ctx.exchange()) ? collect : maskForPublic(collect));
+        // 普通令牌（含匿名获取的）一律脱敏：只有秘钥令牌/同源会话才给全量
+        msg.setData(CheckUtils.isSecretAuthenticated(ctx.exchange()) ? collect : maskForPublic(collect));
     }
 
     /**
