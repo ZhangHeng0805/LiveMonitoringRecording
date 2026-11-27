@@ -9,8 +9,10 @@ import cn.zhangheng.common.setting.ConfigKit;
 import cn.zhangheng.lmr.service.CpolarToolStarter;
 import cn.zhangheng.lmr.service.LocalHttpServerStarter;
 import cn.zhangheng.lmr.service.ServerStarterManager;
+import cn.zhangheng.record.activation.ActivationResult;
 import cn.zhangheng.record.activation.ActivationUtil;
-import cn.zhangheng.record.activation.ErrorException;
+import cn.zhangheng.record.activation.TrialState;
+import cn.zhangheng.record.activation.TrialWatcher;
 import cn.zhangheng.record.activation.WarnException;
 import cn.zhangheng.record.bean.Constant;
 import cn.zhangheng.record.bean.Room;
@@ -69,6 +71,7 @@ public class FileModeMain {
     public static void main(String[] args) throws Exception {
         try {
             if (verifyActivation()) return;
+            startTrialWatcher();
             if (args.length > 0) {
                 basePath = args[0];
             }
@@ -88,6 +91,10 @@ public class FileModeMain {
                     new SynchronousQueue<>()// 关键：不存排队任务，没有空闲线程就新建线程直到max
                     );
             log.info("启动监听线程数：{}个", paths.size());
+            if (paths.isEmpty()) {
+                log.warn("未发现可用的监听文件（目录：{}），程序保持运行，可直接在监听面板中新增直播间",
+                        Paths.get(basePath).toAbsolutePath());
+            }
             for (int i = 0; i < paths.size(); i++) {
                 Path file = paths.get(i);
                 try {
@@ -101,6 +108,8 @@ public class FileModeMain {
                 } catch (InterruptedException ignored) {
                 }
             }
+            // 没有任何监听在运行时，提供常驻托盘入口并自动打开面板，避免托盘无图标时找不到地址
+            openPanelWhenIdle(true);
         } catch (Exception e) {
             log.error(e.getMessage(), e);
         } finally {
@@ -114,33 +123,162 @@ public class FileModeMain {
     }
 
     private static boolean verifyActivation() throws InterruptedException {
-        try {
-            ActivationUtil.verifyActivationCodeFile(Constant.deviceUniqueId, setting.getActivateVoucherPath());
-        } catch (ErrorException errorException) {
-            String message = ThrowableUtil.getAllCauseMessage(errorException);
+        ActivationResult activation = ActivationUtil.checkActivation(Constant.deviceUniqueId,
+                setting.getActivateVoucherPath(), setting.getTrialDays());
+        if (activation.isBlocked()) {
             TrayIconUtil iconUtil = TrayIconUtil.getInstance(Constant.Application);
-            iconUtil.notifyMessage(errorException.getMessage(), TrayIcon.MessageType.ERROR);
-            log.error("启动失败！{}", message);
+            iconUtil.notifyMessage(activation.getMessage(), TrayIcon.MessageType.ERROR);
+            log.error("启动失败！{}", activation.getMessage());
             TimeUnit.SECONDS.sleep(3);
             iconUtil.shutdown();
             return true;
-        } catch (WarnException warnException) {
+        }
+        if (activation.hasMessage()) {
             TrayIconUtil iconUtil = TrayIconUtil.getInstance(Constant.Application);
-            String message = warnException.getMessage();
-            log.warn(message);
-            iconUtil.notifyMessage(message, TrayIcon.MessageType.WARNING);
+            log.warn(activation.getMessage());
+            iconUtil.notifyMessage(activation.getMessage(), TrayIcon.MessageType.WARNING);
             TimeUnit.SECONDS.sleep(3);
             iconUtil.shutdown();
         }
         return false;
     }
 
+    /**
+     * 试用期运行期提醒：注入托盘气泡实现并启动自检线程（已激活时内部会直接跳过）
+     */
+    private static void startTrialWatcher() {
+        TrialWatcher.setNotifier((message, error) -> {
+            final TrayIconUtil icon = TrayIconUtil.getInstance("trial-notice", Constant.Application);
+            if (icon == null) {
+                log.warn("无可用托盘图标，试用提醒仅记录日志：{}", message);
+                return;
+            }
+            icon.notifyMessage(message, error ? TrayIcon.MessageType.ERROR : TrayIcon.MessageType.WARNING);
+            // 通知图标只用于提醒，几秒后移除，避免长期占用托盘位
+            Thread closer = new Thread(() -> {
+                try {
+                    TimeUnit.SECONDS.sleep(5);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                icon.shutdown();
+            }, "trial-notice-close");
+            closer.setDaemon(true);
+            closer.start();
+        });
+        TrialWatcher.start(Constant.deviceUniqueId, setting.getActivateVoucherPath(), setting.getTrialDays());
+    }
+
+    /**
+     * 空闲入口托盘：没有任何监听在运行时，常驻一个图标并提供“监控界面”入口，
+     * 同时自动打开监听面板，避免用户找不到面板地址。
+     */
+    private static final String IDLE_TRAY_KEY = "file-mode-idle";
+    /** 同一时刻只允许一个空闲探测线程，避免并发创建托盘实例 */
+    private static final java.util.concurrent.atomic.AtomicBoolean idleProbing =
+            new java.util.concurrent.atomic.AtomicBoolean(false);
+
+    private static void openPanelWhenIdle(boolean autoOpenBrowser) {
+        if (!idleProbing.compareAndSet(false, true)) return;
+        Thread t = new Thread(() -> {
+            try {
+                // 等本地 HTTP 服务把 monitor.url 写好，也让启动中的房间先完成注册
+                TimeUnit.SECONDS.sleep(3);
+                String url = System.getProperty("monitor.url");
+                if (runCount.get() > 0) {
+                    // 已有监听在运行，各房间自带托盘入口，不需要兜底
+                    closeIdleTray();
+                    return;
+                }
+                TrayIconUtil util = null;
+                try {
+                    util = TrayIconUtil.getInstance(IDLE_TRAY_KEY, Constant.Application + "(面板入口)");
+                    if (util == null || util.getTrayIcon() == null) {
+                        log.warn("系统托盘不可用，监听面板地址：{}", url);
+                    } else if (runCount.get() > 0) {
+                        // 创建图标期间房间刚好启动成功，立刻回收，避免多占一个托盘位
+                        util.shutdown();
+                    } else {
+                        util.setToolTip("直播监听面板：" + url);
+                        util.setPoPTitle("直播监听面板", "右键 → 监控界面");
+                        util.setMenuVisible(util.getOpenRoomMenu(), false);
+                        util.setMenuVisible(util.getPlayFlvVideo(), false);
+                        util.setMenuVisible(util.getDouyinVideoParseVideoMenu(), false);
+                        if (util.getCloseMenu() != null) util.getCloseMenu().setText("退出程序");
+                        util.setClickListener(new TrayIconUtil.ClickListener() {
+                            @Override
+                            public String openMonitor(java.awt.event.ActionEvent e) {
+                                return System.getProperty("monitor.url");
+                            }
+
+                            @Override
+                            public boolean closeClick(java.awt.event.ActionEvent e) {
+                                // 返回 false 阻止默认的 System.exit(0)，走统一收尾流程
+                                FileModeMain.shutdown("托盘退出程序");
+                                return false;
+                            }
+
+                            @Override
+                            public void iconClick(java.awt.event.ActionEvent e) {
+                                String panelUrl = System.getProperty("monitor.url");
+                                if (StrUtil.isNotBlank(panelUrl)) TrayIconUtil.openWebpage(panelUrl);
+                            }
+                        });
+                    }
+                } catch (Throwable e) {
+                    log.warn("创建空闲面板入口托盘失败：{}", ThrowableUtil.getAllCauseMessage(e));
+                }
+                if (StrUtil.isNotBlank(url)) {
+                    if (autoOpenBrowser) {
+                        log.info("当前没有运行中的监听，正在打开监听面板：{}", url);
+                        TrayIconUtil.openWebpage(url);
+                    } else {
+                        log.info("当前没有运行中的监听，可通过托盘「监控界面」或地址访问：{}", url);
+                    }
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } finally {
+                idleProbing.set(false);
+            }
+        }, "idle-panel");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    /**
+     * 回收空闲入口托盘（有房间启动成功或已有监听在跑时调用）
+     */
+    private static void closeIdleTray() {
+        TrayIconUtil util = TrayIconUtil.getPresent(IDLE_TRAY_KEY);
+        if (util == null) return;
+        try {
+            util.shutdown();
+            log.debug("已回收空闲面板入口托盘");
+        } catch (Throwable e) {
+            log.warn("回收空闲面板入口托盘失败：{}", ThrowableUtil.getAllCauseMessage(e));
+        }
+    }
+
 
     private static List<Path> retrieveFile(String basePath) {
-        try (Stream<Path> list = Files.list(Paths.get(basePath))) {
-            return list.filter(f -> f.getFileName().toString().endsWith(FileModeMain.fileSuffix)).collect(Collectors.toList());
+        Path dir = Paths.get(basePath);
+        try {
+            if (!Files.exists(dir)) {
+                // 首次启动或目录被删时自动建目录，避免因“没有监听文件”直接启动失败
+                Files.createDirectories(dir);
+                log.warn("监听文件目录不存在，已自动创建：{}", dir.toAbsolutePath());
+                return new ArrayList<>();
+            }
+            try (Stream<Path> list = Files.list(dir)) {
+                return list.filter(Files::isRegularFile)
+                        .filter(f -> f.getFileName().toString().endsWith(FileModeMain.fileSuffix))
+                        .collect(Collectors.toList());
+            }
         } catch (IOException e) {
-            throw new RuntimeException("遍历文件出现异常", e);
+            // 目录权限异常等也不阻断启动：按“没有监听文件”处理，面板里可以新增
+            log.warn("遍历监听文件目录失败，本次按无监听文件启动：{}", ThrowableUtil.getAllCauseMessage(e));
+            return new ArrayList<>();
         }
     }
 
@@ -170,6 +308,8 @@ public class FileModeMain {
             model.setId(key);
             model.setFilePath(file);
             roomFileMap.put(file, model);
+            // 有房间接入后回收空闲面板入口，避免多占一个托盘位
+            closeIdleTray();
             Main main = new Main();
             model.setMain(main);
             runCount.incrementAndGet();
@@ -193,6 +333,13 @@ public class FileModeMain {
 
     private static void endMonitor(RoomFileModel model) {
         if (model == null) return;
+        // 幂等：接口主动停止时会先收尾一次，监听线程真正退出后的 finally 还会再调一次，这里保证只执行一次
+        synchronized (model) {
+            if (model.isEnded()) {
+                return;
+            }
+            model.setEnded(true);
+        }
         runCount.decrementAndGet();
         model.setEndTime();
         Room room = model.getMain() == null ? null : model.getMain().getRoom();
@@ -229,7 +376,25 @@ public class FileModeMain {
         }
         if (runCount.get() < 1) {
             log.info("所有直播监听已结束，程序保持待命（网页接口仍在运行，可通过页面「退出程序」结束进程）");
+            // 全部监听结束、托盘可能已随房间图标一起消失，补回一个面板入口（不主动弹浏览器）
+            openPanelWhenIdle(false);
         }
+    }
+
+    /**
+     * 通过接口停止监听：先发停止信号，再同步做一次收尾。
+     * 监听线程若卡在无超时的网络 IO 里暂时退不出去，也不会让页面一直停留在“运行中”，
+     * 收尾完成后该房间可以立即重新启动监听（endMonitor 幂等，线程后续退出不会重复收尾）。
+     */
+    public static void stopMonitor(RoomFileModel model) {
+        if (model == null) return;
+        Main main = model.getMain();
+        MonitorMain<?, ?> monitorMain = main == null ? null : main.getMonitorMain();
+        if (monitorMain != null) {
+            monitorMain.setIsForceStop(true);
+            monitorMain.exit();
+        }
+        endMonitor(model);
     }
 
     /**
@@ -305,6 +470,9 @@ public class FileModeMain {
     }
 
     public static void restartMain(String key) throws RuntimeException {
+        if (TrialState.isTrialExpired()) {
+            throw new RuntimeException("试用期已结束，请获取激活码后再启动监听！");
+        }
         RoomFileModel model = getModelById(key);
         if (model == null) throw new RuntimeException(key + "直播标识不存在");
         if (model.isRunning()) throw new RuntimeException("直播监听已启动运行,不可重复启动");
@@ -334,6 +502,9 @@ public class FileModeMain {
     }
 
     public static void addMain(RoomJson object) throws WarnException {
+        if (TrialState.isTrialExpired()) {
+            throw new WarnException("试用期已结束，请获取激活码后再新增监听！");
+        }
         if (StrUtil.isBlank(object.getId())) throw new WarnException("直播间ID不能为空!");
         if (object.getPlatform() == null) throw new WarnException("直播平台不能为空!");
         // 房间ID会拼进文件名，禁止路径分隔符和 .. ，防止越界写文件

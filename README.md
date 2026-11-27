@@ -97,7 +97,7 @@
 | JDK | 1.8 或更高 | 开发与运行均为 JDK 8 验证通过 |
 | 操作系统 | Windows（已验证） | Java 跨平台，理论支持 macOS / Linux，但仅 Windows 实测 |
 | 配置文件 | `xxxr.setting` | 仓库内已提供模板，放在 jar 同目录 |
-| 激活凭证 | `xxxr-activation.lic` | **必须**，与设备绑定，[联系作者获取](https://github.com/ZhangHeng0805/LiveMonitoringRecording) |
+| 激活凭证 | `xxxr-activation.lic` | 可选；与设备绑定，[联系作者获取](https://github.com/ZhangHeng0805/LiveMonitoringRecording)。缺失时进入首次试用期（默认 7 天） |
 | ffmpeg | 可选 | 使用 FFmpeg 录制或转 MP4 时需要，放在 `bin/` 下并配置路径 |
 
 ### 2. 编译打包
@@ -110,15 +110,19 @@ mvn -DskipTests package
 
 ### 3. 配置与激活
 
-1. 把 `xxxr.setting`、`xxxr-activation.lic`、`bin/`（含 ffmpeg）与 jar 放在同一目录。
-2. 若还没有激活凭证，先获取设备标识 ID 发给作者：
+1. 把 `xxxr.setting`、`bin/`（含 ffmpeg）与 jar 放在同一目录。
+2. 首次使用可以直接启动，不需要激活凭证：程序会进入试用期（默认 7 天，由 `activation.trialDays` 控制），并在启动日志与托盘提示剩余天数。
+3. 想正式使用或试用结束，先获取设备标识 ID 发给作者：
 
    ```bash
    java -cp live-monitor-record-x.x.jar cn.zhangheng.record.activation.ActivationUtil
    pause
    ```
+4. 拿到 `xxxr-activation.lic` 后放到 jar 同一目录（或按 `activation.filePath` 指定路径），重启即生效。
 
 ### 4. 启动
+
+> 从源码编译、打包 fat jar、生成免安装 exe 发行包的完整步骤见 [docs/构建与打包流程.md](docs/构建与打包流程.md)。
 
 **推荐方式：监听文件模式**（一个进程监听多个直播间，一个直播间一个 `.room.json`）
 
@@ -166,6 +170,19 @@ java -cp live-monitor-record-3.6.jar cn.zhangheng.lmr.Main 622216334529 true Dou
 ### 5. 打开可视化界面
 
 浏览器访问 `http://localhost:8005`（端口被占用会自动累加，实际端口见启动日志），操作秘钥为**设备标识 ID**。若需公网访问，可搭配 `cpolar` 内网穿透（见 [配置说明](#配置说明)）。
+
+**免安装发行版（给不需要自己装 Java 的人）**
+
+`dist/星曦向荣直播监听-3.7-win64.zip` 是可直接分发的绿色包：解压后双击 `直播监听.exe` 即可运行，内置 JRE8、ffmpeg、fat jar 与配置模板，目标机器不需要安装 Java。压缩包不含 `tools` 目录（激活工具涉及私钥，单独分发），解压后也没有 `activation.trialDays` 配置项，试用期默认 7 天。
+
+- 启动器行为：定位内置 jre 与 `lib` 下的 jar（不写死版本）、单实例检查（已在运行则提示并打开面板）、首次缺少 Playwright 浏览器时询问并自动安装、stdout/stderr 落 `logs/launcher.log`，异常用弹窗提示而不是静默退出。
+- 进程显示：真正干活的 JVM 由 `jre/bin/直播监听内核.exe`（`javaw.exe` 的副本，已用 rcedit 写入中文版本信息与图标）拉起，任务管理器里显示为“直播监听内核 / 星曦向荣直播监听内核”，不再显示 javaw 或 JDK 字样；`javaw.exe` 仍保留在 jre 里作为兜底。
+- 首次运行需联网下载监听浏览器（约 150MB），也可以先双击 `安装监听浏览器.bat`。
+- 需要登录态时，双击 `获取抖音登录信息.bat` / `获取B站登录信息.bat` 扫码登录：脚本复用 jar 里的 `DouYinLogin` / `BiliLogin`，把 cookie 存成 `cookie/DouYin.cookie`、`cookie/Bili.txt`，并在 `xxxr.setting` 里自动启用 `Cookie.DouYin=file:...` / `Cookie.Bilibili=file:...`（原配置备份为 `xxxr.setting.bak`）。脚本内置 `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1`，避免浏览器版本不匹配时静默下载 150MB 而看起来卡死。
+- 重新生成发行包：`pwsh build-tools/build-release.ps1`（`-SkipBuild` 复用已构建 jar，`-SkipZip` 只生成目录）；模板与启动器源码在 `build-tools/`。
+- 发行包默认不带内网穿透：没有 `cpolar.setting` 时程序会跳过 cpolar，不再打印误导性的启动失败。
+
+监听文件目录为空或不存在时也能正常启动：程序会自动建目录、照常开启网页接口并保持常驻，同时常驻一个"面板入口"托盘图标（右键 →「监控界面」或点图标直接打开），启动时还会自动用浏览器打开面板，不会出现"托盘没图标、又不知道面板地址"的情况。所有监听都停止后，这个入口图标会自动补回来。
 
 ## 使用说明
 
@@ -316,6 +333,8 @@ record.type=FFMPEG
 record.ffmpegPath=bin/ffmpeg.exe
 # [必填] 激活凭证文件路径，默认 xxxr-activation.lic
 activation.filePath=xxxr-activation.lic
+# 试用天数不写即默认 7 天；需要调整时才加下面这行
+#activation.trialDays=7
 # 是否循环监听直播（直播结束后，重新监听）
 record.isLoop=true
 # 是否开启弹幕记录（目前只对抖音有效）
@@ -343,7 +362,8 @@ Cookie.KuaiShou=
 | --- | :---: | --- | --- |
 | `server.runMode` | ✅ | `COMMAND` | 运行模式，枚举 `COMMAND` / `FILE`。多房间文件监听必须为 `FILE`，否则只监听单个房间 |
 | `record.type` | ✅ | 无 | 录制类型，枚举 `JAVA` / `FFMPEG`（**大写**，不是 0/1） |
-| `activation.filePath` | ✅ | `xxxr-activation.lic` | 激活凭证路径；凭证与设备绑定，文件缺失或过期会导致启动校验不通过 |
+| `activation.filePath` | ✅ | `xxxr-activation.lic` | 激活凭证路径；凭证与设备绑定，文件存在但过期/损坏会导致启动校验不通过（不会退回试用） |
+| `activation.trialDays` | — | 7 | 首次使用试用天数；激活文件缺失时生效，0 或负数表示不开放试用 |
 | `server.monitor.port` | — | 8005 | 可视化控制台端口，范围 1-65535，占用时自动向后累加 |
 | `record.FlvToMp4` | — | true | 录制结束转 MP4，需 `record.ffmpegPath` 可用 |
 | `record.ffmpegPath` | — | `bin/ffmpeg.exe` | FFmpeg 可执行文件路径 |
@@ -411,7 +431,12 @@ Cookie.KuaiShou=
 程序正在运行，jar 文件被 JVM 锁定。先在网页点「退出程序」（或调用 `action/exit`），必要时 `taskkill /f /im javaw.exe`，再执行打包。
 
 **提示激活失败或凭证无效**
-`xxxr-activation.lic` 与设备绑定，换机、重装系统都会失效；确认文件与 jar 同目录，或检查 `activation.filePath` 配置。
+`xxxr-activation.lic` 与设备绑定，换机、重装系统都会失效；确认文件与 jar 同目录，或检查 `activation.filePath` 配置。若还没有凭证，删掉（或改名）lic 文件后重启即可进入试用期。
+
+**试用期结束提示**
+试用天数由 `activation.trialDays` 控制（默认 7 天）。试用记录在工作目录 `xxxr-trial.dat`、用户目录 `.xxxr-trial.dat`、`%ProgramData%\XingXiXiangRong\LiveMonitoringRecording\xxxr-trial.dat` 和注册表（`HKCU\Software\JavaSoft\Prefs`）各存一份，取最早的首次使用时间，删掉单份不会重置试用。
+
+提醒方式：试用期内每次启动提示剩余天数；剩 3 天以内（含 1 天）文案升级为催激活，并每小时自检一次、每天最多提醒一次；到期当天提醒"重启后将无法启动"，但不会打断正在运行的监听，到期后不再允许新增监听、重启监听和开启新的录制。
 
 **可视化界面打不开**
 默认 8005 起，端口被占用会自动向后累加，请以启动日志里的实际端口为准；确认防火墙未拦截，或改用 `http://127.0.0.1:端口`。

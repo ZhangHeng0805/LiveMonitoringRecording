@@ -33,21 +33,28 @@ import java.util.concurrent.atomic.AtomicLong;
 @Slf4j
 public class PlaywrightBrowserFactory {
     private static final String JmxType = "PlaywrightBrowser";
-    private static Playwright playwright = null;
+    private static volatile Playwright playwright = null;
     private static volatile Browser browser = null;
     @Getter
     @JmxAttribute(desc = "是否浏览器无头模式（是否隐藏浏览器）")
     private static volatile boolean headless = true;// 无头模式：生产环境建议true，仅在Browser重建时生效，运行中修改无效
-    private static TimedCache<String, MyBrowser> browsersCache = null;
+    private static volatile TimedCache<String, MyBrowser> browsersCache = null;
     //缓存版本号
     @Getter
     @JmxAttribute(desc = "版本号")
-    private static int cacheVersion = 0;
-    private static UserAgentUtil userAgentUtil = null;
-    // key粒度锁，防止同一个key并发创建多个BrowserContext
-//    private static final ConcurrentHashMap<String, Lock> keyLockMap = new ConcurrentHashMap<>();
+    private static volatile int cacheVersion = 0;
+    private static volatile UserAgentUtil userAgentUtil = null;
+    // key 粒度锁：同一个 key 的上下文创建串行；不同 key 之间互不阻塞（不再用类锁串行所有房间）
+    private static final ConcurrentHashMap<String, Object> KEY_LOCKS = new ConcurrentHashMap<>();
+    // Hutool TimedCache 不是线程安全容器：所有缓存读写走这把短锁，锁内不做任何网络/进程调用
+    private static final Object CACHE_LOCK = new Object();
+    // 仅串行“新建上下文”这一瞬间：Playwright 建 context 内部状态较重，避免并发创建失败；
+    // 已有缓存的取用不经过这把锁，所以不会退回全局串行
+    private static final Object CONTEXT_LOCK = new Object();
     // Browser空闲延时关闭配置：所有context清空后，等待多久再关闭浏览器进程
     private static final long BROWSER_IDLE_DELAY_MS = 600_000; // 空闲到期后关Chromium
+    // 空闲关闭任务的独立锁：避免和类锁/缓存锁形成交叉等待
+    private static final Object IDLE_LOCK = new Object();
     private static ScheduledExecutorService idleScheduler;
     private static ScheduledFuture<?> idleCloseTask;
     //总计数
@@ -60,14 +67,20 @@ public class PlaywrightBrowserFactory {
     public static void setAllCookie(String cookie) {
         if (cookie.isEmpty()) cookie = null;
         PlaywrightBrowserFactory.cookie = cookie;
-        if (browsersCache.isEmpty()) return;
         String targetDomain = ".douyin.com";//目前作用域是抖音
-        for (String key : browsersCache.keySet()) {
-            BrowserContent content = browsersCache.get(key).getContent();
-            if (cookie != null) {
-                content.setCookie(targetDomain, cookie);
-            } else {
-                content.getContext().clearCookies();
+        // 先快照 key，真正设置 Cookie 时不持缓存锁（Playwright 调用可能慢）
+        for (String key : cacheKeys()) {
+            MyBrowser myBrowser = cacheGet(key);
+            if (myBrowser == null) continue;
+            BrowserContent content = myBrowser.getContent();
+            try {
+                if (cookie != null) {
+                    content.setCookie(targetDomain, cookie);
+                } else {
+                    content.getContext().clearCookies();
+                }
+            } catch (Throwable e) {
+                log.warn("设置浏览器Cookie失败, key={}: {}", key, ThrowableUtil.getAllCauseMessage(e));
             }
         }
     }
@@ -98,11 +111,11 @@ public class PlaywrightBrowserFactory {
     //    @JmxAttribute(name = "cacheCount", desc = "浏览器缓存统计", tabularIndexKeys = {"key", "threadName"})
     public List<Counter> getCacheCount() {
         List<Counter> list = new ArrayList<>();
-        if (browsersCache == null) return list;
-        for (String key : browsersCache.keySet()) {
-            Counter counter = new Counter();
-            MyBrowser myBrowser = browsersCache.get(key);
+        for (String key : cacheKeys()) {
+            MyBrowser myBrowser = cacheGet(key);
+            if (myBrowser == null) continue;
             BrowserContent content = myBrowser.getContent();
+            Counter counter = new Counter();
             counter.setKey(key);
             counter.setCount(content.getPageCount());
             counter.setThreadName(content.getThreadName());
@@ -120,71 +133,127 @@ public class PlaywrightBrowserFactory {
      * @param forceRefresh 是否强制刷新实例
      * @return
      */
-    public static synchronized MyBrowser getBrowser(String key, long expirationMs, boolean forceRefresh) {
+    public static MyBrowser getBrowser(String key, long expirationMs, boolean forceRefresh) {
         // 只要有人来拿任务上下文，说明有活，取消空闲关闭倒计时
         cancelIdleCloseTask();
+        // 只有 Playwright/Browser/缓存不可用时才进类锁重建，正常取上下文不再所有房间全局排队
+        ensureReady();
 
-        // DCL 检查Browser是否存活
-        if (!isRunning()) {
-            synchronized (PlaywrightBrowserFactory.class) {
-                if (!isRunning()) {
-                    // 旧Browser还连接着才关闭；已经断开直接重建
-                    if (browser != null) {
-                        closeBrowser();
-                    }
-                    init();
+        synchronized (lockOf(key)) {
+            try {
+                if (forceRefresh) {
+                    cacheRemove(key);
                 }
-            }
-        }
-        // key粒度锁，解决 check-then-act 并发问题
-//        Lock lock = keyLockMap.computeIfAbsent(key, k -> new ReentrantLock());
-//        lock.lock();
-        try {
 
-            if (forceRefresh) {
-                browsersCache.remove(key);
-            }
-
-            MyBrowser myBrowser = browsersCache.get(key);
-            boolean isContextValid = false;
-            synchronized (browser) {
+                MyBrowser myBrowser = cacheGet(key);
+                boolean isContextValid = false;
+                Browser currentBrowser = browser;
+                if (currentBrowser == null) {
+                    throw new IllegalStateException("浏览器正在关闭或重建，请稍后重试");
+                }
                 if (myBrowser != null) {
                     BrowserContext context = myBrowser.getContent().getContext();
                     //判断浏览器是否一致
-                    if (context != null && context.browser().equals(browser)) {
+                    if (context != null && context.browser().equals(currentBrowser)) {
                         isContextValid = true;
                     }
                 }
                 if (forceRefresh || !isContextValid) {
                     if (myBrowser != null) {
                         //关闭旧的
-                        browsersCache.remove(key);
+                        cacheRemove(key);
                     }
 
-//                int[] vp = UserAgentUtil.PC_VIEWPORTS[RandomUtil.randomInt(UserAgentUtil.PC_VIEWPORTS.length)];
-                    String userAgent = userAgentUtil.get();
+                    UserAgentUtil uaUtil = userAgentUtil;
+                    if (uaUtil == null) {
+                        throw new IllegalStateException("浏览器正在关闭或重建，请稍后重试");
+                    }
+                    String userAgent = uaUtil.get();
                     Browser.NewContextOptions options = new Browser.NewContextOptions()
                             .setUserAgent(userAgent)
-//                        .setViewportSize(vp[0], vp[1])
                             .setLocale("zh-CN")
                             .setTimezoneId("Asia/Shanghai");
 
-                    BrowserContext context = browser.newContext(options);
+                    BrowserContext context;
+                    synchronized (CONTEXT_LOCK) {
+                        context = currentBrowser.newContext(options);
+                    }
 
                     BrowserContent content = new BrowserContent(context, userAgent);
                     myBrowser = new MyBrowser(content);
-                    browsersCache.put(key, myBrowser, expirationMs);
+                    cachePut(key, myBrowser, expirationMs);
                     try {
                         JmxRegisterUtil.register(content, JmxType, "name", key);
                     } catch (MalformedObjectNameException e) {
                         log.warn("JMX注册失败!{}", ThrowableUtil.getAllCauseMessage(e));
                     }
                 }
+                return myBrowser;
+            } finally {
+                count.incrementAndGet();
             }
-            return myBrowser;
-        } finally {
-//            lock.unlock();
-            count.incrementAndGet();
+        }
+    }
+
+    /** key 粒度锁对象：锁数量与房间数一致，不做回收（回收会让并发线程拿到不同锁） */
+    private static Object lockOf(String key) {
+        return KEY_LOCKS.computeIfAbsent(key == null ? "" : key, k -> new Object());
+    }
+
+    /**
+     * 确保 Playwright / Browser / 缓存可用。
+     * 快路径只读 volatile 标记；只有真正需要重建时才进类锁，避免所有房间共用一把全局锁串行。
+     */
+    private static void ensureReady() {
+        if (isRunning() && browsersCache != null && userAgentUtil != null) {
+            return;
+        }
+        synchronized (PlaywrightBrowserFactory.class) {
+            if (isRunning() && browsersCache != null && userAgentUtil != null) {
+                return;
+            }
+            // 旧 Browser 已断开，或缓存/UA 状态不完整：统一清掉再重建
+            if (browser != null || browsersCache != null) {
+                closeBrowser();
+            }
+            init();
+        }
+    }
+
+    private static MyBrowser cacheGet(String key) {
+        synchronized (CACHE_LOCK) {
+            return browsersCache == null ? null : browsersCache.get(key);
+        }
+    }
+
+    private static void cachePut(String key, MyBrowser myBrowser, long expirationMs) {
+        synchronized (CACHE_LOCK) {
+            if (browsersCache != null) {
+                browsersCache.put(key, myBrowser, expirationMs);
+            }
+        }
+    }
+
+    private static void cacheRemove(String key) {
+        synchronized (CACHE_LOCK) {
+            if (browsersCache != null) {
+                browsersCache.remove(key);
+            }
+        }
+    }
+
+    private static List<String> cacheKeys() {
+        synchronized (CACHE_LOCK) {
+            if (browsersCache == null || browsersCache.isEmpty()) {
+                return new ArrayList<>();
+            }
+            return new ArrayList<>(browsersCache.keySet());
+        }
+    }
+
+    private static boolean cacheIsEmpty() {
+        synchronized (CACHE_LOCK) {
+            return browsersCache == null || browsersCache.isEmpty();
         }
     }
 
@@ -205,35 +274,35 @@ public class PlaywrightBrowserFactory {
                 return t;
             });
         }
-        if (browsersCache == null) {
-            cacheVersion++;
-            final long currentVer = cacheVersion;
-            browsersCache = CacheUtil.newTimedCache(60_000);
-            //开启定时过期扫描
-            browsersCache.schedulePrune(2_000);
-
-            browsersCache.setListener((key, myBrowser) -> {
-                // 不是当前最新版本的缓存，直接丢弃回调（旧缓存滞后prune回调拦截）
-                if (currentVer != cacheVersion) {
-                    return;
-                }
-                // ✅ 异步关闭，不在缓存锁里阻塞
-                CompletableFuture.runAsync(() -> {
-                    try {
-                        JmxRegisterUtil.unregister(JmxRegisterUtil.Domain, JmxType, "name", key);
-                        myBrowser.close();
-                        log.info("异步关闭BrowserContext成功！ key={}", key);
-                    } catch (Throwable e) {
-                        log.error("异步关闭BrowserContext异常, key={}", key, e);
+        synchronized (CACHE_LOCK) {
+            if (browsersCache == null) {
+                cacheVersion++;
+                final long currentVer = cacheVersion;
+                TimedCache<String, MyBrowser> cache = CacheUtil.newTimedCache(60_000);
+                cache.setListener((key, myBrowser) -> {
+                    // 不是当前最新版本的缓存，直接丢弃回调（旧缓存滞后prune回调拦截）
+                    if (currentVer != cacheVersion) {
+                        return;
+                    }
+                    // ✅ 异步关闭，不在缓存锁里阻塞
+                    CompletableFuture.runAsync(() -> {
+                        try {
+                            JmxRegisterUtil.unregister(JmxRegisterUtil.Domain, JmxType, "name", key);
+                            myBrowser.close();
+                            log.info("异步关闭BrowserContext成功！ key={}", key);
+                        } catch (Throwable e) {
+                            log.error("异步关闭BrowserContext异常, key={}", key, e);
+                        }
+                    });
+                    // 检查缓存是否已经空了
+                    if (cacheIsEmpty()) {
+                        scheduleBrowserIdleClose();
                     }
                 });
-                // 移除锁，防止keyLockMap无限膨胀
-//                keyLockMap.remove(key);
-                // 检查缓存是否已经空了
-                if (browsersCache.isEmpty()) {
-                    scheduleBrowserIdleClose();
-                }
-            });
+                //开启定时过期扫描
+                cache.schedulePrune(2_000);
+                browsersCache = cache;
+            }
         }
         if (userAgentUtil == null) {
             userAgentUtil = UserAgentUtil.create(true, false);
@@ -244,35 +313,38 @@ public class PlaywrightBrowserFactory {
     /**
      * 调度空闲延时关闭Browser：缓存全部为空时调用
      */
-    private static synchronized void scheduleBrowserIdleClose() {
-        // 线程池已经关闭就直接返回，不再提交
-        if (idleScheduler == null || idleScheduler.isShutdown()) {
-            return;
-        }
-        if (idleCloseTask != null && !idleCloseTask.isDone()) {
-            // 已有倒计时，不重复创建
-            return;
-        }
-        log.info("所有上下文已回收，{}ms后关闭Browser浏览器", BROWSER_IDLE_DELAY_MS);
-        idleCloseTask = idleScheduler.schedule(() -> {
-            synchronized (PlaywrightBrowserFactory.class) {
-                // 二次校验：防止在等待期间又来了新任务
-                if (browsersCache != null && browsersCache.isEmpty()) {
-                    log.info("浏览器空闲超时，关闭Browser");
-                    closeBrowser();
-                }
+    private static void scheduleBrowserIdleClose() {
+        synchronized (IDLE_LOCK) {
+            // 线程池已经关闭就直接返回，不再提交
+            if (idleScheduler == null || idleScheduler.isShutdown()) {
+                return;
             }
-        }, BROWSER_IDLE_DELAY_MS, TimeUnit.MILLISECONDS);
+            if (idleCloseTask != null && !idleCloseTask.isDone()) {
+                // 已有倒计时，不重复创建
+                return;
+            }
+            log.info("所有上下文已回收，{}ms后关闭Browser浏览器", BROWSER_IDLE_DELAY_MS);
+            idleCloseTask = idleScheduler.schedule(() -> {
+                synchronized (PlaywrightBrowserFactory.class) {
+                    // 二次校验：防止在等待期间又来了新任务
+                    if (cacheIsEmpty()) {
+                        log.info("浏览器空闲超时，关闭Browser");
+                        closeBrowser();
+                    }
+                }
+            }, BROWSER_IDLE_DELAY_MS, TimeUnit.MILLISECONDS);
+        }
     }
 
     /**
      * 取消空闲关闭倒计时：有新任务进来的时候调用
      */
-    private static synchronized void cancelIdleCloseTask() {
-        if (idleCloseTask != null && !idleCloseTask.isDone()) {
-            idleCloseTask.cancel(false);
-            idleCloseTask = null;
-//            log.debug("收到新任务，取消浏览器空闲关闭计时");
+    private static void cancelIdleCloseTask() {
+        synchronized (IDLE_LOCK) {
+            if (idleCloseTask != null && !idleCloseTask.isDone()) {
+                idleCloseTask.cancel(false);
+                idleCloseTask = null;
+            }
         }
     }
     @JmxOperation(desc = "关闭浏览器")
@@ -296,10 +368,16 @@ public class PlaywrightBrowserFactory {
                 browser = null; // 标记为null，避免重复操作
             }
         }
-        browsersCache.clear();
-        browsersCache.cancelPruneSchedule();
-        browsersCache = null;
-        idleScheduler.shutdownNow();
+        synchronized (CACHE_LOCK) {
+            if (browsersCache != null) {
+                browsersCache.clear();
+                browsersCache.cancelPruneSchedule();
+            }
+            browsersCache = null;
+        }
+        if (idleScheduler != null) {
+            idleScheduler.shutdownNow();
+        }
         userAgentUtil = null;
     }
 

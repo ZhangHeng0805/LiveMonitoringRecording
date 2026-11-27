@@ -119,6 +119,12 @@ public class Setting {
     @PropertyValue(value = "activation.filePath", required = true)
     private String activateVoucherPath = Constant.ActivateVoucherFilePath;
     /**
+     * 首次使用试用天数：没有激活文件时可用，小于等于 0 表示不开放试用
+     */
+    @JmxAttribute(desc = "首次使用试用天数（没有激活文件时生效）")
+    @PropertyValue("activation.trialDays")
+    private int trialDays = Constant.TrialDays;
+    /**
      * 是否循环监听直播（直播结束后，重新监听）
      */
     @JmxAttribute(desc = "是否循环监听直播（直播结束后，重新监听）")

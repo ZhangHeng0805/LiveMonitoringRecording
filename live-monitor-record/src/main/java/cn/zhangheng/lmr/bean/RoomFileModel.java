@@ -20,6 +20,8 @@ public class RoomFileModel {
     private long endTime;
     private Main main;
     private boolean isRunning;
+    /** 是否已完成收尾。防止接口主动停止时的收尾，与监听线程退出后的 finally 收尾重复执行 */
+    private volatile boolean ended;
 
     public void setStartTime() {
         this.startTime = System.currentTimeMillis();

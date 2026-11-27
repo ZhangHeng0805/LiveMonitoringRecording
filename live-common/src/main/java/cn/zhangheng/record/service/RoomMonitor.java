@@ -12,9 +12,11 @@ import lombok.Getter;
 import lombok.Setter;
 
 import javax.management.ObjectName;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * @author: ZhangHeng
@@ -157,10 +159,23 @@ public abstract class RoomMonitor<R extends Room, S extends RoomService<R>> exte
             listener.onStart();
         }
         if (!isAsync) {
+            // 带超时轮询，不再无限等 worker：worker 里若有没设超时的网络 IO，stop() 之后主线程也要能及时返回，
+            // 监听状态才能落到 END，页面才不会永远显示"运行中"、也才能重新启动
             try {
-                future.get();
+                while (!future.isDone() && isRunning()) {
+                    try {
+                        future.get(1, TimeUnit.SECONDS);
+                    } catch (TimeoutException ignored) {
+                        // 每秒醒来一次，检查运行标记
+                    }
+                }
+            } catch (ExecutionException e) {
+                log.error("直播间监听任务异常：" + ThrowableUtil.getAllCauseMessage(e));
+            } catch (CancellationException ignored) {
+                // 线程池 shutdownNow 后任务被取消，属于正常停止流程
             } catch (InterruptedException e) {
                 log.error("直播间监听主任务中断：" + ThrowableUtil.getAllCauseMessage(e));
+                Thread.currentThread().interrupt();
             } finally {
                 isRunning.set(false);
             }

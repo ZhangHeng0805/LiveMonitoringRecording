@@ -106,10 +106,23 @@ public abstract class Recorder extends Task {
         initRunnable();
         Future<?> future = submit(runnable);
         if (!isAsync) {
+            // 带超时轮询：stop() 只做优雅关闭（不中断线程），worker 若卡在流读取，这里每秒醒来一次即可退出，
+            // 不会让停止录制无限挂起
             try {
-                future.get();
+                while (!future.isDone() && isRunning.get()) {
+                    try {
+                        future.get(1, TimeUnit.SECONDS);
+                    } catch (TimeoutException ignored) {
+                        // 每秒醒来检查一次运行标记
+                    }
+                }
+            } catch (ExecutionException e) {
+                log.error("录制任务异常：{}", ThrowableUtil.getAllCauseMessage(e));
+            } catch (CancellationException ignored) {
+                // 线程池关闭后任务被取消，属于正常停止流程
             } catch (InterruptedException e) {
                 log.error("录制主任务中断：{}", ThrowableUtil.getAllCauseMessage(e));
+                Thread.currentThread().interrupt();
             } finally {
                 isRunning.set(false);
             }

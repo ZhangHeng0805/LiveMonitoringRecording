@@ -13,6 +13,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.management.ObjectName;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -37,6 +39,11 @@ public class CpolarToolStarter extends Starter {
     @Override
     @JmxOperation(desc = "启动服务")
     public void start() {
+        // 发行版默认不带内网穿透：缺少 cpolar.setting 时直接跳过，避免日志里出现误导性的“启动失败”
+        if (!Files.exists(Paths.get("cpolar.setting"))) {
+            log.info("未配置内网穿透（缺少 cpolar.setting），跳过 cpolar 启动");
+            return;
+        }
         if (thread != null && isRunning()) throw new RuntimeException("cpolar已运行！");
         thread = new Thread(() -> {
             try {
@@ -63,7 +70,11 @@ public class CpolarToolStarter extends Starter {
     @Override
     @JmxOperation(desc = "停止服务")
     public void stop() {
-        if (thread == null && !isRunning()) throw new RuntimeException("cpolar未运行！");
+        if (thread == null && !isRunning()) {
+            // 未启动过（例如没有 cpolar.setting），停止时应静默跳过
+            log.debug("cpolar未运行，跳过停止");
+            return;
+        }
         try {
             cpolarStarter.stop(false);
             thread.interrupt();

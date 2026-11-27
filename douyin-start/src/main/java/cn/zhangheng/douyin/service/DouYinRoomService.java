@@ -38,7 +38,7 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
     }
 
     @Override
-    public synchronized void stopSubtitle() {
+    public void stopSubtitle() {
         subtitleService.stopSubtitle();
     }
 

@@ -1,6 +1,7 @@
 package cn.zhangheng.cpolar.git;
 
 import java.io.File;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author: ZhangHeng
@@ -29,10 +30,14 @@ class GitCmdUpload {
 
     // 执行命令工具方法
     private static void execCmd(String dir, String... cmd) throws Exception {
-        new ProcessBuilder(cmd)
+        Process process = new ProcessBuilder(cmd)
                 .directory(new File(dir))
                 .inheritIO()
-                .start()
-                .waitFor();
+                .start();
+        // git push 可能因网络卡住，最多等 2 分钟，避免上传任务永久挂起
+        if (!process.waitFor(120, TimeUnit.SECONDS)) {
+            process.destroyForcibly();
+            throw new RuntimeException("命令执行超时(120s)：" + String.join(" ", cmd));
+        }
     }
 }

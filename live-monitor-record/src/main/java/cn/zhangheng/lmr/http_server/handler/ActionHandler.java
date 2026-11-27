@@ -6,6 +6,7 @@ import cn.hutool.json.JSONUtil;
 import cn.zhangheng.browser.factory.PlaywrightBrowserFactory;
 import cn.zhangheng.common.setting.ConfigKit;
 import cn.zhangheng.douyin.browser.DouYinUrlParse;
+import cn.zhangheng.record.activation.TrialState;
 import cn.zhangheng.record.bean.Setting;
 import cn.zhangheng.record.httpServer.router.AnnotationHandler;
 import cn.zhangheng.record.httpServer.router.AuthPolicy;
@@ -31,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -53,6 +55,16 @@ public class ActionHandler extends AnnotationHandler {
     private static final Pattern DOUYIN_LIVE_URL_PATTERN = Pattern.compile("live\\.douyin\\.com/(\\d{5,20})");
     /** 纯数字房间号 */
     private static final Pattern ROOM_ID_PATTERN = Pattern.compile("^\\d{5,20}$");
+
+    /**
+     * 房间级锁：同一个房间的启停/录制/刷新/设置串行，不同房间之间互不阻塞。
+     * 锁数量与房间数一致，不做回收（回收会让并发线程拿到不同锁）。
+     */
+    private static final ConcurrentHashMap<String, Object> KEY_LOCKS = new ConcurrentHashMap<>();
+
+    private static Object lockOf(String key) {
+        return KEY_LOCKS.computeIfAbsent(key == null ? "" : key, k -> new Object());
+    }
 
     public ActionHandler(String prefix) {
         // 鉴权/限流规则交给项目自己的实现，路由框架不关心具体怎么验、怎么读配置
@@ -228,21 +240,28 @@ public class ActionHandler extends AnnotationHandler {
         FileModeMain.shutdown("http:" + ctx.exchange().getRemoteAddress());
     }
 
-    private synchronized void delMonitor(Message msg, Map<String, String> query) {
+    private void delMonitor(Message msg, Map<String, String> query) {
         String key = query.get("key");
-        try {
-            FileModeMain.delMain(key);
-            msg.setMessage("直播监听删除成功");
-        } catch (Exception e) {
-            msg.setCode(1);
-            msg.setMessage(e.getMessage());
+        synchronized (lockOf(key)) {
+            try {
+                FileModeMain.delMain(key);
+                msg.setMessage("直播监听删除成功");
+            } catch (Exception e) {
+                msg.setCode(1);
+                msg.setMessage(e.getMessage());
+            }
         }
     }
 
-    private synchronized void addMonitor(Message msg, HttpExchange httpExchange) throws IOException {
-        String bodyStr = parseRequestBodyStr(httpExchange,charset);
+    private void addMonitor(Message msg, HttpExchange httpExchange) throws IOException {
+        String bodyStr = parseRequestBodyStr(httpExchange, charset);
         try {
-            FileModeMain.addMain(JSONUtil.toBean(bodyStr, RoomJson.class));
+            RoomJson bean = JSONUtil.toBean(bodyStr, RoomJson.class);
+            // 用与 FileModeMain 相同的房间标识加锁，保证同一房间的新增请求串行（避免并发重复新增）
+            String lockKey = (bean.getPlatform() == null ? "?" : bean.getPlatform().name()) + "-" + bean.getId();
+            synchronized (lockOf(lockKey)) {
+                FileModeMain.addMain(bean);
+            }
             msg.setMessage("直播监听新增成功");
         } catch (Exception e) {
             msg.setCode(1);
@@ -250,114 +269,124 @@ public class ActionHandler extends AnnotationHandler {
         }
     }
 
-    private synchronized void actionMonitor(Message msg, Map<String, String> query) {
+    private void actionMonitor(Message msg, Map<String, String> query) {
         String key = query.get("key");
         boolean flag = Boolean.parseBoolean(query.get("flag"));
-        RoomFileModel model = FileModeMain.getModelById(key);
-        if (model == null) {
-            msg.setCode(1);
-            msg.setMessage("标识" + key + "不存在！");
-            return;
-        }
-        Main main = model.getMain();
-        MonitorMain<Room, ?> monitorMain = main.getMonitorMain();
-        if (flag == monitorMain.getIsRunning()) {
-            msg.setCode(1);
-            msg.setMessage(StrUtil.format("监听状态已{},请勿重复操作！", flag ? "开启" : "关闭"));
-            return;
-        }
-        if (flag) {
-            try {
-                FileModeMain.restartMain(key);
-            } catch (RuntimeException e) {
+        synchronized (lockOf(key)) {
+            RoomFileModel model = FileModeMain.getModelById(key);
+            if (model == null) {
                 msg.setCode(1);
-                msg.setMessage(e.getMessage());
+                msg.setMessage("标识" + key + "不存在！");
                 return;
             }
-            msg.setMessage("监听启动成功！");
-        } else {
-            monitorMain.setIsForceStop(true);
-            monitorMain.exit();
-            msg.setMessage("标识[" + key + "]的直播监听已关闭！");
+            Main main = model.getMain();
+            MonitorMain<Room, ?> monitorMain = main.getMonitorMain();
+            if (flag == monitorMain.getIsRunning()) {
+                msg.setCode(1);
+                msg.setMessage(StrUtil.format("监听状态已{},请勿重复操作！", flag ? "开启" : "关闭"));
+                return;
+            }
+            if (flag) {
+                try {
+                    FileModeMain.restartMain(key);
+                } catch (RuntimeException e) {
+                    msg.setCode(1);
+                    msg.setMessage(e.getMessage());
+                    return;
+                }
+                msg.setMessage("监听启动成功！");
+            } else {
+                FileModeMain.stopMonitor(model);
+                msg.setMessage("标识[" + key + "]的直播监听已关闭！");
+            }
         }
-
     }
 
-    private synchronized void actionRecord(Message msg, Map<String, String> query) {
+    private void actionRecord(Message msg, Map<String, String> query) {
         String key = query.get("key");
         boolean flag = Boolean.parseBoolean(query.get("flag"));
-        RoomFileModel model = FileModeMain.getModelById(key);
-        if (model == null) {
-            msg.setCode(1);
-            msg.setMessage("标识" + key + "不存在！");
-            return;
-        }
-        Main main = model.getMain();
+        synchronized (lockOf(key)) {
+            RoomFileModel model = FileModeMain.getModelById(key);
+            if (model == null) {
+                msg.setCode(1);
+                msg.setMessage("标识" + key + "不存在！");
+                return;
+            }
+            Main main = model.getMain();
 
-        MonitorMain<Room, ?> monitorMain = main.getMonitorMain();
-        Recorder recorder = monitorMain.getRecorder();
-        boolean isRecord = recorder != null && recorder.isRunning();
-        if (flag == isRecord) {
-            msg.setCode(1);
-            msg.setMessage(StrUtil.format("录制状态已{},请勿重复操作！", flag ? "开启" : "停止"));
-            return;
-        }
-        boolean res;
-        if (flag) {
-            res = monitorMain.startRecord();
-        } else {
-            res = monitorMain.stopRecord();
-        }
-        msg.setMessage(StrUtil.format("{}录制{}！", flag ? "开启" : "停止", res ? "成功" : "失败"));
-
-    }
-
-    private synchronized void actionRefresh(Message msg, Map<String, String> query) {
-        String key = query.get("key");
-        RoomFileModel model = FileModeMain.getModelById(key);
-        if (model == null) {
-            msg.setCode(1);
-            msg.setMessage("标识" + key + "不存在！");
-            return;
-        }
-        Main main = model.getMain();
-        MonitorMain<Room, ?> monitorMain = main.getMonitorMain();
-        if (monitorMain.getStatus() != MonitorStatus.RUNNING) {
-            msg.setCode(1);
-            msg.setMessage("该直播间没有启动监听!");
-            return;
-        }
-        try {
-            monitorMain.getRoomMonitor().nowRefresh();
-            msg.setMessage("刷新成功!");
-        } catch (Exception e) {
-            msg.setCode(1);
-            msg.setMessage("刷新失败!");
-        }
-    }
-
-    private synchronized void actionSetting(Message msg, HttpExchange httpExchange, Map<String, String> query) {
-        String key = query.get("key");
-        RoomFileModel model = FileModeMain.getModelById(key);
-        if (model == null) {
-            msg.setCode(1);
-            msg.setMessage("标识" + key + "不存在！");
-            return;
-        }
-        Main main = model.getMain();
-        try {
             MonitorMain<Room, ?> monitorMain = main.getMonitorMain();
-            String bodyStr = parseRequestBodyStr(httpExchange,charset);
-            RoomJson bean = JSONUtil.toBean(bodyStr, RoomJson.class);
-            Room room = monitorMain.getRoom();
-            Setting setting = room.getSetting();
-            bean.convert(setting);
-            monitorMain.setAutoRecord(bean.isAutoRecord());
-            room.initSetting(setting);
-            msg.setMessage("设置成功!");
-        } catch (Exception e) {
-            msg.setCode(1);
-            msg.setMessage("设置错误! " + ThrowableUtil.getAllCauseMessage(e));
+            Recorder recorder = monitorMain.getRecorder();
+            boolean isRecord = recorder != null && recorder.isRunning();
+            if (flag == isRecord) {
+                msg.setCode(1);
+                msg.setMessage(StrUtil.format("录制状态已{},请勿重复操作！", flag ? "开启" : "停止"));
+                return;
+            }
+            boolean res;
+            if (flag) {
+                res = monitorMain.startRecord();
+                if (!res && TrialState.isTrialExpired()) {
+                    msg.setCode(1);
+                    msg.setMessage("试用期已结束，请获取激活码后再开启录制！");
+                    return;
+                }
+            } else {
+                res = monitorMain.stopRecord();
+            }
+            msg.setMessage(StrUtil.format("{}录制{}！", flag ? "开启" : "停止", res ? "成功" : "失败"));
+        }
+    }
+
+    private void actionRefresh(Message msg, Map<String, String> query) {
+        String key = query.get("key");
+        synchronized (lockOf(key)) {
+            RoomFileModel model = FileModeMain.getModelById(key);
+            if (model == null) {
+                msg.setCode(1);
+                msg.setMessage("标识" + key + "不存在！");
+                return;
+            }
+            Main main = model.getMain();
+            MonitorMain<Room, ?> monitorMain = main.getMonitorMain();
+            if (monitorMain.getStatus() != MonitorStatus.RUNNING) {
+                msg.setCode(1);
+                msg.setMessage("该直播间没有启动监听!");
+                return;
+            }
+            try {
+                monitorMain.getRoomMonitor().nowRefresh();
+                msg.setMessage("刷新成功!");
+            } catch (Exception e) {
+                msg.setCode(1);
+                msg.setMessage("刷新失败!");
+            }
+        }
+    }
+
+    private void actionSetting(Message msg, HttpExchange httpExchange, Map<String, String> query) {
+        String key = query.get("key");
+        synchronized (lockOf(key)) {
+            RoomFileModel model = FileModeMain.getModelById(key);
+            if (model == null) {
+                msg.setCode(1);
+                msg.setMessage("标识" + key + "不存在！");
+                return;
+            }
+            Main main = model.getMain();
+            try {
+                MonitorMain<Room, ?> monitorMain = main.getMonitorMain();
+                String bodyStr = parseRequestBodyStr(httpExchange, charset);
+                RoomJson bean = JSONUtil.toBean(bodyStr, RoomJson.class);
+                Room room = monitorMain.getRoom();
+                Setting setting = room.getSetting();
+                bean.convert(setting);
+                monitorMain.setAutoRecord(bean.isAutoRecord());
+                room.initSetting(setting);
+                msg.setMessage("设置成功!");
+            } catch (Exception e) {
+                msg.setCode(1);
+                msg.setMessage("设置错误! " + ThrowableUtil.getAllCauseMessage(e));
+            }
         }
     }
 

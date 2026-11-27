@@ -1,0 +1,34 @@
+# ===== 星曦向荣直播监听 配置文件（改完需重启程序生效）=====
+# 监控面板端口，被占用会自动往后加
+server.monitor.port=8005
+# 运行模式：FILE-读取 room 目录下的监听文件（多房间）
+server.runMode=FILE
+
+# 录制类型：JAVA-程序自己录，FFMPEG-调用 ffmpeg 录制（推荐）
+record.type=FFMPEG
+# ffmpeg 路径（相对程序目录）
+record.ffmpegPath=bin/ffmpeg.exe
+# 录完自动转 MP4 并清理中间文件
+record.FlvToMp4=true
+# 下播后继续等待下一场
+record.isLoop=true
+# 记录弹幕（目前仅抖音有效）
+record.openSubtitle=true
+
+# 监听间隔（秒，最小 10）
+monitor.delayIntervalSec=30
+
+# 激活凭证：把 xxxr-activation.lic 放到本目录后重启即可
+activation.filePath=xxxr-activation.lic
+
+# 接口令牌
+server.auth.publicTokenEnabled=true
+server.auth.publicTokenExpireSec=1800
+
+# ===== 可选：平台登录 Cookie（不填也能监听，但部分信息拿不到）=====
+# 双击「获取抖音登录信息.bat」/「获取B站登录信息.bat」会自动写入下面的配置并生成 cookie 文件
+#Cookie.DouYin=file:cookie/DouYin.cookie
+#Cookie.Bilibili=file:cookie/Bili.txt
+#Cookie.KuaiShou=file:cookie/KuaiShou.cookie
+
+# ===== 可选：内网穿透（需要 bin\cpolar.exe，配置见同目录 cpolar.setting）=====

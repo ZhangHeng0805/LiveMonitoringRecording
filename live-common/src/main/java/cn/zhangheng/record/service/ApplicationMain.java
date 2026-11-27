@@ -4,9 +4,10 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.log.Log;
 import cn.hutool.log.LogFactory;
 import cn.zhangheng.common.setting.ConfigKit;
+import cn.zhangheng.record.activation.ActivationResult;
 import cn.zhangheng.record.activation.ActivationUtil;
-import cn.zhangheng.record.activation.ErrorException;
-import cn.zhangheng.record.activation.WarnException;
+import cn.zhangheng.record.activation.TrialState;
+import cn.zhangheng.record.activation.TrialWatcher;
 import cn.zhangheng.record.bean.Constant;
 import cn.zhangheng.record.bean.Room;
 import cn.zhangheng.record.bean.Setting;
@@ -57,11 +58,13 @@ public abstract class ApplicationMain<R extends Room> {
 
     public void start(Setting setting, String[] args) {
         System.out.println(getBanner());
-        try {
-            ActivationUtil.verifyActivationCodeFile(Constant.deviceUniqueId, ConfigKit.get(Setting.class).getActivateVoucherPath());
-        } catch (ErrorException errorException) {
-            String message = ThrowableUtil.getAllCauseMessage(errorException);
-            log.error(message, errorException);
+        Setting config = ConfigKit.get(Setting.class);
+        ActivationResult activation = ActivationUtil.checkActivation(Constant.deviceUniqueId,
+                config.getActivateVoucherPath(), config.getTrialDays());
+        if (activation.isBlocked()) {
+            String message = activation.getMessage();
+            log.error(message);
+            System.out.println(message);
             try {
                 System.out.println("程序即将自动退出......");
                 TimeUnit.SECONDS.sleep(3);
@@ -69,10 +72,21 @@ public abstract class ApplicationMain<R extends Room> {
                 throw new RuntimeException(e);
             }
             System.exit(0);
-        } catch (WarnException warnException) {
-            String message = warnException.getMessage();
-            log.warn(message);
+        } else if (activation.hasMessage()) {
+            log.warn(activation.getMessage());
+            System.out.println(activation.getMessage());
         }
+        TrialState.update(activation);
+        // 命令模式没有常驻托盘：提醒只走日志与控制台
+        TrialWatcher.setNotifier((message, error) -> {
+            if (error) {
+                log.error(message);
+            } else {
+                log.warn(message);
+            }
+            System.out.println(message);
+        });
+        TrialWatcher.start(Constant.deviceUniqueId, config.getActivateVoucherPath(), config.getTrialDays());
         Room.Platform[] platforms = supportedPlatforms();
         String platformsStr = supportedPlatformsStr(platforms);
         System.out.println(Constant.Application + " - " + platformsStr);

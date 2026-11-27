@@ -80,6 +80,16 @@ public class TrayIconUtil {
     }
 
     /**
+     * 查询已存在的托盘图标（不创建），用于判断某个常驻入口是否还在
+     *
+     * @param threadKey 实例唯一标识
+     * @return 已存在的实例，没有则返回 null
+     */
+    public static TrayIconUtil getPresent(String threadKey) {
+        return iconRegistry.get(threadKey);
+    }
+
+    /**
      * 获取线程对应的托盘图标实例（核心方法：防止重复创建）
      *
      * @param threadKey 线程唯一标识（必须全局唯一）

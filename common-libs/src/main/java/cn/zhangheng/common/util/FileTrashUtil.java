@@ -14,6 +14,7 @@ import java.nio.file.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 
 public class FileTrashUtil {
 
@@ -81,8 +82,12 @@ public class FileTrashUtil {
         Process process = null;
         try {
             process = Runtime.getRuntime().exec(cmd);
-            int exitCode = process.waitFor();
-            return exitCode == 0;
+            // 回收站命令也可能卡住（资源管理器/权限弹窗），最多等 10 秒
+            if (!process.waitFor(10, TimeUnit.SECONDS)) {
+                process.destroyForcibly();
+                return false;
+            }
+            return process.exitValue() == 0;
         } catch (Exception e) {
             // 命令不存在、权限不足、无头环境都会进这里，返回false走降级删除
             return false;

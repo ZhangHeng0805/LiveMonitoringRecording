@@ -5,12 +5,18 @@ import cn.zhangheng.record.bean.Room;
 import com.zhangheng.util.TimeUtil;
 import com.zhangheng.log.AsyncBatchLogger;
 import lombok.Getter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author: ZhangHeng
@@ -21,6 +27,22 @@ import java.util.*;
  */
 public class LogUtil {
 
+    private static final Logger LOG = LoggerFactory.getLogger(LogUtil.class);
+
+    /**
+     * 封面下载专用守护线程池。
+     * 封面只是附属文件，绝不能在监听线程里同步等待网络：一旦 CDN 连接半开，监听循环会被永久钉死。
+     * 队列有界，满了直接丢弃（丢封面不影响监听）。
+     */
+    private static final ExecutorService COVER_DOWNLOADER = new ThreadPoolExecutor(
+            1, 1, 0L, TimeUnit.MILLISECONDS,
+            new LinkedBlockingQueue<>(20),
+            r -> {
+                Thread t = new Thread(r, "cover-downloader");
+                t.setDaemon(true);
+                return t;
+            },
+            new ThreadPoolExecutor.DiscardPolicy());
 
     @Getter
     private final Path logPath;
@@ -79,7 +101,19 @@ public class LogUtil {
         logger = new AsyncBatchLogger(logPath);
         Path coverPath = Paths.get(basePath, nowTime + "封面.jpg");
         if (!Files.exists(coverPath) && room.getCover() != null) {
-            HttpUtil.downloadFile(room.getCover(), coverPath.toFile());
+            String coverUrl = room.getCover();
+            // 异步下载并设置 5 秒超时：Hutool 的 downloadFile 默认无超时，同步调用一旦遇到连接半开，
+            // 会把整条监听线程永久阻塞在 socketRead 上（停止指令的中断对它也无效）
+            COVER_DOWNLOADER.execute(() -> {
+                if (Files.exists(coverPath)) {
+                    return;//队列中的重复任务，文件已存在则跳过
+                }
+                try {
+                    HttpUtil.downloadFile(coverUrl, coverPath.toFile(), 5000);
+                } catch (Throwable e) {
+                    LOG.warn("直播间[{}]封面下载失败（忽略，不影响监听）：{} - {}", room.getNickname(), coverUrl, e.getMessage());
+                }
+            });
         }
         if (room.isLiving()) {
             init(room);
@@ -96,8 +130,13 @@ public class LogUtil {
         List<String> lines = new ArrayList<>();
         lines.add("【" + room.getNickname() + "】 - " + room.getTitle());
         lines.add("直播流地址：");
-        for (Map.Entry<String, String> entry : room.getStreams().entrySet()) {
-            lines.add("【" + entry.getKey() + "】 " + entry.getValue());
+        if (room.getStreams() == null || room.getStreams().isEmpty()) {
+            // 开播初期拿不到直播源时也要能正常建日志，避免空指针把监听判死
+            lines.add("暂未获取到直播流地址");
+        } else {
+            for (Map.Entry<String, String> entry : room.getStreams().entrySet()) {
+                lines.add("【" + entry.getKey() + "】 " + entry.getValue());
+            }
         }
         lines.add("");
         log(lines);

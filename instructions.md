@@ -8,7 +8,7 @@
 - **操作系统**：Java 跨平台语言，理论上支持 Windows / macOS / Linux，目前只验证了 Windows
 - **运行目录必须包含**：
     - 配置文件 [xxxr.setting](xxxr.setting)
-    - 激活凭证文件 [xxxr-activation.lic](xxxr-activation.lic)（**必须**，与设备绑定，联系作者获取）
+    - 激活凭证文件 [xxxr-activation.lic](xxxr-activation.lic)（可选，与设备绑定，联系作者获取；没有时进入首次试用期，默认 7 天）
     - ffmpeg 工具（可选，FFmpeg 录制与转 MP4 时需要），下载后把路径配到 `record.ffmpegPath`
 
 ## 启动准备
@@ -77,6 +77,10 @@
 | `server.runMode`      | `FILE`                | 运行模式：`COMMAND` 命令行单房间 / `FILE` 读取监听文件（多房间） |
 | `record.type`         | `FFMPEG`              | 录制类型，枚举 `JAVA`（原生）/ `FFMPEG`（外部工具），大写    |
 | `activation.filePath` | `xxxr-activation.lic` | 激活凭证路径                                   |
+
+> `activation.trialDays`：首次使用试用天数，默认 `7`；激活文件缺失时生效，`0` 或负数表示不开放试用。激活文件存在但过期/损坏时不会退回试用。
+>
+> 试用提醒：剩 3 天以内文案升级并每小时自检一次、每天最多提醒一次；到期当天提醒"重启后无法启动"，但不打断已在运行的监听；到期后不能再新增监听、重启监听或手动开启录制（开播自动录制照常）。自检间隔可用 `-Dxxxr.trial.checkIntervalMs=毫秒` 覆盖。
 
 **常用项**
 

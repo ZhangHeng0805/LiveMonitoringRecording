@@ -26,6 +26,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 利用cpolar端口映射工具实现内网穿透，
@@ -128,8 +129,12 @@ public class CpolarStarter {
                 process.destroy();
             }
             try {
-                process.waitFor();
-            } catch (InterruptedException ignored) {
+                if (!process.waitFor(5, TimeUnit.SECONDS)) {
+                    process.destroyForcibly();
+                }
+            } catch (InterruptedException e) {
+                process.destroyForcibly();
+                Thread.currentThread().interrupt();
             }
         }
     }

@@ -13,6 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author: ZhangHeng
@@ -60,7 +61,29 @@ public abstract class FFmpegService {
             pb.redirectErrorStream(true);
             process = pb.start();
             processResult(process);
-            return process.waitFor();
+            // 1 秒粒度等待：外部 stop() 会把 isRunning 置 false 并销毁进程，
+            // 这里能立刻感知并退出，不会因为 ffmpeg 僵死而永久悬挂在 waitFor 上
+            try {
+                while (!process.waitFor(1, TimeUnit.SECONDS)) {
+                    if (!isRunning) {
+                        process.destroy();
+                        if (!process.waitFor(5, TimeUnit.SECONDS)) {
+                            process.destroyForcibly();
+                        }
+                        log.warn("收到停止信号，ffmpeg进程已终止");
+                        break;
+                    }
+                }
+            } catch (InterruptedException e) {
+                process.destroyForcibly();
+                Thread.currentThread().interrupt();
+                throw e;
+            }
+            try {
+                return process.exitValue();
+            } catch (IllegalThreadStateException e) {
+                return -1;
+            }
         } finally {
             isRunning = false;
         }
@@ -75,8 +98,12 @@ public abstract class FFmpegService {
                 process.destroy();
             }
             try {
-                process.waitFor();
-            } catch (InterruptedException ignored) {
+                if (!process.waitFor(5, TimeUnit.SECONDS)) {
+                    process.destroyForcibly();
+                }
+            } catch (InterruptedException e) {
+                process.destroyForcibly();
+                Thread.currentThread().interrupt();
             }
         }
     }

@@ -2,6 +2,7 @@ package cn.zhangheng.record.service;
 
 import cn.hutool.json.JSONUtil;
 import cn.zhangheng.common.util.FileTrashUtil;
+import cn.zhangheng.record.activation.TrialState;
 import cn.zhangheng.record.bean.Constant;
 import cn.zhangheng.record.bean.Room;
 import cn.zhangheng.record.bean.Setting;
@@ -88,6 +89,8 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         if (isRunning.compareAndSet(true,false)) {
             roomMonitor.stop(true);
         }
+        // 停止指令一旦发出就收敛状态：worker 即使卡在无超时的网络 IO 里，页面也不会永远显示"运行中"
+        status = MonitorStatus.END;
     }
 
     protected abstract M getRoomMonitor(R room);
@@ -195,7 +198,9 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                     log.info(msg);
                 } else {
                     roomMonitor.startSubtitle();//开启弹幕功能
-                    while (getIsRunning() && (room.getStreams() == null || room.getStreams().isEmpty())) {
+                    // 最多等 60 秒直播源：无限重试会让监听线程原地打转，房间状态从此不再推进
+                    int waitStreamSec = 0;
+                    while (getIsRunning() && (room.getStreams() == null || room.getStreams().isEmpty()) && waitStreamSec++ < 60) {
                         roomMonitor.refresh(true);
                         log.warn("直播已开启，未获取到直播源信息，重试中。。。");
                         try {
@@ -203,13 +208,18 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                         } catch (InterruptedException ignored) {
                         }
                     }
-                    if (isAutoRecord) {
+                    if (room.getStreams() == null || room.getStreams().isEmpty()) {
+                        log.warn("等待直播源信息超时(60s)，本轮跳过录制与开播通知，继续监听");
+                    }
+                    // 超时仍拿不到直播源：不再往下走依赖 streams 的录制/通知逻辑，避免空指针把整个监听判死
+                    boolean streamReady = room.getStreams() != null && !room.getStreams().isEmpty();
+                    if (isAutoRecord && streamReady) {
                         recorderTask = getRecorderTask();
                         recorderTask.run(room);
                     }
                     String msg = owner + "，已开始直播了！";
                     log.info(msg);
-                    if (isFliestStart) {
+                    if (isFliestStart && streamReady) {
                         xiZhiSendMsg(notificationUtil, room);
                         notificationUtil.weChatSendMsg(msg);
                         notificationUtil.livingStartHandle();
@@ -222,17 +232,25 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                         logUtil.log(msg);
                         logUtil.init(room);
                     }
-                    if (isAutoRecord) {
+                    if (isAutoRecord && streamReady) {
                         trayIconUtil.setStartRecordStatue(true);
-                        while (getIsRunning() && recorder == null) {
+                        // 最多等 30 秒录制器创建：创建失败时不能无限空转，也不能在下面直接空指针
+                        int waitRecorderTimes = 0;
+                        while (getIsRunning() && recorder == null && waitRecorderTimes++ < 60) {
                             try {
                                 TimeUnit.MILLISECONDS.sleep(500);
                             } catch (InterruptedException ignored) {
                             }
                         }
-                        msg += "\n已开启【" + recorder.getDefinition() + "】录制！";
+                        if (recorder != null) {
+                            msg += "\n已开启【" + recorder.getDefinition() + "】录制！";
+                        } else {
+                            log.warn("录制器创建超时(30s)，本轮跳过录制，继续监听");
+                            msg += "\n录制器创建超时(30s)，本轮暂未录制！";
+                            trayIconUtil.setStartRecordStatue(false);
+                        }
                     } else {
-                        msg += "\n未开启录制！";
+                        msg += streamReady ? "\n未开启录制！" : "\n未获取到直播源，本轮暂未录制！";
                         trayIconUtil.setStartRecordStatue(false);
                     }
                     trayIconUtil.notifyMessage(msg);
@@ -251,11 +269,14 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                         recorder.stop(false);
                         log.info("录制文件大小超过15G，自动结束录制");
                     }
-                    Map.Entry<String, String> streams = room.getStreams().entrySet().iterator().next();
-                    String definition = streams.getKey();
-                    if (!recorder.getDefinition().equals(definition)) {
-                        recorder.stop(false);
-                        log.info("录制视频流清晰度已切换【{} >> {}】，自动结束录制", recorder.getDefinition(), definition);
+                    Map<String, String> currentStreams = room.getStreams();
+                    if (currentStreams != null && !currentStreams.isEmpty()) {
+                        Map.Entry<String, String> streams = currentStreams.entrySet().iterator().next();
+                        String definition = streams.getKey();
+                        if (!recorder.getDefinition().equals(definition)) {
+                            recorder.stop(false);
+                            log.info("录制视频流清晰度已切换【{} >> {}】，自动结束录制", recorder.getDefinition(), definition);
+                        }
                     }
 //                    String url = streams.getValue();
 //                    if (!recorder.getDownloadUrl().equals(url)) {
@@ -489,6 +510,10 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
     }
 
     public synchronized boolean startRecord() {
+        if (TrialState.isTrialExpired()) {
+            log.warn("试用期已结束，拒绝开启录制：{}", room == null ? "-" : room.getId());
+            return false;
+        }
         if (recorderTask == null) {
             recorderTask = getRecorderTask();
         }
@@ -512,11 +537,18 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             recorderTask = null;
         }
         if (flvToMp4 != null) {
-            while (flvToMp4.isRunning()) {
+            // 转码只是收尾动作，不能无限等待：万一 ffmpeg 僵死，停止接口会被长期挂住
+            long deadline = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(10);
+            while (flvToMp4.isRunning() && System.currentTimeMillis() < deadline) {
                 try {
                     TimeUnit.SECONDS.sleep(1);
-                } catch (InterruptedException ignored) {
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
                 }
+            }
+            if (flvToMp4.isRunning()) {
+                log.warn("等待FLV转MP4结束超时(10s)，跳过等待，继续停止流程");
             }
             flvToMp4 = null;
         }
