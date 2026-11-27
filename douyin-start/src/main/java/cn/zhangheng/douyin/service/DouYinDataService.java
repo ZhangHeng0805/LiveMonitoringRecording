@@ -13,8 +13,10 @@ import com.zhangheng.util.ThrowableUtil;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.Response;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -39,7 +41,7 @@ public class DouYinDataService {
     public static void main(String[] args) {
         long sta = System.currentTimeMillis();
         Setting setting = ConfigKit.get(Setting.class);
-        DouYinRoom info = new DouYinRoom("541976200890");
+        DouYinRoom info = new DouYinRoom("142381563944");
 //        DouYinRoom info = new DouYinRoom("兰小美认证信息.txt");
 //        DouYinRoom info = new DouYinRoom("870887192950-7547373102502578971");
 //        DouYinRoom info = new DouYinRoom("816560967344-7549211978108029696-uu子.txt");
@@ -61,23 +63,6 @@ public class DouYinDataService {
         return success;
     }
 
-//    public boolean refresh2(boolean force) {
-//        boolean success = false;
-//        if (!room.isLiving() || room.getBrowserApi().getDataUrl() == null) {
-//            if (RunMode.FILE.equals(room.getSetting().getRunMode())) {
-//                success = DouYinBrowserFactory.getBrowser().request(room);
-//            } else {
-//                success = DouyinPlaywright.request(room);
-//            }
-//        }
-//        if (room.isLiving() && room.getBrowserApi().getDataUrl() != null) {
-//            if (RunMode.FILE.equals(room.getSetting().getRunMode())) {
-//                DouYinBrowserFactory.getBrowser().closeContext();
-//            }
-//            getData(force);
-//        }
-//        return success;
-//    }
 
 
     private void init() {
@@ -85,12 +70,6 @@ public class DouYinDataService {
         headers = room.getBrowserApi().getHeaders();
         headers.put("accept-language", "zh-CN,zh;q=0.9");
         headers.remove("accept-encoding");
-//        cookieStr = room.getCookie();
-//        if (StrUtil.isBlank(cookieStr)) {
-//            cookieStr = "ttwid=1%7CB1qls3GdnZhUov9o2NxOMxxYS2ff6OSvEWbv0ytbES4%7C1680522049%7C280d802d6d478e3e78d0c807f7c487e7ffec0ae4e5fdd6a0fe74c3c6af149511; my_rd=1; passport_csrf_token=3ab34460fa656183fccfb904b16ff742; passport_csrf_token_default=3ab34460fa656183fccfb904b16ff742; d_ticket=9f562383ac0547d0b561904513229d76c9c21; n_mh=hvnJEQ4Q5eiH74-84kTFUyv4VK8xtSrpRZG1AhCeFNI; store-region=cn-fj; store-region-src=uid; LOGIN_STATUS=1; __security_server_data_status=1; FORCE_LOGIN=%7B%22videoConsumedRemainSeconds%22%3A180%7D; pwa2=%223%7C0%7C3%7C0%22; download_guide=%223%2F20230729%2F0%22; volume_info=%7B%22isUserMute%22%3Afalse%2C%22isMute%22%3Afalse%2C%22volume%22%3A0.6%7D; strategyABtestKey=%221690824679.923%22; stream_recommend_feed_params=%22%7B%5C%22cookie_enabled%5C%22%3Atrue%2C%5C%22screen_width%5C%22%3A1536%2C%5C%22screen_height%5C%22%3A864%2C%5C%22browser_online%5C%22%3Atrue%2C%5C%22cpu_core_num%5C%22%3A8%2C%5C%22device_memory%5C%22%3A8%2C%5C%22downlink%5C%22%3A10%2C%5C%22effective_type%5C%22%3A%5C%224g%5C%22%2C%5C%22round_trip_time%5C%22%3A150%7D%22; VIDEO_FILTER_MEMO_SELECT=%7B%22expireTime%22%3A1691443863751%2C%22type%22%3Anull%7D; home_can_add_dy_2_desktop=%221%22; __live_version__=%221.1.1.2169%22; device_web_cpu_core=8; device_web_memory_size=8; xgplayer_user_id=346045893336; csrf_session_id=2e00356b5cd8544d17a0e66484946f28; odin_tt=724eb4dd23bc6ffaed9a1571ac4c757ef597768a70c75fef695b95845b7ffcd8b1524278c2ac31c2587996d058e03414595f0a4e856c53bd0d5e5f56dc6d82e24004dc77773e6b83ced6f80f1bb70627; __ac_nonce=064caded4009deafd8b89; __ac_signature=_02B4Z6wo00f01HLUuwwAAIDBh6tRkVLvBQBy9L-AAHiHf7; ttcid=2e9619ebbb8449eaa3d5a42d8ce88ec835; webcast_leading_last_show_time=1691016922379; webcast_leading_total_show_times=1; webcast_local_quality=sd; live_can_add_dy_2_desktop=%221%22; msToken=1JDHnVPw_9yTvzIrwb7cQj8dCMNOoesXbA_IooV8cezcOdpe4pzusZE7NB7tZn9TBXPr0ylxmv-KMs5rqbNUBHP4P7VBFUu0ZAht_BEylqrLpzgt3y5ne_38hXDOX8o=; msToken=jV_yeN1IQKUd9PlNtpL7k5vthGKcHo0dEh_QPUQhr8G3cuYv-Jbb4NnIxGDmhVOkZOCSihNpA2kvYtHiTW25XNNX_yrsv5FN8O6zm3qmCIXcEe0LywLn7oBO2gITEeg=; tt_scid=mYfqpfbDjqXrIGJuQ7q-DlQJfUSG51qG.KUdzztuGP83OjuVLXnQHjsz-BRHRJu4e986";
-//        }
-//        headers.put("cookie", cookieStr);
-//        System.out.println(JSONUtil.parseObj(headers).toStringPretty());
     }
 
     private void getData(boolean force) {
@@ -120,6 +99,7 @@ public class DouYinDataService {
                             room.setStartTime(new Date());
                         }
                         JSONObject data1 = data.getJSONArray("data").getJSONObject(0);
+//                        System.out.println(data1.toStringPretty());
                         if (force || StrUtil.isBlank(room.getTitle())) {
                             room.setTitle(data1.getStr("title", ""));
                         }
@@ -162,17 +142,116 @@ public class DouYinDataService {
         }
     }
 
+    /**
+     * 拉取各清晰度流地址。
+     * 排序完全依据接口响应里的档位参数（分辨率、帧率、码率、level），不额外拉流探测、也不写死档位名：
+     * 抖音“原画”的分辨率字段常是空的、码率也未必最高，“蓝光臻彩”这类新档位只要有参数就能正常参与比较。
+     * 返回的 Map 按画质从高到低排列，第一个就是录制选用的流。
+     */
     private Map<String, String> handleStream(JSONObject stream_data) {
-        Map<String, String> map = new LinkedHashMap<>();
+//        System.out.println(stream_data.toStringPretty());
         JSONArray qualities = stream_data.getJSONObject("options").getJSONArray("qualities");
         JSONObject data = JSONUtil.parseObj(stream_data.getStr("stream_data")).getJSONObject("data");
-        for (int i = qualities.size() - 1; i >= 0; i--) {
-            JSONObject entries = qualities.getJSONObject(i);
-            String name = entries.getStr("name");
-            String sdk_key = entries.getStr("sdk_key");
-            String url = data.getJSONObject(sdk_key).getJSONObject("main").getStr("flv");
-            map.put(name, url);
+        if (data == null || qualities == null) {
+            log.warn("直播流数据缺少 qualities/data 节点，跳过清晰度解析");
+            return new LinkedHashMap<>();
+        }
+        List<QualityInfo> candidates = new ArrayList<>();
+        for (int i = 0; i < qualities.size(); i++) {
+            JSONObject quality = qualities.getJSONObject(i);
+            if (quality == null || intValue(quality, "disable") > 0) continue;
+            String sdkKey = StrUtil.blankToDefault(quality.getStr("sdk_key"), "");
+            JSONObject stream = data.getJSONObject(sdkKey);
+            if (stream == null) continue;
+            JSONObject main = stream.getJSONObject("main");
+            if (main == null) continue;
+            String url = main.getStr("flv");
+            if (StrUtil.isBlank(url)) continue;
+            candidates.add(new QualityInfo(quality, main, sdkKey, url));
+        }
+        candidates.sort(DouYinDataService::compareQuality);
+        Map<String, String> map = new LinkedHashMap<>();
+        for (QualityInfo info : candidates) {
+            log.debug("清晰度【{}】{}px/{}fps/声明码率{}kbps/实时码率{}kbps（level={}）",
+                    info.name, info.pixels, info.fps, info.vBitRate / 1000, info.realKbps, info.level);
+            map.put(info.name, info.url);
         }
         return map;
+    }
+
+    /**
+     * 画质比较：分辨率 → 帧率 → 接口声明码率 → 实时码率 → level。
+     * 以码率优先是因为抖音各房间的实际转码码率差异很大（同为“原画”，有的房间 9M、有的只有 3M）；
+     * “原画”的 resolution 字段常常为空，码率相同时再由分辨率决定，空分辨率自然排在 1080p 档之后。
+     */
+    private static int compareQuality(QualityInfo a, QualityInfo b) {
+        int c = Long.compare(b.pixels, a.pixels);
+        if (c != 0) return c;
+        c = Integer.compare(b.fps, a.fps);
+        if (c != 0) return c;
+        c = Long.compare(b.vBitRate, a.vBitRate);
+        if (c != 0) return c;
+        c = Long.compare(b.realKbps, a.realKbps);
+        if (c != 0) return c;
+        return Integer.compare(b.level, a.level);
+    }
+
+    private static int intValue(JSONObject object, String key) {
+        Object value = object == null ? null : object.get(key);
+        return value instanceof Number ? ((Number) value).intValue() : 0;
+    }
+
+    private static long longValue(JSONObject object, String key) {
+        Object value = object == null ? null : object.get(key);
+        return value instanceof Number ? ((Number) value).longValue() : 0L;
+    }
+
+    private static long parsePixels(String resolution) {
+        if (StrUtil.isBlank(resolution)) return 0L;
+        String[] parts = resolution.toLowerCase().trim().split("x");
+        if (parts.length != 2) return 0L;
+        try {
+            return Long.parseLong(parts[0].trim()) * Long.parseLong(parts[1].trim());
+        } catch (Exception e) {
+            return 0L;
+        }
+    }
+
+    /**
+     * 接口里的单个清晰度档位：参数取自 qualities 条目，缺失时用 main.sdk_params / templateRealTimeInfo 兜底
+     */
+    private static class QualityInfo {
+        final String name;
+        final String url;
+        long pixels;//分辨率
+        int fps;//帧率
+        long vBitRate;//声明码率
+        long realKbps;//实时码率
+        int level;//标签
+
+        QualityInfo(JSONObject quality, JSONObject main, String sdkKey, String url) {
+            this.url = url;
+            this.name = StrUtil.blankToDefault(quality.getStr("name"), sdkKey);
+            this.level = intValue(quality, "level");
+            this.fps = intValue(quality, "fps");
+            this.vBitRate = longValue(quality, "v_bit_rate");
+            this.pixels = parsePixels(quality.getStr("resolution"));
+            try {
+                String sdkParams = main.getStr("sdk_params");
+                if (StrUtil.isNotBlank(sdkParams) && JSONUtil.isTypeJSON(sdkParams)) {
+                    JSONObject params = JSONUtil.parseObj(sdkParams);
+                    if (pixels == 0) pixels = parsePixels(params.getStr("resolution"));
+                    if (fps == 0) fps = intValue(params, "fps");
+                    if (vBitRate == 0) vBitRate = longValue(params, "vbitrate");
+                }
+                JSONObject realTime = main.getJSONObject("templateRealTimeInfo");
+                if (realTime != null) {
+                    Object kbps = realTime.get("bitrateKbps");
+                    if (kbps instanceof Number) realKbps = ((Number) kbps).longValue();
+                }
+            } catch (Exception ignored) {
+                // 参数缺失不影响主排序
+            }
+        }
     }
 }

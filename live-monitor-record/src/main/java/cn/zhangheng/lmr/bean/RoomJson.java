@@ -4,6 +4,7 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.util.StrUtil;
 import cn.zhangheng.record.bean.Room;
+import cn.zhangheng.record.bean.enums.RecordQuality;
 import lombok.Data;
 
 /**
@@ -34,6 +35,8 @@ public class RoomJson {
         private Boolean convertFlvToMp4;
         private String cookie;
         private String xiZhiUrl;
+        // 录制画质：HIGH / MIDDLE / LOW，留空沿用全局 record.quality（JSON 里存枚举名，界面显示中文）
+        private RecordQuality recordQuality;
     }
 
     public void desensitize() {

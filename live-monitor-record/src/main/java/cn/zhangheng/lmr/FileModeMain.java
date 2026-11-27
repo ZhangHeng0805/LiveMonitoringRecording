@@ -32,6 +32,11 @@ import lombok.extern.slf4j.Slf4j;
 import java.awt.*;
 import java.io.File;
 import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.lang.management.ManagementFactory;
+import java.net.URI;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -44,6 +49,8 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
 
 /**
  * @author: ZhangHeng
@@ -70,6 +77,8 @@ public class FileModeMain {
 
     public static void main(String[] args) throws Exception {
         try {
+            //单实例运行：配置 app.singleInstance=false 时允许同时开多个
+            if (!ensureSingleInstance()) return;
             if (verifyActivation()) return;
             startTrialWatcher();
             if (args.length > 0) {
@@ -120,6 +129,90 @@ public class FileModeMain {
         }
 
 
+    }
+
+    private static FileChannel instanceLockChannel;
+    private static FileLock instanceLock;
+
+    /**
+     * 单实例运行检查（配置项 app.singleInstance，默认 true）：
+     * 同一目录下用 logs/instance.lock 的排他文件锁判定，锁随进程退出自动释放，
+     * 因此崩溃残留的 pid / 锁文件不会挡住下次启动。
+     *
+     * @return true=可以继续启动；false=已有实例在运行
+     */
+    private static boolean ensureSingleInstance() {
+        if (!setting.isSingleInstance()) {
+            log.info("单实例运行已关闭（app.singleInstance=false），允许同时运行多个实例");
+            return true;
+        }
+        try {
+            File logDir = new File("logs");
+            if (!logDir.isDirectory() && !logDir.mkdirs()) {
+                log.warn("创建 logs 目录失败，跳过单实例检查");
+                return true;
+            }
+            instanceLockChannel = new RandomAccessFile(new File(logDir, "instance.lock"), "rw").getChannel();
+            instanceLock = instanceLockChannel.tryLock();
+            if (instanceLock == null) {
+                String port = readRunningPort();
+                log.warn("检测到程序已在运行（面板端口 {}），本次启动退出", port == null ? "未知" : port);
+                notifyAlreadyRunning(port);
+                return false;
+            }
+            //记录 pid，供外层启动器和重复启动检查使用
+            writeTextFile(new File(logDir, "jvm.pid"), String.valueOf(currentPid()));
+            return true;
+        } catch (Exception e) {
+            //锁异常不能把程序挡在门外
+            log.warn("单实例检查异常，按未运行处理：{}", ThrowableUtil.getAllCauseMessage(e));
+            return true;
+        }
+    }
+
+    /** 读取已运行实例真实监听端口（端口被占用时程序会自动顺延，配置里的端口不一定准） */
+    private static String readRunningPort() {
+        try {
+            File file = new File("logs/server.port");
+            if (!file.isFile()) return null;
+            String text = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8).trim();
+            return text.isEmpty() ? null : text;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static void writeTextFile(File file, String text) {
+        try {
+            Files.write(file.toPath(), text.getBytes(StandardCharsets.UTF_8));
+        } catch (Exception e) {
+            log.warn("写入 {} 失败：{}", file, ThrowableUtil.getAllCauseMessage(e));
+        }
+    }
+
+    private static long currentPid() {
+        try {
+            return Long.parseLong(ManagementFactory.getRuntimeMXBean().getName().split("@")[0]);
+        } catch (Exception e) {
+            return -1L;
+        }
+    }
+
+    /** 重复启动时提示并打开已在运行的面板 */
+    private static void notifyAlreadyRunning(String port) {
+        String url = port == null ? null : "http://localhost:" + port + "/";
+        String message = url == null
+                ? "程序已经在运行，本次启动已退出。\n请从系统托盘的右键菜单打开监听面板。"
+                : "程序已经在运行，本次启动已退出。\n已为你打开监听面板：" + url;
+        try {
+            SwingUtilities.invokeAndWait(() -> JOptionPane.showMessageDialog(null, message,
+                    Constant.Application, JOptionPane.INFORMATION_MESSAGE));
+            if (url != null && Desktop.isDesktopSupported()) {
+                Desktop.getDesktop().browse(new URI(url));
+            }
+        } catch (Exception e) {
+            log.warn("重复启动提示显示失败：{}", ThrowableUtil.getAllCauseMessage(e));
+        }
     }
 
     private static boolean verifyActivation() throws InterruptedException {
@@ -499,6 +592,27 @@ public class FileModeMain {
         Path rename = FileUtil.rename(file.toPath(), target.getFileName().toString(), false);
         roomFileMap.remove(filePath);
         log.info("{}直播监听已删除,监听文件重命名:{}", key, rename.toString());
+    }
+
+    /**
+     * 保存面板里提交的房间设置：只覆盖提交上来的字段，其它字段保持文件里的原值。
+     * 不写文件的话，重启程序后设置会回到旧值（录制画质等房间级配置都依赖它）。
+     */
+    public static void updateRoomSetting(String key, RoomJson submit) throws Exception {
+        RoomFileModel model = getModelById(key);
+        if (model == null) throw new WarnException(key + "直播标识不存在");
+        Path filePath = model.getFilePath();
+        RoomJson bean = JSONUtil.toBean(FileUtil.readString(filePath.toFile(), StandardCharsets.UTF_8), RoomJson.class);
+        RoomJson.Setting submitSetting = submit.getSetting();
+        if (submitSetting != null) {
+            if (bean.getSetting() == null) bean.setSetting(new RoomJson.Setting());
+            BeanUtil.copyProperties(submitSetting, bean.getSetting(),
+                    CopyOptions.create().setIgnoreNullValue(true).setIgnoreError(true));
+        }
+        bean.setAutoRecord(submit.isAutoRecord());
+        bean.check();
+        FileUtil.writeString(JSONUtil.toJsonPrettyStr(bean), filePath.toFile(), StandardCharsets.UTF_8);
+        log.info("{}房间设置已保存到 {}", key, filePath.getFileName());
     }
 
     public static void addMain(RoomJson object) throws WarnException {

@@ -234,7 +234,7 @@ public class DouYinWebcast {
         try {
 
             page = myBrowser.newPage(DouYinBrowserUtil.getDouyinFingerprintScript());
-            setRoomCookie(room, page);
+            setRoomCookie(room, myBrowser);
             BrowserUtil.navigatePage(room.getRoomUrl(), page, WaitUntilState.DOMCONTENTLOADED);
             //提取界面信息
             boolean success = extractRoomInfo(room, page);

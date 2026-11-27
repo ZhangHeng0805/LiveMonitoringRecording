@@ -69,11 +69,11 @@ public class RecorderTask {
     }
 
     protected Recorder getRecorder(Room room) {
-        Map<String, String> streams = room.getStreams();
-        if (streams == null || streams.isEmpty()) {
+        // 按直播间设置的录制画质选流（最高/中等/最低），不再固定取第一档
+        Map.Entry<String, String> stream = room.getSelectedStream();
+        if (stream == null) {
             throw new IllegalArgumentException("房间没有可用的流信息");
         }
-        Map.Entry<String, String> stream = streams.entrySet().iterator().next();
         String definition = stream.getKey();//清晰度
         String flvUrl = stream.getValue();
         String fileName = "【" + FileUtil.filterFileName(room.getNickname()) + "】" + room.getPlatform().getName() + "直播录制" + TimeUtil.toTime(new Date(), "yyyy-MM-dd HH-mm-ss") + "[" + FileUtil.filterFileName(room.getTitle()) + "].flv";

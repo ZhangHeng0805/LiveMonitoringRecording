@@ -2,14 +2,17 @@ package cn.zhangheng.record.bean;
 
 import cn.hutool.core.util.StrUtil;
 import cn.zhangheng.common.jmx.JmxAttribute;
+import cn.zhangheng.record.bean.enums.RecordQuality;
 import lombok.Data;
 import lombok.Getter;
 import lombok.ToString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -117,16 +120,61 @@ public abstract class Room {
 
 
     /**
-     * 获取直播流地址
+     * 获取直播流地址：按直播间设置的录制画质在已排序的清晰度档位里挑一个
+     * （streams 由各平台按画质从高到低写入）
      *
      * @return
      */
     public String getFlvUrl() {
-        if (streams != null && !streams.isEmpty()) {
-            return getStreams().entrySet().iterator().next().getValue();
-        } else {
+        Map.Entry<String, String> stream = getSelectedStream();
+        return stream == null ? null : stream.getValue();
+    }
+
+    /**
+     * 按录制画质选出要用的那一路流（键=清晰度名称，值=流地址），没有可用流时返回 null
+     */
+    public Map.Entry<String, String> getSelectedStream() {
+        Map<String, String> streams = getStreams();
+        if (streams == null || streams.isEmpty()) {
             return null;
         }
+        List<Map.Entry<String, String>> entries = new ArrayList<>(streams.entrySet());
+        return entries.get(qualityIndex(entries.size(), getRecordQuality()));
+    }
+
+    /**
+     * 预览播放、开播通知等场景固定用最高画质那一档，不受录制画质设置影响
+     */
+    public Map.Entry<String, String> getHighestStream() {
+        Map<String, String> streams = getStreams();
+        if (streams == null || streams.isEmpty()) {
+            return null;
+        }
+        return streams.entrySet().iterator().next();
+    }
+
+    /**
+     * 最高画质的流地址（预览/通知用）
+     */
+    public String getHighestFlvUrl() {
+        Map.Entry<String, String> stream = getHighestStream();
+        return stream == null ? null : stream.getValue();
+    }
+
+    /**
+     * 录制画质对应的档位下标：最高取第一档，最低取最后一档，中等取中间档（偶数档时偏下）
+     */
+    public static int qualityIndex(int size, RecordQuality quality) {
+        return (quality == null ? RecordQuality.HIGH : quality).indexOf(size);
+    }
+
+    /**
+     * 直播间当前设置的录制画质，没配置时按最高画质
+     */
+    public RecordQuality getRecordQuality() {
+        Setting setting = getSetting();
+        RecordQuality quality = setting == null ? null : setting.getRecordQuality();
+        return quality == null ? RecordQuality.HIGH : quality;
     }
 
     /**

@@ -58,6 +58,15 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
     private boolean isAutoRecord;
 
     protected RecorderTask recorderTask;
+    /**
+     * 录制启动互斥：进度回调、录制结束回调、面板操作可能同时要求启动录制，
+     * 没有这个锁会出现多个录制器互相 stop、结束回调又触发新的启动，形成反复重启
+     */
+    private final Object recordLock = new Object();
+    /** 是否已有录制启动任务在排队，true 时其它回调的启动请求直接忽略 */
+    private volatile boolean recordStartPending = false;
+    /** 上次录制启动失败时间，失败后短暂退避，避免每秒重试刷日志 */
+    private volatile long lastRecordFailMs = 0L;
     protected AtomicBoolean isRunning = new AtomicBoolean(true);
     protected AtomicBoolean recordFlag = new AtomicBoolean(true);
     @Getter
@@ -123,6 +132,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             roomMonitor.setListener(listener);
             roomMonitor.registerMBean();
             do {
+                long cycleStart = System.currentTimeMillis();
                 try {
                     status = MonitorStatus.RUNNING;
                     roomMonitor.run(false);
@@ -135,6 +145,15 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                     } finally {
                         if (tryMonitorSec < 10)
                             tryMonitorSec++;
+                    }
+                }
+                // 监听轮次秒退时留 1 秒间隔，避免空转刷日志、反复建 worker
+                long spentMs = System.currentTimeMillis() - cycleStart;
+                if (getIsRunning() && spentMs < 1000) {
+                    log.debug("监听轮次结束过快({}ms)，1 秒后重新进入监听", spentMs);
+                    try {
+                        TimeUnit.SECONDS.sleep(1);
+                    } catch (InterruptedException ignored) {
                     }
                 }
             } while (getIsRunning());
@@ -152,16 +171,23 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
 
     private LogUtil logUtil = null;
     private boolean isFliestStart;
+    // 本次 start() 内已打印过几次“开始监听”，用于抑制重复刷屏
+    private int startLogCount = 0;
 
     private M.RoomListener<R> getRoomListener(R room) {
         NotificationUtil notificationUtil = new NotificationUtil(setting);
         String owner = room.getPlatform().getName() + "直播间: " + room.getNickname() + " [" + room.getId() + "]";
         trayIconUtil.setPoPTitle(room.getPlatform().getName(), room.getNickname());
         isFliestStart = true;
+        startLogCount = 0;
         return new M.RoomListener<R>() {
             @Override
             public void onStart() {
-                log.info(Constant.Application + "开始监听! {}", owner);
+                if (startLogCount++ == 0) {
+                    log.info(Constant.Application + "开始监听! {}", owner);
+                } else {
+                    log.debug(Constant.Application + "重新进入监听! {}", owner);
+                }
                 isRunning.set(true);
                 tryMonitorSec = 1;
                 if (!RunMode.FILE.equals(setting.getRunMode())) {
@@ -214,8 +240,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                     // 超时仍拿不到直播源：不再往下走依赖 streams 的录制/通知逻辑，避免空指针把整个监听判死
                     boolean streamReady = room.getStreams() != null && !room.getStreams().isEmpty();
                     if (isAutoRecord && streamReady) {
-                        recorderTask = getRecorderTask();
-                        recorderTask.run(room);
+                        ensureRecorder(room);
                     }
                     String msg = owner + "，已开始直播了！";
                     log.info(msg);
@@ -269,28 +294,11 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                         recorder.stop(false);
                         log.info("录制文件大小超过15G，自动结束录制");
                     }
-                    Map<String, String> currentStreams = room.getStreams();
-                    if (currentStreams != null && !currentStreams.isEmpty()) {
-                        Map.Entry<String, String> streams = currentStreams.entrySet().iterator().next();
-                        String definition = streams.getKey();
-                        if (!recorder.getDefinition().equals(definition)) {
-                            recorder.stop(false);
-                            log.info("录制视频流清晰度已切换【{} >> {}】，自动结束录制", recorder.getDefinition(), definition);
-                        }
-                    }
-//                    String url = streams.getValue();
-//                    if (!recorder.getDownloadUrl().equals(url)) {
-//                        recorder.stop(false);
-//                        log.info("录制视频流地址已切换【{} >> {}】，自动结束录制", recorder.getDownloadUrl(), url);
-//                    }
                 } else {
                     trayIconUtil.setToolTip(statistics);
                 }
-                if (recordFlag.get() && recorder != null && !recorder.isRunning()) {
-                    if (recorderTask != null) {
-                        recorderTask.run(room);
-                    }
-                }
+                // 统一入口：画质变化、录制结束、异常退出都在这里判断，同一时刻只会有一个启动任务
+                ensureRecorder(room);
             }
         };
     }
@@ -393,15 +401,31 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
 
             @Override
             public void onFailure(Throwable e) {
+                synchronized (recordLock) {
+                    recordStartPending = false;
+                }
+                lastRecordFailMs = System.currentTimeMillis();
                 log.error("FLV录制发生异常：" + ThrowableUtil.getAllCauseMessage(e), e);
             }
 
             @Override
             public void onRecorderCreated(Recorder re) {
-                if (recorder != null) {
-                    recorder.stop(true);
+                Recorder previous;
+                synchronized (recordLock) {
+                    previous = recorder;
+                    recorder = re;
+                    recordStartPending = false;
+                    lastRecordFailMs = 0L;
                 }
-                recorder = re;
+                // 兜底：理论上旧录制器已在启动前停掉，这里防止极端并发下两路同时写同一个文件
+                if (previous != null && previous != re && previous.isRunning()) {
+                    log.warn("检测到上一路录制仍未退出，先结束它再使用新录制器");
+                    previous.stop(true);
+                }
+                // 创建过程中用户点了「停止录制」，新录制器不要再启动
+                if (!recordFlag.get() && re.isRunning()) {
+                    re.stop(false);
+                }
             }
         };
         RecorderTask task = new RecorderTask(setting);
@@ -409,6 +433,53 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         return task;
     }
 
+
+    /**
+     * 确保录制器处于「正在录制目标画质」的状态，所有启动入口统一走这里：
+     * 1. 未开播 / 已关录制 / 监听已停 → 直接返回；
+     * 2. 已有一路录制在跑且清晰度正是设置的那档 → 什么都不做（避免多个回调重复启动）；
+     * 3. 清晰度被改过 → 先停掉旧录制器，再拉起新的；
+     * 4. 已有启动任务排队、或刚失败处于退避期 → 本次忽略，避免并发创建多个录制器互相 stop。
+     */
+    private void ensureRecorder(R room) {
+        if (!recordFlag.get() || !room.isLiving() || !isRunning.get()) {
+            return;
+        }
+        synchronized (recordLock) {
+            if (!recordFlag.get() || !room.isLiving() || !isRunning.get()) {
+                return;
+            }
+            if (recordStartPending) {
+                return;
+            }
+            if (System.currentTimeMillis() - lastRecordFailMs < 3000L) {
+                return;
+            }
+            if (recorderTask == null) {
+                recorderTask = getRecorderTask();
+            }
+            Map.Entry<String, String> selected = room.getSelectedStream();
+            if (selected == null) {
+                log.warn("{}[{}]暂未获取到直播流，本轮不启动录制", room.getPlatform().getName(), room.getId());
+                return;
+            }
+            String expected = selected.getKey();
+            Recorder current = recorder;
+            // 新录制器还没进入 run()（startTime 为空）时不要再创建一个
+            if (current != null && !current.isRunning() && current.getStartTime() == null) {
+                return;
+            }
+            if (current != null && current.isRunning() && expected.equals(current.getDefinition())) {
+                return;
+            }
+            if (current != null && current.isRunning()) {
+                log.info("录制画质已切换【{} >> {}】，结束当前录制并重新开始", current.getDefinition(), expected);
+                current.stop(false);
+            }
+            recordStartPending = true;
+            recorderTask.run(room);
+        }
+    }
 
     private void tryRecord(R room) {
         trayIconUtil.setStartRecordStatue(false);
@@ -420,9 +491,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             }
         }
         if (room.isLiving() && isRunning.get() && recordFlag.get()) {
-            if (recorderTask != null) {
-                recorderTask.run(room);
-            }
+            ensureRecorder(room);
         } else {
             if (recorder != null) {
                 recorder.stop(false);
@@ -475,7 +544,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             public String playVideo(ActionEvent e) {
                 if (room.isLiving()) {
                     try {
-                        return "http://localhost:" + System.getProperty("monitor.port") + "/FLVPlayer.html?shared=" + URLEncoder.encode(room.getFlvUrl(), "UTF-8");
+                        return "http://localhost:" + System.getProperty("monitor.port") + "/FLVPlayer.html?shared=" + URLEncoder.encode(room.getHighestFlvUrl(), "UTF-8");
                     } catch (Exception ignored) {
                     }
                 } else {
@@ -519,7 +588,7 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         }
         if (room.isLiving() && (recorder == null || !recorder.isRunning())) {
             recordFlag.set(true);
-            recorderTask.run(room);
+            ensureRecorder(room);
             return true;
         }
         return false;
@@ -561,18 +630,17 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             content += "- 直播间地址: [点击进入直播间](" + room.getRoomUrl() + ")";
             //B站请求头限制，无法在线播放
             if (room.getPlatform() != Room.Platform.Bili) {
-                Map<String, String> streams = room.getStreams();
-                Iterator<Map.Entry<String, String>> iterator = streams.entrySet().iterator();
-                String qn, flvUrl;
-                Map.Entry<String, String> entry = iterator.next();
-                qn = entry.getKey();
-                flvUrl = entry.getValue().startsWith("http:") ? entry.getValue().replace("http:", "https:") : entry.getValue();
-                try {
+                Map.Entry<String, String> entry = room.getHighestStream();
+                if (entry != null) {
+                    String qn = entry.getKey();
+                    String flvUrl = entry.getValue().startsWith("http:") ? entry.getValue().replace("http:", "https:") : entry.getValue();
+                    try {
 //                String encode = URLEncoder.encode(flvUrl, "UTF-8");//使用URLEncoder编码
-                    String encode = EncryptUtil.enBase64Str(flvUrl);//使用Base64Encoder编码
-                    String url = "https://zhangheng0805.github.io/FLVPlayer/?shared=" + encode;
-                    content += "\t\n- 播放地址: [" + qn + " 纯享版 点击在线观看 可截图和录制直播](" + url + ")";
-                } catch (Exception ignored) {
+                        String encode = EncryptUtil.enBase64Str(flvUrl);//使用Base64Encoder编码
+                        String url = "https://zhangheng0805.github.io/FLVPlayer/?shared=" + encode;
+                        content += "\t\n- 播放地址: [" + qn + " 纯享版 点击在线观看 可截图和录制直播](" + url + ")";
+                    } catch (Exception ignored) {
+                    }
                 }
             }
         } else {

@@ -98,10 +98,12 @@ public abstract class RoomMonitor<R extends Room, S extends RoomService<R>> exte
     @Override
     public void run(boolean isAsync) throws ExecutionException {
         //取池与提交在 Task 内原子完成；池已关闭时按原始工厂重建，不丢失线程命名与异常处理器
+        // 先置为运行中再提交：worker 还没被线程池调度时 isRunning 仍是 false，
+        // 调用方的等待循环会误判“任务已结束”而立刻重复提交，导致同一房间反复 onStart、日志刷屏
+        isRunning.set(true);
         Future<?> future = submit(() -> {
             Thread.currentThread().setName(room.getNickname() + "-monitor-" + room.getPlatform().name());
             workerThread = Thread.currentThread();
-            isRunning.set(true);
             if (!room.isLiving()) {
                 state = State.NOT_LIVING;
                 //未开播

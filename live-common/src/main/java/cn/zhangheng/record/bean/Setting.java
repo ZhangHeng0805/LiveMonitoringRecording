@@ -4,6 +4,7 @@ import cn.hutool.core.util.StrUtil;
 import cn.zhangheng.common.jmx.JmxAttribute;
 import cn.zhangheng.common.setting.PropertiesConfig;
 import cn.zhangheng.common.setting.PropertyValue;
+import cn.zhangheng.record.bean.enums.RecordQuality;
 import cn.zhangheng.record.bean.enums.RecordType;
 import cn.zhangheng.record.bean.enums.RunMode;
 
@@ -38,6 +39,13 @@ public class Setting {
     @JmxAttribute(desc = "监听平台服务端口")
     @PropertyValue(value = "server.monitor.port", regex = "^(6553[0-5]|655[0-2][0-9]|65[0-4][0-9]{2}|6[0-4][0-9]{3}|[1-5][0-9]{4}|[1-9][0-9]{0,3})$", regexMessage = "端口号范围1-65535")
     private int monitorServerPort = 8005;
+
+    /**
+     * 是否单实例运行：true 时同一目录只允许一个实例，重复启动会提示并退出；false 允许同时开多个
+     */
+    @JmxAttribute(desc = "单实例运行")
+    @PropertyValue("app.singleInstance")
+    private boolean singleInstance = true;
 
     /**
      * api接口会话有效期
@@ -113,6 +121,14 @@ public class Setting {
      */
     @PropertyValue("record.ffmpegPath")
     private String ffmpegPath = Constant.FFmpegExePath;
+    /**
+     * 录制画质：最高 / 中等 / 最低。
+     * 直播间文件里的 setting.recordQuality 优先；没写时沿用这里的全局默认。
+     */
+    @JmxAttribute(desc = "录制画质")
+    @PropertyValue(value = "record.quality", regex = "^(HIGH|MIDDLE|LOW)$",
+            regexMessage = "只能是：HIGH（最高）/ MIDDLE（中等）/ LOW（最低）")
+    private RecordQuality recordQuality = RecordQuality.HIGH;
     /**
      * 激活凭证文件的路径
      */
@@ -200,5 +216,25 @@ public class Setting {
     @PropertyValue("Cookie.KuaiShou")
 //    @ToString.Exclude
     private String cookieKuaiShou;
+
+    /**
+     * B站 Cookie：配置里不写就用「获取B站登录信息.bat」生成的默认文件（文件存在才生效），
+     * 这样登录脚本跑完无需再改 xxxr.setting
+     */
+    public String getCookieBili() {
+        return StrUtil.isNotBlank(cookieBili) ? cookieBili : defaultCookieFile(Constant.DefaultBiliCookieFile);
+    }
+
+    /**
+     * 抖音 Cookie：配置里不写就用「获取抖音登录信息.bat」生成的默认文件（文件存在才生效）
+     */
+    public String getCookieDouYin() {
+        return StrUtil.isNotBlank(cookieDouYin) ? cookieDouYin : defaultCookieFile(Constant.DefaultDouYinCookieFile);
+    }
+
+    /** 默认 Cookie 文件存在时返回 file: 前缀写法，交给 {@link #parseCookie(String)} 读取 */
+    private static String defaultCookieFile(String path) {
+        return new File(path).isFile() ? "file:" + path : null;
+    }
 
 }

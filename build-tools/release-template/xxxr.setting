@@ -3,9 +3,14 @@
 server.monitor.port=8005
 # 运行模式：FILE-读取 room 目录下的监听文件（多房间）
 server.runMode=FILE
+# 单实例运行：true=同一目录只允许开一个，重复启动会打开已运行实例的面板后退出；false=允许同时开多个
+app.singleInstance=true
 
 # 录制类型：JAVA-程序自己录，FFMPEG-调用 ffmpeg 录制（推荐）
 record.type=FFMPEG
+# 抖音清晰度：直接按接口返回的分辨率/帧率/码率自动选最高，不写死档位名，也不额外拉流探测
+# 录制画质：HIGH=最高 / MIDDLE=中等 / LOW=最低，房间设置里可单独覆盖（最高=第一档，中等=中间档，最低=最后一档）
+#record.quality=HIGH
 # ffmpeg 路径（相对程序目录）
 record.ffmpegPath=bin/ffmpeg.exe
 # 录完自动转 MP4 并清理中间文件
@@ -26,9 +31,10 @@ server.auth.publicTokenEnabled=true
 server.auth.publicTokenExpireSec=1800
 
 # ===== 可选：平台登录 Cookie（不填也能监听，但部分信息拿不到）=====
-# 双击「获取抖音登录信息.bat」/「获取B站登录信息.bat」会自动写入下面的配置并生成 cookie 文件
+# 双击「获取抖音登录信息.bat」/「获取B站登录信息.bat」生成 cookie 文件后，
+# 程序会优先用下面配置的值；没配置时自动读取 cookie/DouYin.cookie、cookie/Bili.cookie，不用改这里
 #Cookie.DouYin=file:cookie/DouYin.cookie
-#Cookie.Bilibili=file:cookie/Bili.txt
+#Cookie.Bilibili=file:cookie/Bili.cookie
 #Cookie.KuaiShou=file:cookie/KuaiShou.cookie
 
 # ===== 可选：内网穿透（需要 bin\cpolar.exe，配置见同目录 cpolar.setting）=====

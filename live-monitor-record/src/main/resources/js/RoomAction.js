@@ -490,7 +490,7 @@ function openAddRoomForm() {
                     <div class="setx-field">
                       <div class="setx-label"><span>直播间 Cookie</span></div>
                       <textarea id="cookieValue" class="setx-textarea" rows="3"
-                                placeholder="留空沿用全局 Cookie，或填 file:cookie/douyin-cookie.txt"></textarea>
+                                placeholder="留空沿用全局 Cookie，或填 file:cookie/DouYin.cookie"></textarea>
                       <p class="setx-help">需要登录态的高画质/粉丝弹幕时再填；支持 <code>file:</code> 文件引用。</p>
                     </div>
                   </div>
@@ -532,6 +532,17 @@ function openAddRoomForm() {
                       </div>
                     </label>
                   </div>
+                </section>
+
+                <!-- 录制画质 -->
+                <section class="setx-card">
+                  <div class="setx-title"><i class="fa fa-film"></i>录制画质</div>
+                  <select id="recordQuality" class="setx-input">
+                    <option value="HIGH" selected>最高画质（默认，推荐）</option>
+                    <option value="MIDDLE">中等画质</option>
+                    <option value="LOW">最低画质</option>
+                  </select>
+                  <p class="setx-help">按接口返回的清晰度档位选择：最高取第一档、中等取中间档、最低取最后一档，只影响本项目的录制。</p>
                 </section>
 
                 <!-- 监听频率 -->
@@ -614,6 +625,7 @@ function openAddRoomForm() {
                                     convertFlvToMp4: document.getElementById("convertFlvToMp4").checked,
                                     openSubtitle: document.getElementById("openSubtitle").checked,
                                     isLoop: document.getElementById("isLoop").checked,
+                                    recordQuality: document.getElementById("recordQuality").value,
                                     cookie: document.getElementById("cookieValue").value.trim() || null,
                                     xiZhiUrl: document.getElementById("xiZhiUrl").value.trim() || null,
                                 },
@@ -754,6 +766,19 @@ function openAddRoomForm() {
         roomIDDom.focus();
 }
 
+/**
+ * 录制画质：接口/监听文件里存枚举名（HIGH/MIDDLE/LOW），界面显示中文；
+ * 兼容早期存成中文标签的房间数据
+ */
+const RECORD_QUALITY_KEYS = {
+    HIGH: "HIGH", MIDDLE: "MIDDLE", LOW: "LOW",
+    "最高": "HIGH", "中等": "MIDDLE", "最低": "LOW"
+};
+
+function normalizeRecordQuality(value) {
+    return RECORD_QUALITY_KEYS[value] || "HIGH";
+}
+
 //直播间设置操作
 function actionSetting(roomKey, room) {
     // 已验证过直接打开设置表单；没验证过才弹「操作验证」；取消静默
@@ -772,6 +797,7 @@ function openRoomSettingForm(roomKey, room) {
     let submitting = false;
 
     const delayValue = setting.delayIntervalSec === null || setting.delayIntervalSec === undefined ? "" : setting.delayIntervalSec;
+    const qualityValue = normalizeRecordQuality(setting.recordQuality);
     const hasXiZhi = !!setting.xiZhiUrl;
     const hasCookie = !!setting.cookie;
 
@@ -788,6 +814,17 @@ function openRoomSettingForm(roomKey, room) {
                   <span class="setx-unit">秒</span>
                 </div>
                 <p class="setx-help">最小 10 秒。留空表示沿用全局 <code>monitor.delayIntervalSec</code>，数值越大越省资源。</p>
+              </section>
+
+              <!-- 录制画质 -->
+              <section class="setx-card">
+                <div class="setx-title"><i class="fa fa-film"></i>录制画质</div>
+                <select id="recordQuality" class="setx-input">
+                  <option value="HIGH" ${qualityValue === "HIGH" ? "selected" : ""}>最高画质（默认）</option>
+                  <option value="MIDDLE" ${qualityValue === "MIDDLE" ? "selected" : ""}>中等画质</option>
+                  <option value="LOW" ${qualityValue === "LOW" ? "selected" : ""}>最低画质</option>
+                </select>
+                <p class="setx-help">最高=第一档、中等=中间档、最低=最后一档；改动在下次开播录制时生效。</p>
               </section>
 
               <!-- 行为开关 -->
@@ -847,8 +884,8 @@ function openRoomSettingForm(roomKey, room) {
                     <button type="button" class="setx-clear" data-clear="cookieValue">清除</button>
                   </div>
                   <textarea id="cookieValue" class="setx-textarea" rows="4"
-                            placeholder="${hasCookie ? `已配置 Cookie [${escapeHtml(setting.cookie)}]，如需替换请直接粘贴新内容` : "粘贴 Cookie 内容，或填写 file:cookie/douyin-cookie.txt 引用本地文件"}"></textarea>
-                  <p class="setx-help">留空表示沿用全局 <code>Cookie.${escapeHtml(room.platform || "")}</code>；支持 <code>file:cookie/DouYin-XXX.room-cookie.txt</code> 文件引用，避免长串粘贴。</p>
+                            placeholder="${hasCookie ? `已配置 Cookie [${escapeHtml(setting.cookie)}]，如需替换请直接粘贴新内容` : "粘贴 Cookie 内容，或填写 file:cookie/DouYin.cookie 引用本地文件"}"></textarea>
+                  <p class="setx-help">留空表示沿用全局 <code>Cookie.${escapeHtml(room.platform || "")}</code>；支持 <code>file:cookie/DouYin-XXX.cookie</code> 文件引用，避免长串粘贴。</p>
                 </div>
               </section>
 
@@ -907,6 +944,7 @@ function openRoomSettingForm(roomKey, room) {
                                     convertFlvToMp4: document.getElementById("convertFlvToMp4").checked,
                                     openSubtitle: document.getElementById("openSubtitle").checked,
                                     isLoop: document.getElementById("isLoop").checked,
+                                    recordQuality: document.getElementById("recordQuality").value,
                                     cookie: cookieValueInput.length > 0 ? cookieValueInput : null,
                                     xiZhiUrl: xiZhiUrlInput.length > 0 ? xiZhiUrlInput : null,
                                 }

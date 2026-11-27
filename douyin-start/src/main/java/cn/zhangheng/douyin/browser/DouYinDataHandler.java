@@ -70,7 +70,7 @@ public class DouYinDataHandler {
         Page page = null;
         try {
             page = browser.newPage(null);
-//            setRoomCookie(room, page);
+            setRoomCookie(room, browser);
             // 导航到直播间页面
             boolean navigated = BrowserUtil.navigatePage(roomUrl, page, WaitUntilState.DOMCONTENTLOADED);
             if (!navigated) return false;

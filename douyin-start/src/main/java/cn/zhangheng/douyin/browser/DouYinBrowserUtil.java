@@ -18,6 +18,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static cn.zhangheng.common.util.UserAgentUtil.PC_VIEWPORTS;
+import static cn.zhangheng.douyin.browser.DouYinBrowserUtil.TARGET_REQUEST_PREFIX;
 
 /**
  * @author: ZhangHeng
@@ -39,11 +40,22 @@ public class DouYinBrowserUtil {
     public static final String TARGET_REQUEST_PREFIX = "https://live.douyin.com/webcast/room/web/enter/";
 
 
-    public static void setRoomCookie(DouYinRoom room, Page page) throws MalformedURLException {
-        BrowserContext context = page.context();
-        if (StrUtil.isNotBlank(room.getCookie())) {
-            String host = new URL(room.getRoomUrl()).getHost();
-            context.addCookies(BrowserUtil.parseCookieString(host, room.getCookie()));
+    public static void setRoomCookie(DouYinRoom room, MyBrowser myBrowser) {
+        try {
+            if (myBrowser.getContent().getCookie() != null) return;
+            String cookie = room.getCookie();
+            if (StrUtil.isBlank(cookie)) {
+                return;
+            }
+            for (String host : new String[]{"www.douyin.com", "www.iesdouyin.com", "douyin.com"}) {
+                try {
+                    myBrowser.getContent().setCookie(host, cookie);
+                } catch (Exception ignored) {
+                    // 单个域注入失败不影响其它域
+                }
+            }
+        } catch (Exception e) {
+            log.warn("注入抖音 Cookie 失败，继续无 Cookie 解析：{}", e.getMessage());
         }
     }
 
@@ -237,6 +249,10 @@ public class DouYinBrowserUtil {
         // 匹配目标GET请求
         if (url.startsWith(TARGET_REQUEST_PREFIX)) {
             BrowserAPI browserApi = room.getBrowserApi();
+            if (browserApi==null){
+                browserApi=new BrowserAPI(TARGET_REQUEST_PREFIX);
+                room.setBrowserApi(browserApi);
+            }
             Map<String, String> headers = request.allHeaders();
             browserApi.setDataUrl(url);
             browserApi.setHeaders(headers);

@@ -42,10 +42,10 @@ if errorlevel 1 (
 )
 
 set "LATEST="
-for /f "delims=" %%f in ('dir /b /o-d "cookie\DouYin-*.room-cookie.txt" 2^>nul') do if not defined LATEST set "LATEST=%%f"
+for /f "delims=" %%f in ('dir /b /o-d "cookie\DouYin-*.cookie" 2^>nul') do if not defined LATEST set "LATEST=%%f"
 if not defined LATEST (
   echo.
-  echo [警告] 没有找到 cookie\DouYin-*.room-cookie.txt，登录可能没有完成。
+  echo [警告] 没有找到 cookie\DouYin-*.cookie，登录可能没有完成。
   pause
   exit /b 1
 )
@@ -54,16 +54,6 @@ copy /y "cookie\%LATEST%" "cookie\DouYin.cookie" >nul
 echo.
 echo 已保存登录信息：cookie\DouYin.cookie（来源 %LATEST%）
 
-if not exist "xxxr.setting" (
-  echo [提示] 未找到 xxxr.setting，请手动添加：Cookie.DouYin=file:cookie/DouYin.cookie
-  pause
-  exit /b 0
-)
-copy /y "xxxr.setting" "xxxr.setting.bak" >nul
-findstr /v /b /c:"Cookie.DouYin=" /c:"#Cookie.DouYin=" "xxxr.setting" > "xxxr.setting.tmp"
-echo Cookie.DouYin=file:cookie/DouYin.cookie>>"xxxr.setting.tmp"
-move /y "xxxr.setting.tmp" "xxxr.setting" >nul
-echo 已在 xxxr.setting 中启用 Cookie.DouYin（原配置备份为 xxxr.setting.bak）
 echo.
-echo 全部完成。重启「直播监听.exe」后生效。
+echo 无需修改配置：程序会自动使用 cookie\DouYin.cookie，重启「直播监听.exe」后生效。
 pause

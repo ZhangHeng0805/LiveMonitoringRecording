@@ -93,7 +93,7 @@ public abstract class AnnotationHandler extends JSONHandler {
             }
         }
         prefixRoutes.sort(Comparator.comparingInt((Route r) -> r.path.length()).reversed());
-        log.info("{} 注解路由注册完成：精确 {} 个，前缀 {} 个", getClass().getSimpleName(),
+        log.debug("{} 注解路由注册完成：精确 {} 个，前缀 {} 个", getClass().getSimpleName(),
                 exactRoutes.size(), prefixRoutes.size());
     }
 

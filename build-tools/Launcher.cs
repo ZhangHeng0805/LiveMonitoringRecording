@@ -14,6 +14,8 @@ namespace XingXiLauncher
     internal static class Program
     {
         private const string AppTitle = "星曦向荣直播监听";
+        /// <summary>启动瞬间的排他句柄，防止连点两次同时启动</summary>
+        private static FileStream launcherGuard;
         private const string MainClass = "cn.zhangheng.lmr.FileModeMain";
         private const string JvmArgs =
             "-Xmx512m -Dfile.encoding=UTF-8 -Dsun.stdout.encoding=UTF-8 -Dsun.stderr.encoding=UTF-8 " +
@@ -65,15 +67,30 @@ namespace XingXiLauncher
             catch { }
 
             string pidFile = Path.Combine(logsDir, "jvm.pid");
-            int runningPid = FindRunningPid(pidFile);
-            if (runningPid > 0)
+            bool singleInstance = !"false".Equals(ReadSetting(baseDir, "app.singleInstance", "true").Trim(),
+                StringComparison.OrdinalIgnoreCase);
+            if (singleInstance)
             {
-                int port = ReadPort(baseDir);
-                MessageBox.Show("程序已经在运行了（进程 " + runningPid + "），不用重复启动。" + Environment.NewLine +
-                                "现在为你打开监听面板。", AppTitle,
-                    MessageBoxButtons.OK, MessageBoxIcon.Information);
-                OpenUrl("http://localhost:" + port + "/");
-                return;
+                // 启动瞬间的并发保护：两个启动器同时读到“未运行”时，只有抢到锁的那个继续
+                if (!TryGuardLauncherStart(logsDir))
+                {
+                    int port = ReadPort(baseDir);
+                    MessageBox.Show("程序正在启动中，请稍候再试。" + Environment.NewLine +
+                                    "如果一直这样，请到任务管理器结束「直播监听内核.exe」后重试。", AppTitle,
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    OpenUrl("http://localhost:" + port + "/");
+                    return;
+                }
+                int runningPid = FindRunningPid(pidFile);
+                if (runningPid > 0)
+                {
+                    int port = ReadPort(baseDir);
+                    MessageBox.Show("程序已经在运行了（进程 " + runningPid + "），不用重复启动。" + Environment.NewLine +
+                                    "现在为你打开监听面板。", AppTitle,
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    OpenUrl("http://localhost:" + port + "/");
+                    return;
+                }
             }
 
             if (!HasBrowser())
@@ -174,9 +191,11 @@ namespace XingXiLauncher
                 if (!File.Exists(pidFile)) return 0;
                 string text = File.ReadAllText(pidFile).Trim();
                 int pid = int.Parse(text);
+                if (pid <= 0) return 0;
                 Process p = Process.GetProcessById(pid);
                 string name = p.ProcessName.ToLowerInvariant();
-                if (name.Contains("java")) return pid;
+                // 内置 JRE 被改名成「直播监听内核.exe」后进程名不含 java，这里一并认
+                if (name.Contains("java") || name.Contains("直播监听")) return pid;
             }
             catch
             {
@@ -185,27 +204,59 @@ namespace XingXiLauncher
             return 0;
         }
 
+        /// <summary>抢占「正在启动」标记；抢不到说明另一个启动器刚启动或程序已在运行</summary>
+        private static bool TryGuardLauncherStart(string logsDir)
+        {
+            try
+            {
+                launcherGuard = new FileStream(Path.Combine(logsDir, "launcher.lock"),
+                    FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>读取 xxxr.setting 里的单个配置值（键不存在或为空时返回默认值）</summary>
+        private static string ReadSetting(string baseDir, string key, string fallback)
+        {
+            try
+            {
+                string setting = Path.Combine(baseDir, "xxxr.setting");
+                if (!File.Exists(setting)) return fallback;
+                foreach (string raw in File.ReadAllLines(setting, Encoding.UTF8))
+                {
+                    string line = raw.Trim().TrimStart('\uFEFF');
+                    if (line.StartsWith("#") || line.StartsWith("!") || !line.Contains("=")) continue;
+                    string k = line.Substring(0, line.IndexOf('=')).Trim();
+                    string v = line.Substring(line.IndexOf('=') + 1).Trim();
+                    if (k == key && v.Length > 0) return v;
+                }
+            }
+            catch { }
+            return fallback;
+        }
+
         private static int ReadPort(string baseDir)
         {
             int port = 8005;
             try
             {
-                string setting = Path.Combine(baseDir, "xxxr.setting");
-                if (File.Exists(setting))
+                // 端口被占用时程序会自动顺延，logs\server.port 记录的是真实端口
+                string portFile = Path.Combine(baseDir, "logs", "server.port");
+                if (File.Exists(portFile))
                 {
-                    foreach (string raw in File.ReadAllLines(setting, Encoding.UTF8))
-                    {
-                        string line = raw.Trim();
-                        if (line.StartsWith("#") || !line.Contains("=")) continue;
-                        string key = line.Substring(0, line.IndexOf('=')).Trim();
-                        string val = line.Substring(line.IndexOf('=') + 1).Trim();
-                        if (key == "server.monitor.port" && val.Length > 0)
-                        {
-                            port = int.Parse(val);
-                            break;
-                        }
-                    }
+                    string text = File.ReadAllText(portFile).Trim();
+                    if (text.Length > 0) return int.Parse(text);
                 }
+            }
+            catch { }
+            try
+            {
+                string text = ReadSetting(baseDir, "server.monitor.port", "8005");
+                if (text.Length > 0) port = int.Parse(text);
             }
             catch { }
             return port;

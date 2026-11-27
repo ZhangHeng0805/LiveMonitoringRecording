@@ -11,9 +11,12 @@ import com.zhangheng.util.ThrowableUtil;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.concurrent.*;
 
 /**
@@ -84,6 +87,7 @@ public class LocalMonitorHttpServer {
             }
             if (server != null) {
                 server.start();
+                writePortFile();
                 log.info("本地API服务已启动！访问地址: {}", getMainUrl());
             }
         });
@@ -106,6 +110,21 @@ public class LocalMonitorHttpServer {
         if (server != null) {
             server.stop(0);
             log.info("本地API服务已启动已停止！");
+        }
+    }
+
+    /**
+     * 记录实际监听端口到 logs/server.port：
+     * 端口被占用时会自动往后顺延，启动器/重复启动提示靠这个文件拿到真实地址
+     */
+    private void writePortFile() {
+        try {
+            File dir = new File("logs");
+            if (!dir.isDirectory()) dir.mkdirs();
+            Files.write(new File(dir, "server.port").toPath(),
+                    String.valueOf(port).getBytes(StandardCharsets.UTF_8));
+        } catch (Exception e) {
+            log.warn("记录监听端口失败：{}", ThrowableUtil.getAllCauseMessage(e));
         }
     }
 }

@@ -381,6 +381,8 @@ public class ActionHandler extends AnnotationHandler {
                 Setting setting = room.getSetting();
                 bean.convert(setting);
                 monitorMain.setAutoRecord(bean.isAutoRecord());
+                // 写回监听文件，重启后设置不丢（录制画质也在其中）
+                FileModeMain.updateRoomSetting(key, bean);
                 room.initSetting(setting);
                 msg.setMessage("设置成功!");
             } catch (Exception e) {

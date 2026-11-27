@@ -178,7 +178,7 @@ java -cp live-monitor-record-3.6.jar cn.zhangheng.lmr.Main 622216334529 true Dou
 - 启动器行为：定位内置 jre 与 `lib` 下的 jar（不写死版本）、单实例检查（已在运行则提示并打开面板）、首次缺少 Playwright 浏览器时询问并自动安装、stdout/stderr 落 `logs/launcher.log`，异常用弹窗提示而不是静默退出。
 - 进程显示：真正干活的 JVM 由 `jre/bin/直播监听内核.exe`（`javaw.exe` 的副本，已用 rcedit 写入中文版本信息与图标）拉起，任务管理器里显示为“直播监听内核 / 星曦向荣直播监听内核”，不再显示 javaw 或 JDK 字样；`javaw.exe` 仍保留在 jre 里作为兜底。
 - 首次运行需联网下载监听浏览器（约 150MB），也可以先双击 `安装监听浏览器.bat`。
-- 需要登录态时，双击 `获取抖音登录信息.bat` / `获取B站登录信息.bat` 扫码登录：脚本复用 jar 里的 `DouYinLogin` / `BiliLogin`，把 cookie 存成 `cookie/DouYin.cookie`、`cookie/Bili.txt`，并在 `xxxr.setting` 里自动启用 `Cookie.DouYin=file:...` / `Cookie.Bilibili=file:...`（原配置备份为 `xxxr.setting.bak`）。脚本内置 `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1`，避免浏览器版本不匹配时静默下载 150MB 而看起来卡死。
+- 需要登录态时，双击 `获取抖音登录信息.bat` / `获取B站登录信息.bat` 扫码登录：脚本复用 jar 里的 `DouYinLogin` / `BiliLogin`，把 cookie 存成 `cookie/DouYin.cookie`、`cookie/Bili.cookie`，**不改 `xxxr.setting`**——`Setting` 在 `Cookie.DouYin` / `Cookie.Bilibili` 未配置时会自动回退到这两个默认文件（文件存在才生效）。脚本内置 `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1`，避免浏览器版本不匹配时静默下载 150MB 而看起来卡死。
 - 重新生成发行包：`pwsh build-tools/build-release.ps1`（`-SkipBuild` 复用已构建 jar，`-SkipZip` 只生成目录）；模板与启动器源码在 `build-tools/`。
 - 发行包默认不带内网穿透：没有 `cpolar.setting` 时程序会跳过 cpolar，不再打印误导性的启动失败。
 
@@ -320,6 +320,8 @@ https://你的用户名.github.io/项目名/?redirect=<配置键>
 server.monitor.port=8005
 # [必填] 运行模式：COMMAND-命令行交互（单房间），FILE-读取监听文件（多房间）
 server.runMode=FILE
+# 单实例运行：true=同一目录只允许开一个，重复启动会提示并打开已有实例面板；false=允许同时开多个
+app.singleInstance=true
 # 微信客户端通用对象（通过 PC 微信自动发送，留空则关闭）
 #notice.weChat.target=文件传输助手
 # 息知通知地址，多个地址用逗号分隔
@@ -329,6 +331,9 @@ server.runMode=FILE
 record.FlvToMp4=true
 # [必填] 录制类型：JAVA-使用 java 编写的录制，FFMPEG-使用 ffmpeg 工具录制
 record.type=FFMPEG
+# 抖音清晰度：直接按接口返回的分辨率/帧率/码率自动选最高，不写死档位名
+# 录制画质：HIGH=最高 / MIDDLE=中等 / LOW=最低，房间设置里可单独覆盖
+#record.quality=HIGH
 # ffmpeg 的路径
 record.ffmpegPath=bin/ffmpeg.exe
 # [必填] 激活凭证文件路径，默认 xxxr-activation.lic
@@ -347,7 +352,7 @@ monitor.delayIntervalSec=30
 living.start.shortcut=
 # 直播结束时触发的快捷键
 living.end.shortcut=
-# B站 Cookie，也可以指定文本文件 file:Bili.txt
+# B站 Cookie，也可以指定文本文件 file:cookie/Bili.cookie
 Cookie.Bilibili=
 # 抖音 Cookie
 Cookie.DouYin=
@@ -362,9 +367,11 @@ Cookie.KuaiShou=
 | --- | :---: | --- | --- |
 | `server.runMode` | ✅ | `COMMAND` | 运行模式，枚举 `COMMAND` / `FILE`。多房间文件监听必须为 `FILE`，否则只监听单个房间 |
 | `record.type` | ✅ | 无 | 录制类型，枚举 `JAVA` / `FFMPEG`（**大写**，不是 0/1） |
+| `record.quality` | — | `HIGH` | 录制画质，枚举 `HIGH`（最高）/ `MIDDLE`（中等）/ `LOW`（最低）：取清晰度排序的对应档位（中等取中间档），房间设置里可单独覆盖 |
 | `activation.filePath` | ✅ | `xxxr-activation.lic` | 激活凭证路径；凭证与设备绑定，文件存在但过期/损坏会导致启动校验不通过（不会退回试用） |
 | `activation.trialDays` | — | 7 | 首次使用试用天数；激活文件缺失时生效，0 或负数表示不开放试用 |
 | `server.monitor.port` | — | 8005 | 可视化控制台端口，范围 1-65535，占用时自动向后累加 |
+| `app.singleInstance` | — | true | 单实例运行；`true` 时同一目录重复启动会直接打开已运行实例的面板并退出，`false` 允许同时跑多个（锁文件为 `logs/instance.lock`，进程退出自动释放） |
 | `record.FlvToMp4` | — | true | 录制结束转 MP4，需 `record.ffmpegPath` 可用 |
 | `record.ffmpegPath` | — | `bin/ffmpeg.exe` | FFmpeg 可执行文件路径 |
 | `record.isLoop` | — | true | 下播后是否重新等待下一场 |

@@ -13,6 +13,12 @@ import com.zhangheng.file.TxtOperation;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 
@@ -68,12 +74,10 @@ public class DouYinLogin {
 
             String cookieStr = BrowserUtil.toCookieStr(cookies);
             System.out.println("用户登录后cookie:" + cookieStr);
-            try {
-                File file = TxtOperation.creatTxtFile("cookie/DouYin-" + user + BrowserLogin.FileSuffix);
-                TxtOperation.writeTxtFile(cookieStr, file, "UTF-8", false);
-                System.out.println("\n用户cookie信息已保存至：" + file.getPath());
-            } catch (IOException e) {
-                e.printStackTrace();
+
+            Path path = BrowserLogin.writeCookieFile(cookieStr, "DouYin-" + user);
+            if (path != null) {
+                System.out.println("\n用户cookie信息已保存至：" + path);
             }
 
             // 6. 关闭浏览器

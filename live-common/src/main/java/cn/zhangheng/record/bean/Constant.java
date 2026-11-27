@@ -15,6 +15,11 @@ public class Constant {
     public static final String Setting_Name = "xxxr.setting";
     public final static String FFmpegExePath = "bin/ffmpeg.exe";
     public final static String ActivateVoucherFilePath = "xxxr-activation.lic";
+    //登录 Cookie 文件的统一后缀（登录脚本生成和默认读取都用它）
+    public final static String CookieFileSuffix = ".cookie";
+    //登录脚本生成的默认 Cookie 文件：配置里不写 Cookie.xxx 时自动使用（存在才生效）
+    public final static String DefaultDouYinCookieFile = "cookie/DouYin" + CookieFileSuffix;
+    public final static String DefaultBiliCookieFile = "cookie/Bili" + CookieFileSuffix;
     //首次使用试用天数（没有激活文件时生效，小于等于0表示不开放试用）
     public final static int TrialDays = 7;
     public final static String WeChatOfficialAccount = "https://mp.weixin.qq.com/s?__biz=MzIwMDQ2OTg4NA==&mid=2247484118&idx=1&sn=30dd3f7f2a4d93a6fdce4fb808e7c506&chksm=96fdfec5a18a77d35645d8e8f55477353aeb9a949fc73a2c302ca336155f8becae635e26f022#rd";

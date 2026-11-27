@@ -300,6 +300,14 @@ async function renderRecycleDetail(wrapDom) {
             ${field("名称", `<input type="text" class="room-name ${inputCls}" value="${escapeHtml(room.name || "")}" placeholder="未命名">`)}
             ${field("保存路径", `<input type="text" class="savePath ${inputCls}" value="" title="${escapeHtml(room.savePath || "")}" placeholder="${escapeHtml(room.savePath || "未设置，默认存到程序目录")}">`)}
             ${field("刷新频率（秒）", `<input type="number" min="10" class="delayIntervalSec ${inputCls}" value="${escapeHtml(setting.delayIntervalSec ?? "")}" placeholder="沿用全局配置">`)}
+            ${field("录制画质", (() => {
+                const rq = ({ HIGH: "HIGH", MIDDLE: "MIDDLE", LOW: "LOW", "最高": "HIGH", "中等": "MIDDLE", "最低": "LOW" })[setting.recordQuality] || "HIGH";
+                return `<select class="recordQuality ${inputCls}">
+                <option value="HIGH" ${rq === "HIGH" ? "selected" : ""}>最高画质</option>
+                <option value="MIDDLE" ${rq === "MIDDLE" ? "selected" : ""}>中等画质</option>
+                <option value="LOW" ${rq === "LOW" ? "selected" : ""}>最低画质</option>
+            </select>`;
+            })())}
             ${field("启用状态", `<div class="px-2.5 py-1.5 text-sm bg-light border border-gray-200 rounded-md text-gray-600 flex items-center gap-2" title="恢复后由程序自动置为启用，无需手动设置"><span>${room.isEnable === false ? "已停用（恢复后自动启用）" : "已启用"}</span><span class="text-xs text-gray-400">由程序自动控制</span></div>`)}
             ${field("自动录制", check("isAutoRecord", room.isAutoRecord, "开播后自动录制"))}
             ${field("转换 FLV 为 MP4", check("convertFlvToMp4", setting.convertFlvToMp4, "录制结束自动转码"))}
@@ -339,6 +347,7 @@ async function renderRecycleDetail(wrapDom) {
         room.setting.convertFlvToMp4 = wrapDom.querySelector("input.convertFlvToMp4").checked;
         room.setting.openSubtitle = wrapDom.querySelector("input.openSubtitle").checked;
         room.setting.isLoop = wrapDom.querySelector("input.isLoop").checked;
+        room.setting.recordQuality = wrapDom.querySelector("select.recordQuality").value;
         room.isAutoRecord = wrapDom.querySelector("input.isAutoRecord").checked;
         const xiZhiUrl = wrapDom.querySelector("input.xiZhiUrl").value.trim();
         room.setting.xiZhiUrl = xiZhiUrl.length > 0 ? xiZhiUrl : null;

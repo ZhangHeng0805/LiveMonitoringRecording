@@ -190,17 +190,23 @@ public class ConfigLoader {
     }
 
     /**
-     * 转换字符串为枚举值
+     * 转换字符串为枚举值：先按枚举名匹配，再按枚举的 toString()（自定义中文标签）匹配，
+     * 方便配置文件里写“中等”这种业务可读的值
      */
     @SuppressWarnings("unchecked")
     private static <E extends Enum<E>> E convertEnum(Class<?> enumType, String valueStr) {
         try {
             return Enum.valueOf((Class<E>) enumType, valueStr);
         } catch (IllegalArgumentException e) {
+            for (Enum<?> enumConstant : (Enum<?>[]) enumType.getEnumConstants()) {
+                if (enumConstant.toString().equals(valueStr)) {
+                    return (E) enumConstant;
+                }
+            }
             // 收集枚举所有有效值，增强错误信息
             StringBuilder validValues = new StringBuilder();
             for (Enum<?> enumConstant : (Enum<?>[]) enumType.getEnumConstants()) {
-                validValues.append(enumConstant.name()).append(", ");
+                validValues.append(enumConstant.toString()).append(", ");
             }
             throw new IllegalArgumentException(
                     String.format("枚举值无效：%s（有效值：%s）",
