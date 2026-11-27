@@ -179,7 +179,7 @@ java -cp live-monitor-record-3.6.jar cn.zhangheng.lmr.Main 622216334529 true Dou
 - 进程显示：真正干活的 JVM 由 `jre/bin/直播监听内核.exe`（`javaw.exe` 的副本，已用 rcedit 写入中文版本信息与图标）拉起，任务管理器里显示为“直播监听内核 / 星曦向荣直播监听内核”，不再显示 javaw 或 JDK 字样；`javaw.exe` 仍保留在 jre 里作为兜底。
 - 首次运行需联网下载监听浏览器（约 150MB），也可以先双击 `安装监听浏览器.bat`。
 - 需要登录态时，双击 `获取抖音登录信息.bat` / `获取B站登录信息.bat` 扫码登录：脚本复用 jar 里的 `DouYinLogin` / `BiliLogin`，把 cookie 存成 `cookie/DouYin.cookie`、`cookie/Bili.cookie`，**不改 `xxxr.setting`**——`Setting` 在 `Cookie.DouYin` / `Cookie.Bilibili` 未配置时会自动回退到这两个默认文件（文件存在才生效）。脚本内置 `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1`，避免浏览器版本不匹配时静默下载 150MB 而看起来卡死。
-- 重新生成发行包：`pwsh build-tools/build-release.ps1`（`-SkipBuild` 复用已构建 jar，`-SkipZip` 只生成目录）；模板与启动器源码在 `build-tools/`。
+- 重新生成发行包：双击 `build-tools\构建发行包.bat`，或执行 `powershell -NoProfile -ExecutionPolicy Bypass -File build-tools\build-release.ps1`（没装 PowerShell 7 时不要用 `pwsh`；`-SkipBuild` 复用已构建 jar，`-SkipZip` 只生成目录）；模板与启动器源码在 `build-tools/`。
 - 发行包默认不带内网穿透：没有 `cpolar.setting` 时程序会跳过 cpolar，不再打印误导性的启动失败。
 
 监听文件目录为空或不存在时也能正常启动：程序会自动建目录、照常开启网页接口并保持常驻，同时常驻一个"面板入口"托盘图标（右键 →「监控界面」或点图标直接打开），启动时还会自动用浏览器打开面板，不会出现"托盘没图标、又不知道面板地址"的情况。所有监听都停止后，这个入口图标会自动补回来。

@@ -45,7 +45,7 @@ public class LocalMonitorHttpServer {
                 port++;
             }
             System.setProperty("monitor.port", String.valueOf(getPort()));
-            System.setProperty("monitor.url", getMainUrl());
+            System.setProperty("monitor.url", getMainUrl(port));
             try {
                 server = HttpServer.create(new InetSocketAddress("::", port), (int) (maxThreadSize * 1.5));
                 poolExecutor = new ThreadPoolExecutor(
@@ -88,7 +88,7 @@ public class LocalMonitorHttpServer {
             if (server != null) {
                 server.start();
                 writePortFile();
-                log.info("本地API服务已启动！访问地址: {}", getMainUrl());
+                log.info("本地API服务已启动！访问地址: {}", getMainUrl(port));
             }
         });
         thread.setDaemon(true);
@@ -96,7 +96,7 @@ public class LocalMonitorHttpServer {
         thread.start();
     }
 
-    public String getMainUrl() {
+    public static String getMainUrl(int port) {
         String url = "http://localhost:" + port + "/";
 //        String apiUrl = url + "api/";
         try {

@@ -53,9 +53,19 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
     protected volatile MonitorStatus status = MonitorStatus.READY;
     @Getter
     private M roomMonitor;
-    @Setter
     @Getter
     private boolean isAutoRecord;
+
+    /**
+     * 设置自动录制：打开时同步录制开关，保证中途开启后开播能自动录；
+     * 关闭时只改自动录制标记，已经在手动录的场次不强行中断
+     */
+    public void setAutoRecord(boolean autoRecord) {
+        this.isAutoRecord = autoRecord;
+        if (autoRecord) {
+            recordFlag.set(true);
+        }
+    }
 
     protected RecorderTask recorderTask;
     /**
@@ -68,7 +78,8 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
     /** 上次录制启动失败时间，失败后短暂退避，避免每秒重试刷日志 */
     private volatile long lastRecordFailMs = 0L;
     protected AtomicBoolean isRunning = new AtomicBoolean(true);
-    protected AtomicBoolean recordFlag = new AtomicBoolean(true);
+    /** 录制开关：默认关闭，由自动录制/面板手动开录显式打开，避免未开自动录制时被回调误触发 */
+    protected AtomicBoolean recordFlag = new AtomicBoolean(false);
     @Getter
     protected R room;
     protected FlvToMp4 flvToMp4;
@@ -127,6 +138,8 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
             }
             Thread.currentThread().setName(room.getNickname() + "-main-" + room.getPlatform().name());
             isAutoRecord = isRecord;
+            // 录制开关跟自动录制状态对齐：没开自动录制的房间不能因为 recordFlag 默认 true 被进度回调自动拉起录制
+            recordFlag.set(isRecord);
             RoomMonitor.RoomListener<R> listener = getRoomListener(room);
             trayIconUtil.setClickListener(getClickListener());
             roomMonitor.setListener(listener);

@@ -36,8 +36,9 @@ public class DouYinDataService {
 
     public DouYinDataService(DouYinRoom room) {
         this.room = room;
-        handler=new DouYinDataHandler(room);
+        handler = new DouYinDataHandler(room);
     }
+
     public static void main(String[] args) {
         long sta = System.currentTimeMillis();
         Setting setting = ConfigKit.get(Setting.class);
@@ -55,14 +56,13 @@ public class DouYinDataService {
     public boolean refresh(boolean force) {
         boolean success = false;
         if (!room.isLiving() || room.getBrowserApi().getDataUrl() == null) {
-            success=handler.request();
+            success = handler.request();
         }
         if (room.isLiving() && room.getBrowserApi().getDataUrl() != null) {
             getData(force);
         }
         return success;
     }
-
 
 
     private void init() {
@@ -76,7 +76,7 @@ public class DouYinDataService {
         if (url == null) {
             init();
         }
-        try (Response response = OkHttpUtil.getResponse(url, headers)){
+        try (Response response = OkHttpUtil.getResponse(url, headers)) {
             String body = Objects.requireNonNull(response.body()).string();
             if (JSONUtil.isTypeJSON(body)) {
                 JSONObject entries = JSONUtil.parseObj(body);
@@ -180,15 +180,17 @@ public class DouYinDataService {
     }
 
     /**
-     * 画质比较：分辨率 → 帧率 → 接口声明码率 → 实时码率 → level。
+     * 画质比较：帧率 → 分辨率（为0跳过比较） → 接口声明码率 → 实时码率 → level。
      * 以码率优先是因为抖音各房间的实际转码码率差异很大（同为“原画”，有的房间 9M、有的只有 3M）；
      * “原画”的 resolution 字段常常为空，码率相同时再由分辨率决定，空分辨率自然排在 1080p 档之后。
      */
     private static int compareQuality(QualityInfo a, QualityInfo b) {
-        int c = Long.compare(b.pixels, a.pixels);
+        int c = Integer.compare(b.fps, a.fps);
         if (c != 0) return c;
-        c = Integer.compare(b.fps, a.fps);
-        if (c != 0) return c;
+        if (a.pixels > 0 && b.pixels > 0) {
+            c = Long.compare(b.pixels, a.pixels);
+            if (c != 0) return c;
+        }
         c = Long.compare(b.vBitRate, a.vBitRate);
         if (c != 0) return c;
         c = Long.compare(b.realKbps, a.realKbps);

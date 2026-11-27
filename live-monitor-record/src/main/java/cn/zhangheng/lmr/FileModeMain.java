@@ -6,6 +6,7 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import cn.zhangheng.browser.factory.PlaywrightBrowserFactory;
 import cn.zhangheng.common.setting.ConfigKit;
+import cn.zhangheng.lmr.http_server.LocalMonitorHttpServer;
 import cn.zhangheng.lmr.service.CpolarToolStarter;
 import cn.zhangheng.lmr.service.LocalHttpServerStarter;
 import cn.zhangheng.lmr.service.ServerStarterManager;
@@ -200,7 +201,7 @@ public class FileModeMain {
 
     /** 重复启动时提示并打开已在运行的面板 */
     private static void notifyAlreadyRunning(String port) {
-        String url = port == null ? null : "http://localhost:" + port + "/";
+        String url = port == null ? null : LocalMonitorHttpServer.getMainUrl(Integer.parseInt(port));
         String message = url == null
                 ? "程序已经在运行，本次启动已退出。\n请从系统托盘的右键菜单打开监听面板。"
                 : "程序已经在运行，本次启动已退出。\n已为你打开监听面板：" + url;

@@ -78,7 +78,7 @@ namespace XingXiLauncher
                     MessageBox.Show("程序正在启动中，请稍候再试。" + Environment.NewLine +
                                     "如果一直这样，请到任务管理器结束「直播监听内核.exe」后重试。", AppTitle,
                         MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    OpenUrl("http://localhost:" + port + "/");
+                    OpenUrl("http://localhost:" + port + "/?root=http%3A%2F%2Flocalhost%3A"+port+"%2F");
                     return;
                 }
                 int runningPid = FindRunningPid(pidFile);
@@ -88,7 +88,7 @@ namespace XingXiLauncher
                     MessageBox.Show("程序已经在运行了（进程 " + runningPid + "），不用重复启动。" + Environment.NewLine +
                                     "现在为你打开监听面板。", AppTitle,
                         MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    OpenUrl("http://localhost:" + port + "/");
+                    OpenUrl("http://localhost:" + port + "/?root=http%3A%2F%2Flocalhost%3A"+port+"%2F");
                     return;
                 }
             }

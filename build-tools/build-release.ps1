@@ -1,4 +1,4 @@
-# 生成「星曦向荣直播监听」免安装发行包（exe 启动器 + 内置 JRE + 配置 + 说明）
+﻿# 生成「星曦向荣直播监听」免安装发行包（exe 启动器 + 内置 JRE + 配置 + 说明）
 # 用法：pwsh build-tools/build-release.ps1            # 全流程
 #       pwsh build-tools/build-release.ps1 -SkipBuild # 复用已构建的 jar
 #       pwsh build-tools/build-release.ps1 -SkipBuild -SkipZip
