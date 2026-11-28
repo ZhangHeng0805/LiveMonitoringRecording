@@ -12,6 +12,8 @@ import lombok.extern.slf4j.Slf4j;
 import okhttp3.Response;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -52,7 +54,12 @@ public class DouYinAPITools {
         String cookieStr = cookie + "; __ac_nonce=0123407cc00a9e438deb4; msToken=" + msToken();
         headerUtil.setCookie(cookieStr);
         try (Response response = OkHttpUtil.getResponse(url, headerUtil.getHeaders())) {
-            return OkHttpUtil.streamSubstringByFlag(response, "\\\"homeStore\\\":", ",\\\"emojiList\\\":", 2);
+            Map<String, String> query = OkHttpUtil.streamExtractSegments(response, Arrays.asList(
+                    new OkHttpUtil.SegmentRule("title", "<title>", "</title>", 1),
+                    new OkHttpUtil.SegmentRule("body", "\\\"homeStore\\\":", ",\\\"emojiList\\\":", 2)
+            ));
+            return "<title>" + query.get("title") + "</title>" + query.get("body");
+//            return OkHttpUtil.streamSubstringByFlag(response, "\\\"homeStore\\\":", ",\\\"emojiList\\\":", 2);
 //            if (!response.isSuccessful()) {
 //                throw new IOException("http code:" + response.code());
 //            }

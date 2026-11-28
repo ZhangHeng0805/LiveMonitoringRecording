@@ -81,6 +81,7 @@ public class LocalMonitorHttpServer {
                 server.createContext("/client-info", new ClientHandler("/client-info/"));
                 server.createContext("/room-recycle", new RoomRecycleHandler("/room-recycle/"));
                 server.createContext("/info", new InfoHandler("/info/"));
+                server.createContext("/config", new ConfigHandler("/config/"));
 
             } catch (Exception e) {
                 log.error("本地API服务创建失败！{}", ThrowableUtil.getAllCauseMessage(e));

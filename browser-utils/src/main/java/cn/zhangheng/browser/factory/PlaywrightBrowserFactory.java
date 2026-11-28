@@ -55,6 +55,8 @@ public class PlaywrightBrowserFactory {
     private static final Object CONTEXT_LOCK = new Object();
     // Browser空闲延时关闭配置：所有context清空后，等待多久再关闭浏览器进程
     private static final long BROWSER_IDLE_DELAY_MS = 600_000; // 空闲到期后关Chromium
+    // 调用方传入 <=0 时的兜底上下文空闲时间：Hutool TimedCache 的 ttl<=0 表示“永不淘汰”，会导致上下文永久残留
+    private static final long DEFAULT_CONTEXT_IDLE_MS = 90_000;
     // 空闲关闭任务的独立锁：避免和类锁/缓存锁形成交叉等待
     private static final Object IDLE_LOCK = new Object();
     private static ScheduledExecutorService idleScheduler;
@@ -80,7 +82,7 @@ public class PlaywrightBrowserFactory {
         String targetDomain = ".douyin.com";//目前作用域是抖音
         // 先快照 key，真正设置 Cookie 时不持缓存锁（Playwright 调用可能慢）
         for (String key : cacheKeys()) {
-            MyBrowser myBrowser = cacheGet(key);
+            MyBrowser myBrowser = cachePeek(key);
             if (myBrowser == null) continue;
             BrowserContent content = myBrowser.getContent();
             try {
@@ -124,7 +126,8 @@ public class PlaywrightBrowserFactory {
     private static List<Counter> collectCounters() {
         List<Counter> list = new ArrayList<>();
         for (String key : cacheKeys()) {
-            MyBrowser myBrowser = cacheGet(key);
+            // 只读快照：不能刷新 lastAccess，否则面板每 3 秒查一次状态就会把上下文“续命”，永远不回收
+            MyBrowser myBrowser = cachePeek(key);
             if (myBrowser == null) continue;
             BrowserContent content = myBrowser.getContent();
             Counter counter = new Counter();
@@ -196,7 +199,8 @@ public class PlaywrightBrowserFactory {
 
                     BrowserContent content = new BrowserContent(context, userAgent);
                     myBrowser = new MyBrowser(content);
-                    cachePut(key, myBrowser, expirationMs);
+                    long idleTtl = expirationMs > 0 ? expirationMs : DEFAULT_CONTEXT_IDLE_MS;
+                    cachePut(key, myBrowser, idleTtl);
                     try {
                         JmxRegisterUtil.register(content, JmxType, "name", key);
                     } catch (MalformedObjectNameException e) {
@@ -240,6 +244,16 @@ public class PlaywrightBrowserFactory {
     private static MyBrowser cacheGet(String key) {
         synchronized (CACHE_LOCK) {
             return browsersCache == null ? null : browsersCache.get(key);
+        }
+    }
+
+    /**
+     * 只读查看缓存，不刷新 lastAccess：用于状态统计、Cookie 批量设置等非“使用上下文”的场景，
+     * 避免这些旁路操作把空闲计时重置，导致上下文长期不被回收。
+     */
+    private static MyBrowser cachePeek(String key) {
+        synchronized (CACHE_LOCK) {
+            return browsersCache == null ? null : browsersCache.get(key, false);
         }
     }
 

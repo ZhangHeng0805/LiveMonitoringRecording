@@ -92,7 +92,7 @@
             }
 
             .btn {
-                @apply px-4 py-2 rounded-md font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
+                @apply px-4 py-2 rounded-md font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 whitespace-nowrap;
             }
 
             .input-field {
@@ -1616,8 +1616,9 @@
     <script src="js/client-info.js"></script>
     <script src="js/RoomRecycle.js?v=3.7.5"></script>
     <!-- 带版本参数，避免浏览器缓存旧脚本导致组件面板/徽标不更新 -->
-    <script src="js/BrowserPanel.js?v=3.7.6"></script>
+    <script src="js/BrowserPanel.js?v=3.7.9"></script>
     <script src="js/CpolarPanel.js?v=3.7.6"></script>
+    <script src="js/ConfigPanel.js?v=3.7.9"></script>
 </head>
 
 <body class="lml-body">
@@ -1772,7 +1773,7 @@
             </button>
         </div>
         <div id="modalBody" class="p-5 max-h-[70vh] overflow-y-auto"></div>
-        <div id="modalFooter" class="p-5 border-t border-gray-200 flex justify-end gap-3"></div>
+        <div id="modalFooter" class="p-5 border-t border-gray-200 flex flex-wrap justify-end gap-3"></div>
     </div>
 </div>
 <!-- JavaScript 功能实现 -->
@@ -1801,7 +1802,7 @@
         "抖音作品解析": "DouYinVideoPares.html?root=" + encodeURIComponent(MainUrl),
         "FLV视频播放器": "https://zhangheng0805.github.io/FLVPlayer/",
         "访问日志可视化": "client-info-report.html?root=" + encodeURIComponent(MainUrl),
-    });
+    }) + `<a href="javascript:void(0)" onclick="systemConfig();return false;" title="编辑 xxxr.setting 系统配置文件"><i class="fa fa-cog"></i>系统配置</a>`;
     // 页面加载完成后初始化
     document.addEventListener("DOMContentLoaded", function () {
         // 初始化显示刷新间隔

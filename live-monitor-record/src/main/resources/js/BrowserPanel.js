@@ -98,19 +98,35 @@
         syncActionButtons(d);
 
         var ctxRows;
+        var ctxCards;
         var contexts = Array.isArray(d.contexts) ? d.contexts : [];
         if (!contexts.length) {
             ctxRows = '<tr><td colspan="6" class="px-3 py-4 text-center text-gray-400">暂无缓存的浏览器上下文</td></tr>';
+            ctxCards = '<div class="px-3 py-6 text-center text-gray-400">暂无缓存的浏览器上下文</div>';
         } else {
             ctxRows = contexts.map(function (c) {
                 return '<tr class="border-t border-gray-100">' +
                     '<td class="px-3 py-2 font-medium text-gray-700 break-all">' + escapeHtml(c.key || "-") + '</td>' +
-                    '<td class="px-3 py-2">' + escapeHtml(String(c.count == null ? 0 : c.count)) + '</td>' +
+                    '<td class="px-3 py-2 whitespace-nowrap">' + escapeHtml(String(c.count == null ? 0 : c.count)) + '</td>' +
                     '<td class="px-3 py-2 text-gray-500 break-all">' + escapeHtml(c.threadName || "-") + '</td>' +
                     '<td class="px-3 py-2 text-gray-500 whitespace-nowrap">' + escapeHtml(c.lastTime || "-") + '</td>' +
-                    '<td class="px-3 py-2 text-gray-500">' + escapeHtml(shortUa(c.userAgent)) + '</td>' +
-                    '<td class="px-3 py-2">' + (c.cookieConfigured ? '<span class="text-green-600">已设置</span>' : '<span class="text-gray-400">未设置</span>') + '</td>' +
+                    '<td class="px-3 py-2 text-gray-500 whitespace-nowrap">' + escapeHtml(shortUa(c.userAgent)) + '</td>' +
+                    '<td class="px-3 py-2 whitespace-nowrap">' + (c.cookieConfigured ? '<span class="text-green-600">已设置</span>' : '<span class="text-gray-400">未设置</span>') + '</td>' +
                     '</tr>';
+            }).join("");
+            // 移动端用卡片，避免六列表格被挤成一字一行
+            ctxCards = contexts.map(function (c) {
+                return '<div class="px-3 py-3 space-y-1">' +
+                    '<div class="flex items-start justify-between gap-2">' +
+                    '<span class="font-medium text-gray-700 break-all">' + escapeHtml(c.key || "-") + '</span>' +
+                    '<span class="flex-shrink-0 text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">' +
+                    escapeHtml(String(c.count == null ? 0 : c.count)) + ' 页</span>' +
+                    '</div>' +
+                    '<div class="text-gray-500 break-all">使用线程：' + escapeHtml(c.threadName || "-") + '</div>' +
+                    '<div class="text-gray-500 break-all">最后使用：' + escapeHtml(c.lastTime || "-") +
+                    '<span class="mx-1 text-gray-300">·</span>' + escapeHtml(shortUa(c.userAgent)) + '</div>' +
+                    '<div>Cookie：' + (c.cookieConfigured ? '<span class="text-green-600">已设置</span>' : '<span class="text-gray-400">未设置</span>') + '</div>' +
+                    '</div>';
             }).join("");
         }
 
@@ -140,16 +156,17 @@
             '</div>' +
             '<div class="rounded-xl border border-gray-200 overflow-hidden">' +
             '<div class="px-4 py-2.5 bg-gray-50 border-b border-gray-200 text-xs font-medium text-gray-600">浏览器上下文缓存（按房间复用，3 秒自动刷新）</div>' +
-            '<div class="overflow-x-auto"><table class="w-full text-xs">' +
+            '<div class="hidden md:block overflow-x-auto"><table class="w-full min-w-[720px] text-xs">' +
             '<thead class="bg-white text-gray-500"><tr>' +
             '<th class="px-3 py-2 text-left font-medium">标识</th>' +
-            '<th class="px-3 py-2 text-left font-medium">页面数</th>' +
+            '<th class="px-3 py-2 text-left font-medium whitespace-nowrap">页面数</th>' +
             '<th class="px-3 py-2 text-left font-medium">使用线程</th>' +
-            '<th class="px-3 py-2 text-left font-medium">最后使用</th>' +
+            '<th class="px-3 py-2 text-left font-medium whitespace-nowrap">最后使用</th>' +
             '<th class="px-3 py-2 text-left font-medium">UA</th>' +
             '<th class="px-3 py-2 text-left font-medium">Cookie</th>' +
             '</tr></thead>' +
             '<tbody>' + ctxRows + '</tbody></table></div>' +
+            '<div class="md:hidden divide-y divide-gray-100">' + ctxCards + '</div>' +
             '</div>';
     }
 

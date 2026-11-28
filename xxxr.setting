@@ -1,45 +1,45 @@
-#\u76D1\u63A7\u5E73\u53F0\u670D\u52A1\u7AEF\u53E3 \u5360\u7528\u81EA\u52A8\u7D2F\u52A0
+#监控平台服务端口 占用自动累加
 server.monitor.port=8005
 server.runMode=FILE
-#\u666e\u901a\u63a5\u53e3\u4ee4\u724c\uff1a\u516c\u5f00\u7b7e\u53d1\uff0c\u65e0\u9700\u79d8\u94a5\uff1b\u5173\u95ed\u540e\u666e\u901a\u63a5\u53e3\u4e5f\u5fc5\u987b\u5148\u6362\u79d8\u94a5\u4ee4\u724c
+#普通接口令牌：公开签发，无需秘钥；关闭后普通接口也必须先换秘钥令牌
 server.auth.publicTokenEnabled=true
-#\u666e\u901a\u4ee4\u724c\u6709\u6548\u671f\uff08\u79d2\uff09\uff0c\u9ed8\u8ba4 30 \u5206\u949f
+#普通令牌有效期（秒），默认 30 分钟
 server.auth.publicTokenExpireSec=1800
-#\u666e\u901a\u4ee4\u724c\u7b7e\u53d1\u6bcfIP\u6bcf\u5206\u949f\u6b21\u6570\uff080\u4e3a\u4e0d\u9650\uff09
+#普通令牌签发每IP每分钟次数（0为不限）
 server.api.publicTokenPerMinute=30
-#\u4F5C\u54C1\u89E3\u6790\u6BCFIP\u6BCF\u5206\u949F\u6B21\u6570\uFF080\u4E3A\u4E0D\u9650\uFF09
+#作品解析每IP每分钟次数（0为不限）
 server.api.parsePerMinute=5
-#\u5FAE\u4FE1\u5BA2\u6237\u7AEF\u901A\u7528\u5BF9\u8C61
-#notice.weChat.target=\u6587\u4EF6\u4F20\u8F93\u52A9\u624B
-#\u606F\u77E5\u901A\u77E5\u5730\u5740
+#微信客户端通用对象
+#notice.weChat.target=文件传输助手
+#息知通知地址
 #notice.xiZhi.url=
 #notice.xiZhi.url=https://xizhi.qqoq.net/***.send
 #notice.xiZhi.url=https://xizhi.qqoq.net/***.channel
-#\u662F\u5426\u8F6C\u6362\u5F55\u5236\u7684\u89C6\u9891
+#是否转换录制的视频
 record.FlvToMp4=true
-#\u5F55\u5236\u7C7B\u578B\uFF1AJAVA-\u4F7F\u7528java\u7F16\u5199\u7684\u5F55\u5236\uFF0CFFMPEG-\u4F7F\u7528ffmpeg\u5DE5\u5177\u5F55\u5236
+#录制类型：JAVA-使用java编写的录制，FFMPEG-使用ffmpeg工具录制
 record.type=FFMPEG
-#ffmpeg\u7684\u8DEF\u5F84
+#ffmpeg的路径
 record.ffmpegPath=bin/ffmpeg.exe
-#\u6FC0\u6D3B\u51ED\u8BC1\u6587\u4EF6\u8DEF\u5F84\uFF0C\u9ED8\u8BA4xxxr-activation.lic
+#激活凭证文件路径，默认xxxr-activation.lic
 activation.filePath=xxxr-activation.lic
-#\u9996\u6B21\u4F7F\u7528\u8BD5\u7528\u5929\u6570\uFF08\u6CA1\u6709\u6FC0\u6D3B\u6587\u4EF6\u65F6\u751F\u6548\uFF0C0\u6216\u8D1F\u6570\u8868\u793A\u4E0D\u5F00\u653E\u8BD5\u7528\uFF09
+#首次使用试用天数（没有激活文件时生效，0或负数表示不开放试用）
 activation.trialDays=7
-#\u662F\u5426\u5FAA\u73AF\u76D1\u542C\u76F4\u64AD\uFF08\u76F4\u64AD\u7ED3\u675F\u540E\uFF0C\u91CD\u65B0\u76D1\u542C\uFF09
+#是否循环监听直播（直播结束后，重新监听）
 record.isLoop=true
-#\u662F\u5426\u5F00\u542F\u5F39\u5E55\u8BB0\u5F55\uFF08\u76EE\u524D\u53EA\u5BF9\u6296\u97F3\u6709\u6548\uFF09
+#是否开启弹幕记录（目前只对抖音有效）
 record.openSubtitle=true
-#\u76D1\u542C\u95F4\u9694\u65F6\u957F\uFF08\u79D2\uFF09
+#监听间隔时长（秒）
 monitor.delayIntervalSec=30
-#\u662F\u5426\u9690\u85CF\u76D1\u542C\u6D4F\u89C8\u5668
+#是否隐藏监听浏览器
 #monitor.browser.headless=false
-#\u76F4\u64AD\u5F00\u59CB\u65F6\u89E6\u53D1\u7684\u5FEB\u6377\u952E(\u5C0F\u5199\uFF0C\u591A\u4E2A\u7EC4\u5408\u4E4B\u95F4\u9017\u53F7\u5206\u5272\uFF0C\u4F8B\uFF1Aalt+tab,ctrl+s)
+#直播开始时触发的快捷键(小写，多个组合之间逗号分割，例：alt+tab,ctrl+s)
 living.start.shortcut=
-#\u76F4\u64AD\u7ED3\u675F\u65F6\u89E6\u53D1\u7684\u5FEB\u6377\u952E
+#直播结束时触发的快捷键
 living.end.shortcut=
-#B\u7AD9\u7684Cookie \u4E5F\u53EF\u4EE5\u6307\u5B9A\u6587\u672C\u6587\u4EF6file:Bili.txt
+#B站的Cookie 也可以指定文本文件file:Bili.txt
 Cookie.Bilibili=
-#\u6296\u97F3\u7684Cookie
+#抖音的Cookie
 Cookie.DouYin=
-#\u5FEB\u624B\u7684Cookie
+#快手的Cookie
 Cookie.KuaiShou=
