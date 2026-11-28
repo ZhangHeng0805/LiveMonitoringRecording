@@ -35,6 +35,8 @@ public abstract class RoomMonitor<R extends Room, S extends RoomService<R>> exte
     private RoomListener<R> listener = null;
     // 用于保存任务所在的工作线程
     private volatile Thread workerThread = null;
+    // 下一次监听周期是否强制刷新（画质切换校验等场景用，避免同一周期内重复拉流）
+    private volatile boolean forceNextRefresh = false;
     // ========== MBean 注册 ==========
     private ObjectName mbeanObjectName, mbeanRoomName;
 
@@ -50,9 +52,25 @@ public abstract class RoomMonitor<R extends Room, S extends RoomService<R>> exte
         roomService.getRoomData(force);
     }
 
+    /**
+     * 请求下一次监听周期使用 refresh(true) 强制刷新。
+     * 供画质切换校验等场景使用：不在 onProgress 里追加刷新，而是把下一轮的常规刷新升级为强制刷新，
+     * 避免同一周期内刷新两次。
+     */
+    public void requestForceNextRefresh() {
+        forceNextRefresh = true;
+    }
+
     @JmxOperation(desc = "开始弹幕记录")
     public void startSubtitle() {
         roomService.startSubtitle();
+    }
+
+    /**
+     * 手动开启弹幕记录：不改房间设置，仅本次直播内生效
+     */
+    public void forceStartSubtitle() {
+        roomService.forceStartSubtitle();
     }
 
     @JmxOperation(desc = "停止弹幕记录")
@@ -136,9 +154,25 @@ public abstract class RoomMonitor<R extends Room, S extends RoomService<R>> exte
                         continue;
                     }
                     try {
-                        refresh(RandomUtil.randomBoolean());
+                        // 下一轮被请求强制刷新时用 refresh(true)，否则保持原有的随机强制策略
+                        boolean forceRefresh = forceNextRefresh;
+                        forceNextRefresh = false;
+                        refresh(forceRefresh || RandomUtil.randomBoolean());
                     } catch (Exception e) {
                         log.error("直播监听刷新异常：{}", ThrowableUtil.getAllCauseMessage(e));
+                    }
+                    // 下播复检一次：开播/下播瞬间接口可能瞬时返回“未开播”，单次判定就结束监听
+                    // 会被 isLoop 立刻重启，变成“下播→再开播”的重复通知；这里只复检一次，仍为未开播才结束
+                    if (!room.isLiving()) {
+                        log.info("直播间疑似下播，立即复检一次：{}", room.getNickname());
+                        try {
+                            refresh(true);
+                        } catch (Exception e) {
+                            log.error("下播复检异常，维持当前状态：{}", ThrowableUtil.getAllCauseMessage(e));
+                        }
+                        if (room.isLiving()) {
+                            log.info("下播复检后仍在直播，继续监听：{}", room.getNickname());
+                        }
                     }
 //                    if (RandomUtil.randomBoolean()) {
 //                        //模拟下播

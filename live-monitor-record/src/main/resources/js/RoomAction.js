@@ -392,6 +392,24 @@ function actionRecord(roomKey, isRecord) {
     });
 }
 
+//弹幕录制操作（仅抖音支持）
+function actionSubtitle(roomKey, isOpen) {
+    showActionBeforeModal((isOpen ? "开启弹幕录制" : "停止弹幕录制") + " · 房间 " + roomKey, (key) => {
+        actionRequest("subtitle", {
+            key: roomKey,
+            flag: isOpen,
+            actionKey: key,
+        }).then((data) => {
+            data.title = "弹幕录制操作结果";
+            showActionAfterModal(data, () => {
+                if (data.success) {
+                    handleManualRefresh();
+                }
+            });
+        });
+    });
+}
+
 //删除
 function delRoom(roomKey) {
     showActionBeforeModal("删除监听 · 房间 " + roomKey, (key) => {

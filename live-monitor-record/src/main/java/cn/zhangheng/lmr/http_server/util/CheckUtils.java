@@ -115,6 +115,16 @@ public class CheckUtils {
     }
 
     /**
+     * 判断请求本身是否携带有效的秘钥令牌（不依赖鉴权阶段写入的等级标记）。
+     * 用于脱敏判断的双保险：等级标记可能因路由/热更新等异常没有写入，
+     * 但请求头/参数里的令牌可以独立校验。
+     */
+    public static boolean hasSecretToken(HttpExchange httpExchange) {
+        String token = resolveToken(httpExchange);
+        return StrUtil.isNotBlank(token) && JWTUtil.checkApiToken(token);
+    }
+
+    /**
      * 是否已通过任意令牌校验（普通级即可）
      */
     public static boolean isAuthenticated(HttpExchange httpExchange) {

@@ -19,7 +19,9 @@ import lombok.extern.slf4j.Slf4j;
 
 import javax.management.MalformedObjectNameException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -62,6 +64,14 @@ public class PlaywrightBrowserFactory {
     @Getter
     @JmxAttribute(desc = "浏览器Cookie信息")
     private static String cookie;
+    // Browser 进程启动时间（毫秒），0 表示当前没有运行中的浏览器
+    @Getter
+    @JmxAttribute(desc = "浏览器启动时间")
+    private static volatile long browserStartMs = 0;
+    // 空闲关闭浏览器进程的计划时间（毫秒），0 表示没有倒计时
+    @Getter
+    @JmxAttribute(desc = "空闲关闭倒计时(秒)")
+    private static volatile long idleCloseAtMs = 0;
 
     @JmxOperation(desc = "设置浏览器所有实例的cookie", paramDesc = {"cookie信息(为空时代表清空Cookie)"})
     public static void setAllCookie(String cookie) {
@@ -108,8 +118,10 @@ public class PlaywrightBrowserFactory {
         return count.get();
     }
 
-    //    @JmxAttribute(name = "cacheCount", desc = "浏览器缓存统计", tabularIndexKeys = {"key", "threadName"})
-    public List<Counter> getCacheCount() {
+    /**
+     * 静态快照用的上下文统计（JMX 的 getCacheCount 也复用这里）
+     */
+    private static List<Counter> collectCounters() {
         List<Counter> list = new ArrayList<>();
         for (String key : cacheKeys()) {
             MyBrowser myBrowser = cacheGet(key);
@@ -120,6 +132,9 @@ public class PlaywrightBrowserFactory {
             counter.setCount(content.getPageCount());
             counter.setThreadName(content.getThreadName());
             counter.setLastTime(content.getLastUsedTimestamp());
+            counter.setUserAgent(content.getUserAgent());
+            String cookieValue = content.getCookie();
+            counter.setCookieConfigured(cookieValue != null && !cookieValue.isEmpty());
             list.add(counter);
         }
         return list;
@@ -195,7 +210,9 @@ public class PlaywrightBrowserFactory {
         }
     }
 
-    /** key 粒度锁对象：锁数量与房间数一致，不做回收（回收会让并发线程拿到不同锁） */
+    /**
+     * key 粒度锁对象：锁数量与房间数一致，不做回收（回收会让并发线程拿到不同锁）
+     */
     private static Object lockOf(String key) {
         return KEY_LOCKS.computeIfAbsent(key == null ? "" : key, k -> new Object());
     }
@@ -265,6 +282,7 @@ public class PlaywrightBrowserFactory {
         if (browser == null || !browser.isConnected()) {
             // 再初始化浏览器（若失败，需关闭已创建的Playwright）
             browser = playwright.chromium().launch(BrowserUtil.getLaunchOptions(headless));
+            browserStartMs = System.currentTimeMillis();
             log.info("浏览器进程启动成功");
         }
         if (idleScheduler == null || idleScheduler.isShutdown()) {
@@ -324,7 +342,9 @@ public class PlaywrightBrowserFactory {
                 return;
             }
             log.info("所有上下文已回收，{}ms后关闭Browser浏览器", BROWSER_IDLE_DELAY_MS);
+            idleCloseAtMs = System.currentTimeMillis() + BROWSER_IDLE_DELAY_MS;
             idleCloseTask = idleScheduler.schedule(() -> {
+                idleCloseAtMs = 0;
                 synchronized (PlaywrightBrowserFactory.class) {
                     // 二次校验：防止在等待期间又来了新任务
                     if (cacheIsEmpty()) {
@@ -341,12 +361,14 @@ public class PlaywrightBrowserFactory {
      */
     private static void cancelIdleCloseTask() {
         synchronized (IDLE_LOCK) {
+            idleCloseAtMs = 0;
             if (idleCloseTask != null && !idleCloseTask.isDone()) {
                 idleCloseTask.cancel(false);
                 idleCloseTask = null;
             }
         }
     }
+
     @JmxOperation(desc = "关闭浏览器")
     public static void closeBrowser() {
         if (browser == null && browsersCache == null) {
@@ -366,6 +388,7 @@ public class PlaywrightBrowserFactory {
                 }
             } finally {
                 browser = null; // 标记为null，避免重复操作
+                browserStartMs = 0;
             }
         }
         synchronized (CACHE_LOCK) {
@@ -378,6 +401,7 @@ public class PlaywrightBrowserFactory {
         if (idleScheduler != null) {
             idleScheduler.shutdownNow();
         }
+        browserStartMs = 0;
         userAgentUtil = null;
     }
 
@@ -419,9 +443,83 @@ public class PlaywrightBrowserFactory {
         private String threadName;
         @JmxAttribute(desc = "上次使用时间")
         private String lastTime;
+        @JmxAttribute(desc = "浏览器UA")
+        private String userAgent;
+        @JmxAttribute(desc = "是否设置了Cookie")
+        private boolean cookieConfigured;
 
         public void setLastTime(long lastTimestamp) {
             this.lastTime = TimeUtil.toTime(lastTimestamp);
         }
+    }
+
+    /**
+     * 浏览器组件运行快照：供面板「浏览器组件」界面展示。
+     * 只读当前状态，不会触发浏览器启动（没启动时 running=false、路径为空）。
+     */
+    public static Map<String, Object> statusSnapshot(boolean isDesensitize) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        boolean running = isRunning();
+        data.put("running", running);
+        data.put("headless", headless);
+        data.put("cacheVersion", cacheVersion);
+        data.put("totalRequests", count.get());
+        List<Counter> counters = collectCounters();
+        data.put("cacheSize", counters.size());
+        data.put("contexts", counters);
+        data.put("browserStartTime", browserStartMs > 0 ? TimeUtil.toTime(browserStartMs) : null);
+        data.put("browserUptimeSec",
+                browserStartMs > 0 ? Math.max(0, (System.currentTimeMillis() - browserStartMs) / 1000) : 0);
+        data.put("idleCloseRemainSec",
+                idleCloseAtMs > 0 ? Math.max(0, (idleCloseAtMs - System.currentTimeMillis()) / 1000) : 0);
+        data.put("idleCloseDelaySec", BROWSER_IDLE_DELAY_MS / 1000);
+        data.put("playwrightVersion", isDesensitize ? "***" : playwrightVersion());
+        data.put("chromiumPath", isDesensitize ? "***" : chromiumExecutablePath());
+        return data;
+    }
+
+    private static volatile String playwrightVersionCache = null;
+
+    private static String playwrightVersion() {
+        if (playwrightVersionCache != null) {
+            return playwrightVersionCache;
+        }
+        try {
+            Package pkg = Playwright.class.getPackage();
+            String version = pkg == null ? null : pkg.getImplementationVersion();
+            playwrightVersionCache = version == null ? "未知" : version;
+        } catch (Throwable e) {
+            playwrightVersionCache = "未知";
+        }
+        return playwrightVersionCache;
+    }
+
+    private static volatile String chromiumPathCache = null;
+
+    private static String chromiumExecutablePath() {
+        if (chromiumPathCache != null) {
+            return chromiumPathCache;
+        }
+        try {
+            Playwright pw = playwright;
+            if (pw == null) {
+                return null;
+            }
+            chromiumPathCache = pw.chromium().executablePath();
+        } catch (Throwable e) {
+            log.debug("读取Chromium路径失败：{}", ThrowableUtil.getAllCauseMessage(e));
+            return null;
+        }
+        return chromiumPathCache;
+    }
+
+    /**
+     * 重启浏览器：销毁 Playwright/Chromium 后立即按当前 headless 配置重新启动
+     */
+    @JmxOperation(desc = "重启浏览器（关闭后立即重新启动）")
+    public static synchronized void restart() {
+        destroy();
+        init();
+        log.info("浏览器已重启，headless={}", headless);
     }
 }

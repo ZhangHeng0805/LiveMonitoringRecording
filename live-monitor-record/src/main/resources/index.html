@@ -1286,6 +1286,112 @@
             }
         }
 
+        /* ---------- 底部组件工具栏（低调一行，弱化存在感；后续新增组件入口都放这里） ---------- */
+        .lml-component-bar {
+            margin-top: .9rem;
+            padding: 0;
+            background: transparent;
+            border: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: .4rem;
+            flex-wrap: wrap;
+            font-size: .7rem;
+        }
+
+        .lml-component-bar-label {
+            display: inline-flex;
+            align-items: center;
+            gap: .3rem;
+            font-size: .68rem;
+            color: #b9bfcb;
+            white-space: nowrap;
+        }
+
+        .lml-component-bar-label i {
+            font-size: .7rem;
+            color: #c3c9d4;
+        }
+
+        .lml-component-bar-actions {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: .25rem;
+            flex: 0 0 auto;
+        }
+
+        .lml-component-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: .35rem;
+            height: 1.65rem;
+            padding: 0 .4rem;
+            border: 1px solid transparent;
+            border-radius: .35rem;
+            background: transparent;
+            color: #a8afbc;
+            font-family: inherit;
+            font-size: .68rem;
+            cursor: pointer;
+            transition: color .15s, background .15s;
+        }
+
+        .lml-component-btn i {
+            font-size: .72rem;
+            color: #b9bfcb;
+            transition: color .15s;
+        }
+
+        .lml-component-btn:hover {
+            color: var(--lml-primary);
+            background: transparent;
+        }
+
+        .lml-component-btn:hover i {
+            color: var(--lml-primary);
+        }
+
+        /* 状态徽标：默认只有一个淡色圆点，文字低对比，鼠标移上去才稍微亮一点 */
+        .lml-component-badge {
+            position: relative;
+            padding-left: .7rem;
+            font-size: .64rem;
+            line-height: 1;
+            color: #b9bfcb;
+            background: transparent;
+            white-space: nowrap;
+        }
+
+        .lml-component-badge::before {
+            content: "";
+            position: absolute;
+            left: .1rem;
+            top: 50%;
+            width: .28rem;
+            height: .28rem;
+            margin-top: -.14rem;
+            border-radius: 50%;
+            background: #cfd4de;
+        }
+
+        .lml-component-badge.is-ok {
+            color: #9fb3a4;
+        }
+
+        .lml-component-badge.is-ok::before {
+            background: rgba(22, 163, 74, .55);
+        }
+
+        .lml-component-badge.is-off {
+            color: #b9bfcb;
+        }
+
+        .lml-component-badge.is-off::before {
+            background: #cfd4de;
+        }
+
         /* ---------- 页脚 ---------- */
         .lml-footer {
             margin-top: 1.4rem;
@@ -1500,14 +1606,18 @@
     </style>
 
     <script src="js/mainURL.js"></script>
-    <script src="js/util.js"></script>
-    <script src="js/index.js"></script>
-    <script src="js/RoomAction.js"></script>
+    <script src="js/ui.js?v=3.7.5"></script>
+    <script src="js/util.js?v=3.7.5"></script>
+    <script src="js/index.js?v=3.7.5"></script>
+    <script src="js/RoomAction.js?v=3.7.5"></script>
     <script src="js/DouYinModel.js"></script>
     <script src="js/BiliBiliModel.js"></script>
     <script src="js/FileResourceSelect.js"></script>
     <script src="js/client-info.js"></script>
-    <script src="js/RoomRecycle.js"></script>
+    <script src="js/RoomRecycle.js?v=3.7.5"></script>
+    <!-- 带版本参数，避免浏览器缓存旧脚本导致组件面板/徽标不更新 -->
+    <script src="js/BrowserPanel.js?v=3.7.6"></script>
+    <script src="js/CpolarPanel.js?v=3.7.6"></script>
 </head>
 
 <body class="lml-body">
@@ -1618,6 +1728,29 @@
         </section>
     </main>
 
+    <!-- 底部组件工具栏：组件入口统一放这里，后续新增组件直接往里加按钮即可 -->
+    <div class="lml-component-bar">
+        <span class="lml-component-bar-label">
+            <i class="fa fa-cubes"></i>组件
+        </span>
+        <div class="lml-component-bar-actions">
+            <button type="button" class="lml-component-btn" id="browser-panel-btn"
+                    title="查看 Playwright/Chromium 运行状态，支持重启、关闭与切换无头模式"
+                    onclick="browserPanel()">
+                <i class="fa fa-cube"></i>
+                <span>Playwright 浏览器</span>
+                <span class="lml-component-badge" id="browser-component-badge">读取中…</span>
+            </button>
+            <button type="button" class="lml-component-btn" id="cpolar-panel-btn"
+                    title="查看 cpolar 内网穿透状态、公网地址与 Git 同步情况，支持启动/停止"
+                    onclick="cpolarPanel()">
+                <i class="fa fa-globe"></i>
+                <span>内网穿透</span>
+                <span class="lml-component-badge" id="cpolar-component-badge">读取中…</span>
+            </button>
+        </div>
+    </div>
+
     <!-- 页脚 -->
     <footer class="lml-footer">
         <p>
@@ -1697,8 +1830,14 @@
     });
 
     // 退出整个程序：二次确认 → 输入操作秘钥 → 调 action/exit（秘钥错误由接口拒绝并提示）
-    function handleExitProgram() {
-        if (!confirm("退出后所有直播监听都会停止，且网页服务一并关闭。确定要退出整个程序吗？")) {
+    async function handleExitProgram() {
+        const ok = await confirmDialog("退出后所有直播监听都会停止，且网页服务一并关闭。确定要退出整个程序吗？", {
+            title: "退出整个程序",
+            tone: "danger",
+            danger: true,
+            okText: "退出程序"
+        });
+        if (!ok) {
             return;
         }
         showActionBeforeModal("退出整个程序（所有监听停止、网页服务关闭）", function (key) {
@@ -2078,13 +2217,112 @@
         // 设置内容（支持HTML）
         modalBody.innerHTML = content;
 
-        // 添加按钮
+        // 添加按钮（返回创建好的按钮元素，调用方可以按状态显示/隐藏）
+        const createdButtons = [];
         buttons.forEach((btn) => {
-            addModalButton(btn.text, btn.className, btn.onClick);
+            createdButtons.push(addModalButton(btn.text, btn.className, btn.onClick));
         });
 
         openModal();
+        return createdButtons;
     }
+</script>
+<script>
+    // 底部组件栏的状态徽标：内联实现，不依赖各组件自己的脚本，
+    // 避免旧脚本被浏览器缓存时徽标永远停在“读取中…”。查询超时 5 秒即回落为“未知”。
+    (function () {
+        function setComponentBadge(id, text, cls) {
+            var badge = document.getElementById(id);
+            if (!badge) return;
+            badge.textContent = text;
+            badge.className = "lml-component-badge" + (cls ? " " + cls : "");
+        }
+
+        async function queryComponent(path) {
+            var controller = new AbortController();
+            var timer = setTimeout(function () {
+                controller.abort();
+            }, 5000);
+            try {
+                var token = null;
+                try {
+                    token = (typeof isTokenValid === "function" && isTokenValid(TOKEN_KIND.NORMAL))
+                        ? readToken(TOKEN_KIND.NORMAL).token : null;
+                    if (!token && typeof ensurePublicToken === "function") {
+                        token = await ensurePublicToken(false);
+                    }
+                } catch (e) {
+                    token = null;
+                }
+                var base = (typeof MainUrl !== "undefined" && MainUrl) ? MainUrl : (window.MainUrl || "");
+                var res = await fetch(base + path, {
+                    headers: token ? {Authorization: "Bearer " + token} : {},
+                    signal: controller.signal
+                });
+                if (!res.ok) throw new Error("HTTP " + res.status);
+                var msg = await res.json();
+                return (msg && msg.data) || {};
+            } finally {
+                clearTimeout(timer);
+            }
+        }
+
+        async function refreshComponentBadge(id, path, decide) {
+            if (!document.getElementById(id)) return;
+            setComponentBadge(id, "读取中…", "");
+            try {
+                var result = decide(await queryComponent(path));
+                setComponentBadge(id, result[0], result[1]);
+            } catch (e) {
+                setComponentBadge(id, "未知", "");
+            }
+        }
+
+        // 各组件只要提供「接口路径 + 数据到徽标的映射」即可，新增组件时在这里加一行
+        var components = [
+            {
+                id: "browser-component-badge",
+                path: "info/browser",
+                decide: function (d) {
+                    return d.running ? ["运行中", "is-ok"] : ["已关闭", "is-off"];
+                }
+            },
+            {
+                id: "cpolar-component-badge",
+                path: "info/cpolar",
+                decide: function (d) {
+                    if (!d.configured) return ["未配置", "is-off"];
+                    return d.running ? ["运行中", "is-ok"] : ["已关闭", "is-off"];
+                }
+            }
+        ];
+
+        function refreshAll(onlyId) {
+            components.forEach(function (c) {
+                if (!onlyId || onlyId === c.id) {
+                    refreshComponentBadge(c.id, c.path, c.decide);
+                }
+            });
+        }
+
+        window.refreshBrowserComponentBadge = function () {
+            refreshAll("browser-component-badge");
+        };
+        window.refreshCpolarComponentBadge = function () {
+            refreshAll("cpolar-component-badge");
+        };
+
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", function () {
+                refreshAll();
+            });
+        } else {
+            refreshAll();
+        }
+        setInterval(function () {
+            refreshAll();
+        }, 30000);
+    })();
 </script>
 </body>
 

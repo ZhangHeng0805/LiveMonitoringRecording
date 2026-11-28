@@ -48,6 +48,14 @@ public abstract class RoomService<T extends Room> {
     public abstract void startSubtitle();
 
     /**
+     * 手动开启直播弹幕：不改房间设置，仅本次直播内生效。
+     * 默认等同于 startSubtitle，支持的平台可覆写为忽略配置开关的强制开启。
+     */
+    public void forceStartSubtitle() {
+        startSubtitle();
+    }
+
+    /**
      * 停止直播弹幕功能
      */
     public abstract void stopSubtitle();

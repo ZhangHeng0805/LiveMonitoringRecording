@@ -78,10 +78,15 @@ function createLivingRoomElement(item, index) {
     const room = item.room || {};
     const recorder = item.recorder || {};
     const key = escapeHtml(item.key);
+    // 弹幕录制：仅抖音支持，标识取运行时真实状态（弹幕连接是否在跑）
+    const subtitleSupported = item.subtitleSupported !== undefined ? !!item.subtitleSupported : room.platform === "DouYin";
+    const subtitleOn = subtitleSupported && !!item.isOpenSubtitle;
 
     // 创建元素
     const div = document.createElement("div");
     const isRecord = !!recorder.isRecord;
+    // 已提交创建、尚未进入运行状态的启动空窗期
+    const recordPending = !isRecord && (!!recorder.pending || !!item.recordPending);
     div.className = "lml-card is-live" + (isRecord ? " is-recording" : "");
     div.dataset.key = item.key;
     div.dataset.search = buildSearchText(item);
@@ -131,11 +136,14 @@ function createLivingRoomElement(item, index) {
                         <div class="lml-record ${isRecord ? "is-recording" : ""}">
                             <div class="lml-record-head">
                                 <span class="lml-record-name">
-                                    <i class="fa fa-film"></i>录制状态: ${isRecord ? escapeHtml(recorder.definition || "-") : "未开启录制"}
+                                    <i class="fa fa-film"></i>录制状态: ${isRecord ? escapeHtml(recorder.definition || "-") : (recordPending ? "启动中" : "未开启录制")}
                                 </span>
                                 <span class="lml-badge ${isRecord ? "is-recording" : "is-offline"}">
-                                    <i class="fa fa-circle"></i>${isRecord ? "正在录制" : "未录制"}
+                                    <i class="fa fa-circle"></i>${isRecord ? "正在录制" : (recordPending ? "录制启动中" : "未录制")}
                                 </span>
+                                ${subtitleSupported ? `<span class="lml-badge ${subtitleOn ? "is-recording" : "is-offline"}">
+                                    <i class="fa fa-commenting"></i>弹幕${subtitleOn ? "已开启" : "未开启"}
+                                </span>` : ""}
                             </div>
                             ${isRecord ? `<div class="lml-record-grid">
                                 ${infoItem("fa-clock-o", `<span class="record-time">${escapeHtml(recordField(recorder.msg, 0))}</span>`)}
@@ -159,10 +167,16 @@ function createLivingRoomElement(item, index) {
                                 <i class="fa fa-folder is-folder"></i><span>直播记录</span>
                             </button>
                             <span class="lml-actions-spacer"></span>
+                            ${subtitleSupported ? `<button type="button" data-act="subtitle" data-key="${key}" data-flag="${!subtitleOn}"
+                                    class="lml-act ${subtitleOn ? "is-off" : "is-on"}" title="弹幕录制${subtitleOn ? "进行中，点击停止" : "未开启，点击开始"}">
+                                <i class="fa ${subtitleOn ? "fa-comment-o" : "fa-commenting"}"></i>
+                                <span>${subtitleOn ? "停止弹幕" : "开启弹幕"}</span>
+                            </button>` : ""}
                             <button type="button" data-act="record" data-key="${key}" data-flag="${!isRecord}"
-                                    class="lml-act ${isRecord ? "is-off" : "is-on"}">
-                                <i class="fa ${isRecord ? "fa-stop" : "fa-video-camera"}"></i>
-                                <span>${isRecord ? "停止录制" : "开始录制"}</span>
+                                    class="lml-act ${isRecord ? "is-off" : "is-on"}" ${recordPending ? "disabled" : ""}
+                                    title="${recordPending ? "录制正在启动，请稍候" : (isRecord ? "停止当前录制" : "开始录制当前直播")}">
+                                <i class="fa ${isRecord ? "fa-stop" : (recordPending ? "fa-spinner fa-pulse" : "fa-video-camera")}"></i>
+                                <span>${isRecord ? "停止录制" : (recordPending ? "录制启动中" : "开始录制")}</span>
                             </button>
                             <div class="lml-more">
                                 <button type="button" class="lml-act lml-more-toggle" data-more-toggle="1" title="更多操作">
@@ -338,6 +352,9 @@ function initRoomCardActions() {
                 break;
             case "record":
                 actionRecord(key, btn.dataset.flag === "true");
+                break;
+            case "subtitle":
+                actionSubtitle(key, btn.dataset.flag === "true");
                 break;
             case "del":
                 delRoom(key);

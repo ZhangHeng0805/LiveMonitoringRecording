@@ -683,7 +683,8 @@
     </style>
     <script src="js/mainURL.js"></script>
     <script src="js/client-info.js"></script>
-    <script src="js/util.js"></script>
+    <script src="js/ui.js"></script>
+<script src="js/util.js"></script>
 </head>
 <body>
 <div class="dyx-wrap">
@@ -1134,7 +1135,7 @@
     // 下载选中图片
     downloadImgBtn.addEventListener('click', () => {
         if (!selectedImgSrc) {
-            alert('请先选择一张图片');
+            UI.alert('请先选择一张图片', {title:'提示', tone:'warn'});
             return;
         }
         downloadFile(selectedImgSrc);
@@ -1143,7 +1144,7 @@
     // 下载选中视频
     downloadVideoBtn.addEventListener('click', () => {
         if (!selectedVideoSrc) {
-            alert('请先选择一个视频');
+            UI.alert('请先选择一个视频', {title:'提示', tone:'warn'});
             return;
         }
         let fileName = null;
@@ -1326,7 +1327,7 @@
         if (fileName) {
             link.download = fileName;
             copyToClipboard(fileName);
-            alert("下载文件名已复制到剪贴板");
+            UI.alert("下载文件名已复制到剪贴板", {title:"已复制", tone:"success"});
         }
         document.body.appendChild(link);
         link.click();

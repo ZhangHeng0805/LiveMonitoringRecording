@@ -106,6 +106,11 @@ public class ApiHandler extends AnnotationHandler {
             map.put("status", main.getMonitorMain().getStatus());
             map.put("room-status", main.getMonitorMain().getRoomMonitor().getState());
             Room room = main.getMonitorMain().getRoom();
+            // 弹幕录制：仅抖音支持，取运行时真实状态（弹幕连接是否在跑），供卡片显示标识与启停按钮
+            boolean subtitleSupported = room.getPlatform() != null && "DouYin".equals(room.getPlatform().name());
+            boolean subtitleRunning = subtitleSupported && main.getMonitorMain().getRoomMonitor().getIsOpenSubtitle();
+            map.put("subtitleSupported", subtitleSupported);
+            map.put("isOpenSubtitle", subtitleRunning);
             JSONObject entries = JSONUtil.parseObj(room);
             entries.remove("cookie");
             entries.append("statistics", main.getMonitorMain().statistics(null, room));
@@ -141,8 +146,12 @@ public class ApiHandler extends AnnotationHandler {
                 record.put("definition", recorder.getDefinition());
                 record.put("path", recorder.getSaveFilePath());
                 record.put("isRecord", recorder.isRunning());
+                // 已提交创建、还没进入运行状态
+                record.put("pending", main.getMonitorMain().isRecordPending());
                 map.put("recorder", record);
             }
+            // 首次启动时 recorder 还没创建，用顶层字段补上启动中状态
+            map.put("recordPending", main.getMonitorMain().isRecordPending());
             return map;
         } catch (Exception e) {
             if (!(e instanceof NullPointerException)) {

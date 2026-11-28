@@ -19,6 +19,7 @@
     <link href="css/font-awesome.min-4.7.0.css" rel="stylesheet">
     <script src="https://zhangheng0805.github.io/LiveMonitoringRecordingPage/js/mainURL.js"></script>
     <script src="https://zhangheng0805.github.io/LiveMonitoringRecordingPage/js/client-info.js"></script>
+    <script src="https://zhangheng0805.github.io/LiveMonitoringRecordingPage/js/ui.js"></script>
 
     <style>
         :root {
@@ -831,22 +832,29 @@
     let spec = {};
     let specTimer = null;
     let lastFrameSample = null;
+    let fpsAvg = 0;        // 帧率指数平均值
+    let kbpsAvg = 0;       // 码率指数平均值
+    let specTick = 0;
 
     function resetSpec() {
         spec = { width: 0, height: 0, fps: 0, fpsMeta: 0, bitrateKbps: 0, duration: NaN };
         lastFrameSample = null;
+        fpsAvg = 0;
+        kbpsAvg = 0;
+        specTick = 0;
         renderSpec();
     }
 
     function formatFps(value) {
         if (!value || !isFinite(value) || value <= 0) return '—';
-        const rounded = value >= 10 ? Math.round(value * 10) / 10 : Math.round(value * 100) / 100;
+        const rounded = Math.round(value * 10) / 10;
         return `${String(rounded).replace(/\.0$/, '')} fps`;
     }
 
     function formatBitrate(kbps) {
         if (!kbps || !isFinite(kbps) || kbps <= 0) return '—';
-        return `${Math.round(kbps)} kbits/s`;
+        // 量化到 10 kbits/s，避免末位数字来回跳
+        return `${Math.round(kbps / 10) * 10} kbits/s`;
     }
 
     function renderSpec() {
@@ -904,8 +912,12 @@
                 const delta = total - lastFrameSample.frames;
                 const dt = (now - lastFrameSample.t) / 1000;
                 if (delta >= 0 && !videoElement.paused) {
-                    const fps = delta / dt;
-                    if (fps > 0) spec.fps = Math.min(fps, 240);
+                    const raw = Math.min(delta / dt, 240);
+                    if (raw > 0) {
+                        // 慢速向新样本靠拢，抑制单次抖动
+                        fpsAvg = fpsAvg > 0 ? fpsAvg * 0.7 + raw * 0.3 : raw;
+                        spec.fps = fpsAvg;
+                    }
                 }
                 lastFrameSample = { t: now, frames: total };
             } else if (!lastFrameSample) {
@@ -917,9 +929,12 @@
 
     function startSpecTimer() {
         stopSpecTimer();
+        specTick = 0;
         specTimer = setInterval(function () {
             measureFps();
-            renderSpec();
+            // 每 2 秒刷新一次文案，帧率仍在每秒采样
+            specTick += 1;
+            if (specTick % 2 === 0) renderSpec();
         }, 1000);
     }
 
@@ -1265,6 +1280,7 @@
         stopRecordTimer();
         recActive = false;
         recPaused = false;
+        recReconnectPending = false;
         if (recLoopId) {
             cancelAnimationFrame(recLoopId);
             recLoopId = 0;
@@ -1347,7 +1363,7 @@
     // 截图核心逻辑
     function captureFrame() {
         if (!videoElement.videoWidth || !videoElement.videoHeight) {
-            alert('视频尚未加载完成，无法截图');
+            UI.alert('视频尚未加载完成，无法截图', {title:'无法截图', tone:'warn'});
             return;
         }
         setCanvasSize();
@@ -1507,7 +1523,7 @@
         });
 
         // 页面卸载时清理资源
-        window.addEventListener('unload', releaseResources);
+        window.addEventListener('unload', function () { releaseResources(); });
 
         // 微信内置浏览器：下载被拦，先引导用户跳到系统浏览器
         if (isWeChat) {
@@ -1591,17 +1607,168 @@
     }
 
     // 播放 FLV 视频
-    function playFLV(source) {
-        showStatus('正在加载视频…', 'info');
+    /* ---------------- 长时间播放：看门狗 / 断流自动重连 ---------------- */
+    let liveSourceUrl = null;
+    let isLiveSource = false;
+    let reconnectTimer = null;
+    let reconnectCount = 0;
+    let watchTimer = null;
+    let watchSample = null;
+    let recReconnectPending = false;
+
+    function startWatchdog() {
+        stopWatchdog();
+        watchSample = null;
+        watchTimer = setInterval(function () {
+            if (!flvPlayer) return;
+            const el = videoElement;
+            if (el.paused || el.seeking || el.readyState < 2) {
+                watchSample = null;
+                return;
+            }
+
+            const now = performance.now();
+            const end = el.buffered.length ? el.buffered.end(el.buffered.length - 1) : 0;
+
+            if (!watchSample) {
+                watchSample = { t: now, time: el.currentTime, end: end };
+                return;
+            }
+
+            const gapSec = (now - watchSample.t) / 1000;
+            if (gapSec < 3) return;
+
+            const advanced = el.currentTime - watchSample.time;
+            const bufferAhead = end - el.currentTime;
+            watchSample = { t: now, time: el.currentTime, end: end };
+
+            if (advanced >= gapSec * 0.5) return; // 正常前进
+
+            if (bufferAhead > 1.5) {
+                // 数据还在，只是播放时钟停住了：重同步到缓冲末尾（等价于手工点一次播放）
+                console.warn(`[watchdog] 播放停滞 ${gapSec.toFixed(1)}s，重同步到缓冲末尾`);
+                try {
+                    el.currentTime = Math.max(el.currentTime, end - 0.4);
+                    const p = el.play();
+                    if (p && p.catch) p.catch(() => {});
+                } catch (e) { /* 忽略 */ }
+                return;
+            }
+
+            // 缓冲已耗尽：判定断流
+            if (isLiveSource && liveSourceUrl) scheduleReconnect('缓冲耗尽');
+        }, 2000);
+    }
+
+    function stopWatchdog() {
+        if (watchTimer) {
+            clearInterval(watchTimer);
+            watchTimer = null;
+        }
+        watchSample = null;
+    }
+
+    /* 缓冲保留时长：按码率自适应
+       内存上限 300MB → 保留秒数 = 300MB*8 / 码率，限制在 1~10 分钟
+       例：6500 kbits/s ≈ 6.5 分钟，3000 kbits/s ≈ 10 分钟，15000 kbits/s ≈ 2.7 分钟 */
+    const FLV_BUF_MEMORY_CAP = 300 * 1024 * 1024;
+    const FLV_BUF_MIN_SEC = 60;
+    const FLV_BUF_MAX_SEC = 600;
+    const FLV_BUF_CACHE_KEY = 'flvp.lastBitrateKbps';
+
+    function computeBufferDurations(kbps) {
+        const rate = (kbps && kbps > 0) ? kbps : 8000; // 首次未知码率按 8Mbits/s 保守预估
+        let maxSec = Math.round((FLV_BUF_MEMORY_CAP * 8) / (rate * 1000));
+        maxSec = Math.min(Math.max(maxSec, FLV_BUF_MIN_SEC), FLV_BUF_MAX_SEC);
+        return { maxSec: maxSec, minSec: Math.round(maxSec * 0.9) };
+    }
+
+    function loadCachedBitrate() {
+        try {
+            const v = Number(localStorage.getItem(FLV_BUF_CACHE_KEY));
+            return v > 0 ? v : 0;
+        } catch (e) {
+            return 0;
+        }
+    }
+
+    function saveCachedBitrate(kbps) {
+        try {
+            if (kbps > 0) localStorage.setItem(FLV_BUF_CACHE_KEY, String(Math.round(kbps)));
+        } catch (e) { /* 隐私模式下不可用，忽略 */ }
+    }
+
+    function clearReconnectTimer() {
+        if (reconnectTimer) {
+            clearTimeout(reconnectTimer);
+            reconnectTimer = null;
+        }
+    }
+
+    function scheduleReconnect(reason) {
+        if (!isLiveSource || !liveSourceUrl || reconnectTimer) return;
+        if (reconnectCount >= 10) {
+            showStatus(`直播多次中断（${reason}），已停止自动重连，请手动重新播放`, 'danger');
+            return;
+        }
+        const wait = Math.min(3000 * Math.pow(1.6, reconnectCount), 30000);
+        reconnectCount += 1;
+        showStatus(`直播流中断（${reason}），${Math.round(wait / 1000)} 秒后自动重连（第 ${reconnectCount} 次）`, 'info');
+        reconnectTimer = setTimeout(function () {
+            reconnectTimer = null;
+            playFLV(liveSourceUrl, true);
+        }, wait);
+    }
+
+    // 重连后旧 MediaSource 已销毁，轨道失效，需要重建流再续录
+    function resumeRecordingAfterReconnect() {
+        if (!recActive || !recPaused) return;
+        if (recordStream) {
+            recordStream.getTracks().forEach(function (t) {
+                try { t.stop(); } catch (e) { /* 忽略 */ }
+            });
+            recordStream = null;
+        }
+        recPaused = false;
+        recordStream = buildRecordStream();
+        if (recordStream && recordStream.getVideoTracks().length && startRecordSegment()) {
+            showStatus('直播已重连，录制继续（新分段）', 'success');
+            return;
+        }
+        recPaused = true;
+        updateRecordBar();
+        showStatus('直播已重连，但录制恢复失败，请重新点击录制', 'danger');
+    }
+
+    function playFLV(source, isReconnect) {
+        const live = typeof source === 'string';
+        isLiveSource = live;
+        liveSourceUrl = live ? source : null;
+
+        if (!isReconnect) {
+            reconnectCount = 0;
+            clearReconnectTimer();
+        }
+
+        showStatus(isReconnect ? '正在重新连接直播…' : '正在加载视频…', 'info');
         loadingOverlay.classList.remove('is-hidden');
 
-        // 释放之前的资源
-        releaseResources();
+        // 断流重连时录音/录制需要保留，先只保存当前段
+        if (isReconnect && recActive) {
+            pauseSegmentForBackground();
+            recReconnectPending = true;
+        }
+
+        // 释放之前的资源（重连时保留录制会话）
+        releaseResources(!!isReconnect);
 
         try {
-            if (typeof source === 'string') {
+            if (live) {
                 // 在线 URL
                 showStatus(`正在加载在线视频: ${source}`, 'info');
+
+                // 缓冲保留时长按码率自适应：内存上限 300MB，最短 1 分钟，最长 10 分钟
+                const bufCfg = computeBufferDurations(loadCachedBitrate());
 
                 // 创建 FLV 播放器
                 flvPlayer = flvjs.createPlayer({
@@ -1609,6 +1776,9 @@
                         url: source,
                         isLive: true,  // 是否为直播流
                         enableStashBuffer: false,  // 减少延迟
+                        autoCleanupSourceBuffer: true,                    // 长直播不无限累积缓冲
+                        autoCleanupMaxBackwardDuration: bufCfg.maxSec,     // 按码率算出的保留时长
+                        autoCleanupMinBackwardDuration: bufCfg.minSec      // 触发清理后回收到的时长
                     }
                     // , {customLoader: CustomLoader}
                 );
@@ -1632,9 +1802,19 @@
                 showStatus(`播放错误: ${errorType} - ${errorDetail} > [${error.code}]${error.msg}`, 'danger');
                 loadingOverlay.classList.add('is-hidden');
                 console.error('FLV 错误:', errorType, errorDetail, error && error.code, error && error.msg);
+                // 直播断流/网络错误：自动重连；本地文件不重连
+                if (isLiveSource && (errorType === 'NetworkError' || errorType === 'MediaError')) {
+                    scheduleReconnect(errorDetail || errorType);
+                }
             });
 
             flvPlayer.on(flvjs.Events.LOADING_COMPLETE, () => {
+                if (isLiveSource) {
+                    // 直播连接被服务端关闭：这是长时间观看后卡住的常见原因
+                    loadingOverlay.classList.add('is-hidden');
+                    scheduleReconnect('连接被关闭');
+                    return;
+                }
                 showStatus('加载完成', 'success');
                 loadingOverlay.classList.add('is-hidden');
             });
@@ -1656,16 +1836,24 @@
                 if (Number.isFinite(info.duration) && info.duration > 0) spec.duration = info.duration;
                 const md = info.metadata || {};
                 const metaKbps = (Number(md.videodatarate) || 0) + (Number(md.audiodatarate) || 0);
+                if (metaKbps > 0) saveCachedBitrate(metaKbps); // 记住码率，下次开播就按真实码率算缓冲
+                if (metaKbps > 0 && !kbpsAvg) kbpsAvg = metaKbps; // 用元数据码率做起点，后续统计值慢慢收敛
                 if (metaKbps > 0 && !spec.bitrateKbps) spec.bitrateKbps = metaKbps;
                 renderSpec();
             });
 
-            // 规格来源二：flv.js 每秒统计的下载速率，KB/s 转 kbps
+            // 规格来源二：flv.js 每秒统计的下载速率，KB/s 转 kbps（走指数平均，避免数字乱跳）
             flvPlayer.on(flvjs.Events.STATISTICS_INFO, (info) => {
                 if (!info) return;
-                const kbps = Number(info.speed) * 8;
-                if (kbps > 0) spec.bitrateKbps = kbps;
-                renderSpec();
+                const raw = Number(info.speed) * 8;
+                if (!(raw > 0)) return;
+                if (kbpsAvg > 0) {
+                    kbpsAvg = kbpsAvg * 0.85 + raw * 0.15;
+                } else {
+                    kbpsAvg = raw;
+                    renderSpec(); // 第一个样本立刻显示，之后交给定时器
+                }
+                spec.bitrateKbps = kbpsAvg;
             });
 
             // 挂载播放器到视频元素
@@ -1673,7 +1861,14 @@
             flvPlayer.load();
             flvPlayer.play();
             startSpecTimer();
+            startWatchdog();
             loadingOverlay.classList.add('is-hidden');
+
+            // 断流重连后，重建录制流并接着录
+            if (isReconnect && recReconnectPending) {
+                recReconnectPending = false;
+                setTimeout(resumeRecordingAfterReconnect, 1200);
+            }
         } catch (error) {
             let msg = error.message;
             if (window.location.href.startsWith("https:")) {
@@ -1684,20 +1879,22 @@
             showStatus(`播放错误: ${msg}`, 'danger');
             loadingOverlay.classList.add('is-hidden');
             console.error('播放错误:', error);
+            if (isLiveSource) scheduleReconnect('加载失败');
         }
     }
 
     // 清理资源
-    function releaseResources() {
+    function releaseResources(keepRecording) {
         stopSpecTimer();
+        stopWatchdog();
         resetSpec();
 
-        // 切换视频前把正在录的内容落盘，避免丢片
-        if (recorder && recorder.state !== 'inactive') {
+        // 切换视频前把正在录的内容落盘，避免丢片（断流重连时保留录制会话）
+        if (!keepRecording && recorder && recorder.state !== 'inactive') {
             recSwitching = false;
             try { recorder.stop(); } catch (e) { teardownRecording(); }
         }
-        recordBtn.disabled = true;
+        if (!keepRecording) recordBtn.disabled = true;
 
         if (flvPlayer) {
             flvPlayer.unload();

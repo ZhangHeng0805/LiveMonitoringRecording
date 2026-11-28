@@ -15,6 +15,8 @@ import org.slf4j.LoggerFactory;
 import javax.management.ObjectName;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -30,10 +32,59 @@ public class CpolarToolStarter extends Starter {
     // ========== MBean 注册 ==========
     private ObjectName mbeanObjectName;
     private final CpolarStarter cpolarStarter;
+    /** 面板「组件栏」用：HTTP 线程拿不到启动器实例，这里留一个静态引用 */
+    private static volatile CpolarToolStarter INSTANCE;
 
     public CpolarToolStarter() {
+        INSTANCE = this;
         registerMBean();
         cpolarStarter = new CpolarStarter();
+    }
+
+    public static CpolarToolStarter getInstance() {
+        return INSTANCE;
+    }
+
+    /**
+     * 组件栏用的只读快照：不抛异常、不含敏感信息（只给路径，不给秘钥之类）
+     *
+     * @param isDesensitize true 时把本地路径类信息打码（未通过操作秘钥验证的请求）
+     */
+    public static Map<String, Object> statusSnapshot(boolean isDesensitize) {
+        Map<String, Object> snapshot = new LinkedHashMap<>();
+        boolean configured = Files.exists(Paths.get("cpolar.setting"));
+        snapshot.put("configured", configured);
+        snapshot.put("exeExists", false);
+        CpolarToolStarter instance = INSTANCE;
+        if (instance == null) {
+            snapshot.put("running", false);
+            snapshot.put("publicUrl", null);
+            snapshot.put("localCommand", null);
+            snapshot.put("startTime", null);
+            snapshot.put("updateGitTime", null);
+            snapshot.put("updateGitSuccess", false);
+            return snapshot;
+        }
+        snapshot.put("running", instance.getIsRunning());
+        snapshot.put("publicUrl", instance.getPublicUrl());
+        snapshot.put("localCommand", instance.getLocalCommand());
+        snapshot.put("startTime", instance.updateTime > 0 ? TimeUtil.toTime(instance.updateTime) : null);
+        snapshot.put("updateGitTime", instance.getUpdateGitTime());
+        snapshot.put("updateGitSuccess", instance.getIsUpdateGit());
+        try {
+            CpolarSetting setting = ConfigKit.get(CpolarSetting.class);
+            if (setting != null) {
+                String exePath = setting.getExePath();
+                snapshot.put("exePath", isDesensitize ? "***" : exePath);
+                snapshot.put("exeExists", exePath != null && Files.exists(Paths.get(exePath)));
+                snapshot.put("gitRepoDir", isDesensitize ? "***" : setting.getGitRepoDir());
+                snapshot.put("gitFileRelativePath", isDesensitize ? "***" : setting.getGitFileRelativePath());
+            }
+        } catch (Exception e) {
+            // 未配置/配置损坏时只少这几个字段，不影响面板展示
+            instance.log.debug("读取 cpolar.setting 失败：{}", ThrowableUtil.getAllCauseMessage(e));
+        }
+        return snapshot;
     }
 
     @Override

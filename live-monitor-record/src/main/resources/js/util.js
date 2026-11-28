@@ -69,6 +69,21 @@ const TOKEN_KEYS = {
 };
 const API_TOKEN_MIN_LEFT = 5 * 60 * 1000; // 剩余不足 5 分钟即提前续期
 
+/**
+ * 本次页面会话是否亲手验证过操作秘钥。
+ * 只放内存，不放 localStorage：刷新页面/重开面板都要重新验证。
+ * 记住的秘钥令牌只用于请求签名，不再代表“已验证”，否则没输入秘钥也能拿到脱敏字段的真实值。
+ */
+window.lmrSecretVerified = false;
+
+function isSecretVerified() {
+    return window.lmrSecretVerified === true;
+}
+
+function markSecretVerified() {
+    window.lmrSecretVerified = true;
+}
+
 function readToken(kind) {
     const keys = TOKEN_KEYS[kind];
     try {
@@ -172,6 +187,8 @@ function ensureSecretToken(force, presetKey) {
             throw new Error((msg && msg.message) || "操作秘钥错误");
         }
         saveToken(TOKEN_KIND.SECRET, msg.data.token, msg.data.expireSec || 3600);
+        // 秘钥校验通过：本次会话内允许查看脱敏字段的真实值（刷新页面后需重新验证）
+        markSecretVerified();
         return msg.data.token;
     })();
     return secretTokenTask.finally(function () {
@@ -405,9 +422,16 @@ async function authFetch(url, options, authMode) {
         let token = isTokenValid(TOKEN_KIND.SECRET) ? readToken(TOKEN_KIND.SECRET).token : null;
         if (!token) token = await ensureSecretToken(false, presetKey);
         const res = await exec(token);
-        if (!needAuth(res)) return res;
+        if (!needAuth(res)) {
+            // 私密操作已用秘钥令牌成功执行，说明本次会话确实持有有效秘钥：
+            // 允许面板展示真实值，避免用户“验证/操作过后还要再输一次秘钥”
+            markSecretVerified();
+            return res;
+        }
         clearToken(TOKEN_KIND.SECRET);
-        return exec(await ensureSecretToken(true, presetKey));
+        const retry = await exec(await ensureSecretToken(true, presetKey));
+        if (!needAuth(retry)) markSecretVerified();
+        return retry;
     }
 
     // 3) 普通接口：普通令牌即可，普通令牌不够再升级秘钥令牌
@@ -476,9 +500,18 @@ function withApiToken(url) {
 // 首页会由 RoomAction.js 覆盖为统一的「操作验证」弹窗
 if (typeof window.promptActionKey !== "function") {
     window.promptActionKey = function () {
-        return new Promise(function (resolve) {
-            const value = window.prompt("请输入操作秘钥（设备标识 ID）");
-            resolve(value && value.trim() ? value.trim() : null);
+        if (!window.UI) {
+            return Promise.resolve(window.prompt("请输入操作秘钥（设备标识 ID）"))
+                .then(function (value) { return value && value.trim() ? value.trim() : null; });
+        }
+        return UI.prompt("请输入操作秘钥（设备标识 ID）", {
+            title: "操作验证",
+            placeholder: "设备标识 ID",
+            required: true,
+            requiredMessage: "操作秘钥不能为空",
+            strong: true
+        }).then(function (value) {
+            return value ? value.trim() : null;
         });
     };
 }
@@ -495,6 +528,17 @@ function formatDateSafe(value) {
     const date = value instanceof Date ? value : new Date(value);
     if (isNaN(date.getTime())) return "未知";
     return formatDate(date);
+}
+
+//统一提示/确认：优先使用自绘 UI，脚本未加载时退回原生弹窗
+function notifyDialog(message, opts) {
+    if (window.UI) return UI.alert(message, opts);
+    window.alert(message);
+}
+
+function confirmDialog(message, opts) {
+    if (window.UI) return UI.confirm(message, opts);
+    return Promise.resolve(window.confirm(message));
 }
 
 //发起GET请求
@@ -536,7 +580,7 @@ async function getRequest(path, params, timeoutMs, authMode) {
         // 用户在「操作验证」弹窗里点了 ✕/取消：明确告知本次操作没执行，不再发请求
         if (error && error.cancelled) {
             console.warn("[request] 已取消操作秘钥验证，本次请求未发送");
-            alert("已取消操作秘钥验证，本次操作未执行");
+            notifyDialog("已取消操作秘钥验证，本次操作未执行", {title:"操作未执行"});
             throw error;
         }
         let errorMessage = "请求失败";
@@ -551,7 +595,7 @@ async function getRequest(path, params, timeoutMs, authMode) {
             errorMessage = error.message;
         }
         console.error(errorMessage, error);
-        alert("请求失败 - " + errorMessage);
+        notifyDialog("请求失败 - " + errorMessage, {title:"请求失败", tone:"danger"});
         throw timeoutError || error; // 抛出给调用方处理
     } finally {
         // 无论成功失败，都清除定时器，防止内存残留
@@ -607,7 +651,7 @@ async function postRequest(path, params, timeoutMs, authMode) {
         // 用户在「操作验证」弹窗里点了 ✕/取消：明确告知本次操作没执行，不再发请求
         if (error && error.cancelled) {
             console.warn("[request] 已取消操作秘钥验证，本次请求未发送");
-            alert("已取消操作秘钥验证，本次操作未执行");
+            notifyDialog("已取消操作秘钥验证，本次操作未执行", {title:"操作未执行"});
             throw error;
         }
         let errorMessage = "请求失败";
@@ -622,7 +666,7 @@ async function postRequest(path, params, timeoutMs, authMode) {
             errorMessage = error.message;
         }
         console.error(errorMessage, error);
-        alert("请求失败 - " + errorMessage);
+        notifyDialog("请求失败 - " + errorMessage, {title:"请求失败", tone:"danger"});
         throw timeoutError || error; // 抛出给调用方处理
     } finally {
         // 无论成功失败，都清除定时器，防止内存残留

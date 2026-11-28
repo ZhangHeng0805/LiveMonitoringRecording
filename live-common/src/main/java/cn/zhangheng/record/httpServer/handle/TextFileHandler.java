@@ -75,6 +75,10 @@ public class TextFileHandler extends MyHandler {
 //        String clientIP = getClientIP(t);
 //        log.debug("{} 请求[{}]:{}", clientIP, t.getRequestURI().getPath(), t.getRequestHeaders().getFirst("User-Agent"));
         t.getResponseHeaders().set("Content-Type", contextType + "; charset=" + charset.name());
+        // 文本资源（html/js/css）不缓存，避免改版后浏览器仍加载旧脚本导致行为不一致
+        t.getResponseHeaders().set("Cache-Control", "no-cache, no-store, must-revalidate");
+        t.getResponseHeaders().set("Pragma", "no-cache");
+        t.getResponseHeaders().set("Expires", "0");
         try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream(file);
              OutputStream outputStream = t.getResponseBody()) {
             if (inputStream == null) {

@@ -34,9 +34,24 @@ public class DouYinSubtitleService {
 
 
     public void startSubtitle() {
+        startSubtitle(false);
+    }
+
+    /**
+     * 是否正在弹幕录制：把“已创建但还没连上 wss”的启动阶段也算作开启，
+     * 避免自动开启后状态延迟导致按钮误显示为未开启。
+     */
+    public boolean isRunning() {
+        return (webcast != null && webcast.isRunning()) || room.isSubtitleRunning();
+    }
+
+    /**
+     * @param force true 表示手动开启，忽略房间设置里的 openSubtitle 开关（不改配置，仅在本次直播内生效）
+     */
+    public synchronized void startSubtitle(boolean force) {
         if (!room.isLiving()) return;
         if (webcast != null && webcast.isRunning()) return;
-        if (room.getSetting().isOpenSubtitle()) {
+        if (force || room.getSetting().isOpenSubtitle()) {
             if (room.getCounter() == null) {
                 room.setCounter(new DouYinRoomCounter());
             }

@@ -37,6 +37,14 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
         subtitleService.startSubtitle();
     }
 
+    /**
+     * 手动开启弹幕录制：不改房间设置，仅本次直播内生效
+     */
+    @Override
+    public void forceStartSubtitle() {
+        subtitleService.startSubtitle(true);
+    }
+
     @Override
     public void stopSubtitle() {
         subtitleService.stopSubtitle();
@@ -44,6 +52,6 @@ public class DouYinRoomService extends RoomService<DouYinRoom> {
 
     @Override
     public boolean isOpenSubtitle() {
-        return room.isSubtitleRunning();
+        return subtitleService.isRunning();
     }
 }

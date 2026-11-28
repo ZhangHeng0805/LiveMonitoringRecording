@@ -7,6 +7,7 @@ import cn.zhangheng.record.bean.Constant;
 import cn.zhangheng.record.bean.Room;
 import cn.zhangheng.record.bean.Setting;
 import cn.zhangheng.record.bean.enums.MonitorStatus;
+import cn.zhangheng.record.bean.enums.RecordQuality;
 import cn.zhangheng.record.bean.enums.RunMode;
 import cn.zhangheng.record.record.Recorder;
 import cn.zhangheng.record.record.RecorderTask;
@@ -19,7 +20,6 @@ import com.zhangheng.file.FileUtil;
 import com.zhangheng.util.EncryptUtil;
 import com.zhangheng.util.ThrowableUtil;
 import lombok.Getter;
-import lombok.Setter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,6 +77,17 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
     private volatile boolean recordStartPending = false;
     /** 上次录制启动失败时间，失败后短暂退避，避免每秒重试刷日志 */
     private volatile long lastRecordFailMs = 0L;
+    /**
+     * 画质切换确认次数：候选清晰度要连续这么多个监听周期（每轮 delayIntervalSec 后一次 refresh(true)）都一致才真正切换，
+     * 避免抖音实时码率/档位抖动（例如原画、蓝光来回出现）导致录制反复重启、切成多个文件
+     */
+    private static final int QUALITY_SWITCH_CONFIRM_COUNT = 3;
+    /** 当前观察中的候选清晰度 */
+    private volatile String pendingDefinition;
+    /** 候选清晰度已连续确认一致的次数 */
+    private volatile int pendingDefinitionCount = 0;
+    /** 上次启动录制时用户选择的画质档位，用户改档时立即切换、不走复验 */
+    private volatile RecordQuality appliedQuality;
     protected AtomicBoolean isRunning = new AtomicBoolean(true);
     /** 录制开关：默认关闭，由自动录制/面板手动开录显式打开，避免未开自动录制时被回调误触发 */
     protected AtomicBoolean recordFlag = new AtomicBoolean(false);
@@ -451,7 +462,8 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
      * 确保录制器处于「正在录制目标画质」的状态，所有启动入口统一走这里：
      * 1. 未开播 / 已关录制 / 监听已停 → 直接返回；
      * 2. 已有一路录制在跑且清晰度正是设置的那档 → 什么都不做（避免多个回调重复启动）；
-     * 3. 清晰度被改过 → 先停掉旧录制器，再拉起新的；
+     * 3. 清晰度被改过 → 记录候选，并请求下一轮监听周期改用 refresh(true) 强制刷新校验，
+     *    连续 3 个周期一致才切换（用户手动改画质档位时立即切换）；
      * 4. 已有启动任务排队、或刚失败处于退避期 → 本次忽略，避免并发创建多个录制器互相 stop。
      */
     private void ensureRecorder(R room) {
@@ -477,21 +489,74 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
                 return;
             }
             String expected = selected.getKey();
+            RecordQuality quality = room.getRecordQuality();
             Recorder current = recorder;
             // 新录制器还没进入 run()（startTime 为空）时不要再创建一个
             if (current != null && !current.isRunning() && current.getStartTime() == null) {
                 return;
             }
             if (current != null && current.isRunning() && expected.equals(current.getDefinition())) {
+                appliedQuality = quality;
+                resetPendingDefinition();
                 return;
+            }
+            // 用户手动改了录制画质档位：立即生效，不等待复验
+            boolean qualityChangedByUser = appliedQuality != null && appliedQuality != quality;
+            if (current != null && current.isRunning() && !qualityChangedByUser) {
+                // 应录画质变了：只记录候选，本轮不切换；
+                // 通过 requestForceNextRefresh 把下一轮监听周期的常规刷新升级为 refresh(true)，
+                // 不在本轮 onProgress 里追加刷新，避免同一周期刷两次
+                if (!expected.equals(pendingDefinition)) {
+                    pendingDefinition = expected;
+                    pendingDefinitionCount = 0;
+                    roomMonitor.requestForceNextRefresh();
+                    log.info("录制画质候选变更为【{}】，下一轮起每 {} 秒强制刷新校验一次，需连续 {} 次一致",
+                            expected, room.getSetting().getDelayIntervalSec(), QUALITY_SWITCH_CONFIRM_COUNT);
+                    return;
+                }
+                if (!recordFlag.get() || !room.isLiving() || !isRunning.get()) {
+                    return;
+                }
+                // 本轮数据来自上一轮请求的 refresh(true) 强制刷新，直接比对
+                Map.Entry<String, String> reSelected = room.getSelectedStream();
+                if (reSelected == null) {
+                    return;
+                }
+                String reDefinition = reSelected.getKey();
+                if (!reDefinition.equals(pendingDefinition)) {
+                    // 强制刷新后候选又变了：重新计数，继续观察
+                    log.info("画质切换校验中候选由【{}】变为【{}】，重新计数", pendingDefinition, reDefinition);
+                    pendingDefinition = reDefinition;
+                    pendingDefinitionCount = 0;
+                    roomMonitor.requestForceNextRefresh();
+                    return;
+                }
+                pendingDefinitionCount++;
+                if (pendingDefinitionCount < QUALITY_SWITCH_CONFIRM_COUNT) {
+                    log.info("录制画质候选【{}】校验 {}/{} 次一致，继续观察",
+                            pendingDefinition, pendingDefinitionCount, QUALITY_SWITCH_CONFIRM_COUNT);
+                    roomMonitor.requestForceNextRefresh();
+                    return;
+                }
+                log.info("录制画质候选【{}】连续 {} 次校验一致，确认切换",
+                        pendingDefinition, QUALITY_SWITCH_CONFIRM_COUNT);
+                expected = pendingDefinition;
             }
             if (current != null && current.isRunning()) {
                 log.info("录制画质已切换【{} >> {}】，结束当前录制并重新开始", current.getDefinition(), expected);
                 current.stop(false);
             }
+            resetPendingDefinition();
+            appliedQuality = quality;
             recordStartPending = true;
             recorderTask.run(room);
         }
+    }
+
+    /** 清空画质切换候选状态 */
+    private void resetPendingDefinition() {
+        pendingDefinition = null;
+        pendingDefinitionCount = 0;
     }
 
     private void tryRecord(R room) {
@@ -591,6 +656,14 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         return false;
     }
 
+    /**
+     * 录制是否处于“已提交、创建中”的启动阶段。
+     * 用于界面展示启动中状态，避免这段空窗期被当成未录制而重复点击。
+     */
+    public boolean isRecordPending() {
+        return recordStartPending;
+    }
+
     public synchronized boolean startRecord() {
         if (TrialState.isTrialExpired()) {
             log.warn("试用期已结束，拒绝开启录制：{}", room == null ? "-" : room.getId());
@@ -602,7 +675,9 @@ public abstract class MonitorMain<R extends Room, M extends RoomMonitor<R, ?>> {
         if (room.isLiving() && (recorder == null || !recorder.isRunning())) {
             recordFlag.set(true);
             ensureRecorder(room);
-            return true;
+            // 只有真正提交了启动任务（或已在启动中）才算成功；
+            // 无可用直播流、失败退避期内被忽略时返回 false，避免“提示成功但没录”
+            return recordStartPending;
         }
         return false;
     }

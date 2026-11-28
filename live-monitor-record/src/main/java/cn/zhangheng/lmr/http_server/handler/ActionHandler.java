@@ -15,6 +15,7 @@ import cn.zhangheng.record.httpServer.router.RateLimit;
 import cn.zhangheng.record.httpServer.router.RequestContext;
 import cn.zhangheng.record.httpServer.util.JWTUtil;
 import cn.zhangheng.record.service.MonitorMain;
+import cn.zhangheng.record.service.RoomMonitor;
 import cn.zhangheng.record.bean.Room;
 import cn.zhangheng.record.bean.enums.MonitorStatus;
 import cn.zhangheng.record.record.Recorder;
@@ -24,6 +25,7 @@ import cn.zhangheng.lmr.bean.RoomFileModel;
 import cn.zhangheng.lmr.bean.RoomJson;
 import cn.zhangheng.lmr.http_server.util.AuthResolvers;
 import cn.zhangheng.lmr.http_server.util.RateLimitResolvers;
+import cn.zhangheng.lmr.service.CpolarToolStarter;
 import com.sun.net.httpserver.HttpExchange;
 import com.zhangheng.bean.Message;
 import com.zhangheng.util.ThrowableUtil;
@@ -31,6 +33,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
@@ -149,6 +153,20 @@ public class ActionHandler extends AnnotationHandler {
     }
 
     /**
+     * 开始/停止弹幕录制：私密接口，仅抖音支持
+     */
+    @Endpoint(value = "/subtitle", auth = AuthPolicy.PRIVATE)
+    public void subtitle(RequestContext ctx) {
+        Message<Object> msg = ctx.message();
+        Map<String, String> query = ctx.query();
+        if (checkRoomKey(query, msg)) {
+            actionSubtitle(msg, query);
+        } else {
+            msg.setCode(1);
+        }
+    }
+
+    /**
      * 新增监听房间：私密接口
      */
     @Endpoint(value = "/addRoom", auth = AuthPolicy.PRIVATE)
@@ -222,11 +240,118 @@ public class ActionHandler extends AnnotationHandler {
     /**
      * 关闭浏览器实例：私密接口
      */
-    @Endpoint(value = "/closeBrowser", auth = AuthPolicy.PRIVATE)
+    @Endpoint(value = "/closeBrowser", auth = AuthPolicy.PRIVATE, match = Endpoint.Match.EXACT)
     public void closeBrowser(RequestContext ctx) {
         Message<Object> msg = ctx.message();
         PlaywrightBrowserFactory.closeBrowser();
         msg.setMessage("浏览器关闭成功！");
+    }
+
+    /**
+     * 重启浏览器（关闭后按当前无头配置立即重新启动）：私密接口
+     */
+    @Endpoint(value = "/restartBrowser", auth = AuthPolicy.PRIVATE, match = Endpoint.Match.EXACT)
+    public void restartBrowser(RequestContext ctx) {
+        Message<Object> msg = ctx.message();
+        PlaywrightBrowserFactory.restart();
+        msg.setMessage("浏览器已重启，当前模式：" + (PlaywrightBrowserFactory.isHeadless() ? "无头" : "有头") + "！");
+    }
+
+    /**
+     * 切换浏览器无头/有头模式并重启（运行中修改不生效，必须重启才会按新配置启动）：私密接口
+     * 参数：headless=true/false
+     */
+    @Endpoint(value = "/setHeadless", auth = AuthPolicy.PRIVATE, match = Endpoint.Match.EXACT, methods = {"POST"})
+    public void setHeadless(RequestContext ctx) throws IOException {
+        Message<Object> msg = ctx.message();
+        String raw = ctx.query().get("headless");
+        if (StrUtil.isBlank(raw)) {
+            JSONObject body = JSONUtil.parseObj(ctx.body());
+            raw = body.getStr("headless");
+        }
+        if (StrUtil.isBlank(raw)) {
+            msg.setCode(1);
+            msg.setMessage("缺少参数 headless（true/false）");
+            return;
+        }
+        boolean headless = Boolean.parseBoolean(raw.trim());
+        PlaywrightBrowserFactory.setHeadless(headless);
+        PlaywrightBrowserFactory.restart();
+        msg.setMessage("已切换为" + (headless ? "无头" : "有头") + "模式并重启浏览器");
+    }
+
+    /**
+     * 启动内网穿透（cpolar）：私密接口
+     * 后台线程启动，公网地址需要几秒后由 cpolar 输出解析得到
+     */
+    @Endpoint(value = "/cpolarStart", auth = AuthPolicy.PRIVATE, match = Endpoint.Match.EXACT, methods = {"POST"})
+    public void cpolarStart(RequestContext ctx) {
+        Message<Object> msg = ctx.message();
+        CpolarToolStarter starter = CpolarToolStarter.getInstance();
+        if (starter == null) {
+            msg.setCode(1);
+            msg.setMessage("内网穿透组件尚未初始化");
+            return;
+        }
+        if (!Files.exists(Paths.get("cpolar.setting"))) {
+            msg.setCode(1);
+            msg.setMessage("未配置内网穿透（缺少 cpolar.setting），无法启动");
+            return;
+        }
+        try {
+            starter.start();
+            msg.setMessage("已下发启动指令，公网映射地址建立后会显示在组件面板");
+        } catch (Exception e) {
+            msg.setCode(1);
+            msg.setMessage(ThrowableUtil.getAllCauseMessage(e));
+        }
+    }
+
+    /**
+     * 停止内网穿透（cpolar）：私密接口
+     */
+    @Endpoint(value = "/cpolarStop", auth = AuthPolicy.PRIVATE, match = Endpoint.Match.EXACT, methods = {"POST"})
+    public void cpolarStop(RequestContext ctx) {
+        Message<Object> msg = ctx.message();
+        CpolarToolStarter starter = CpolarToolStarter.getInstance();
+        if (starter == null || !starter.getIsRunning()) {
+            msg.setCode(1);
+            msg.setMessage("内网穿透当前未运行");
+            return;
+        }
+        try {
+            starter.stop();
+            msg.setMessage("内网穿透已停止");
+        } catch (Exception e) {
+            msg.setCode(1);
+            msg.setMessage(ThrowableUtil.getAllCauseMessage(e));
+        }
+    }
+
+    /**
+     * 手动把当前公网地址同步到 Git 配置：私密接口（后台队列执行）
+     */
+    @Endpoint(value = "/cpolarUpdateGit", auth = AuthPolicy.PRIVATE, match = Endpoint.Match.EXACT, methods = {"POST"})
+    public void cpolarUpdateGit(RequestContext ctx) {
+        Message<Object> msg = ctx.message();
+        CpolarToolStarter starter = CpolarToolStarter.getInstance();
+        if (starter == null) {
+            msg.setCode(1);
+            msg.setMessage("内网穿透组件尚未初始化");
+            return;
+        }
+        if (!starter.getIsRunning() || StrUtil.isBlank(starter.getPublicUrl())) {
+            msg.setCode(1);
+            msg.setMessage("内网穿透未运行或还没有拿到公网地址，无法同步 Git");
+            return;
+        }
+        try {
+            starter.updateGitURLFile();
+            msg.setMessage("已提交 Git 同步任务，结果会显示在组件面板");
+        } catch (Exception e) {
+            msg.setCode(1);
+            msg.setMessage(ThrowableUtil.getAllCauseMessage(e));
+        }
     }
 
     /**
@@ -330,10 +455,66 @@ public class ActionHandler extends AnnotationHandler {
                     msg.setMessage("试用期已结束，请获取激活码后再开启录制！");
                     return;
                 }
+                if (res) {
+                    Recorder now = monitorMain.getRecorder();
+                    boolean running = now != null && now.isRunning();
+                    // 录制器创建是异步的，已提交但还没 run() 时不要报“成功”
+                    msg.setMessage(running ? "开启录制成功！" : "录制正在启动，稍候生效！");
+                    return;
+                }
             } else {
                 res = monitorMain.stopRecord();
             }
             msg.setMessage(StrUtil.format("{}录制{}！", flag ? "开启" : "停止", res ? "成功" : "失败"));
+        }
+    }
+
+    /**
+     * 弹幕录制启停：仅抖音支持；开关状态同时写回房间文件，
+     * 避免手动关闭后下一次开播又被自动打开。
+     */
+    private void actionSubtitle(Message msg, Map<String, String> query) {
+        String key = query.get("key");
+        boolean flag = Boolean.parseBoolean(query.get("flag"));
+        synchronized (lockOf(key)) {
+            RoomFileModel model = FileModeMain.getModelById(key);
+            if (model == null) {
+                msg.setCode(1);
+                msg.setMessage("标识" + key + "不存在！");
+                return;
+            }
+            Main main = model.getMain();
+            MonitorMain<Room, ?> monitorMain = main.getMonitorMain();
+            Room room = monitorMain.getRoom();
+            if (room.getPlatform() == null || !"DouYin".equals(room.getPlatform().name())) {
+                msg.setCode(1);
+                msg.setMessage("当前平台暂不支持弹幕录制！");
+                return;
+            }
+            RoomMonitor<?, ?> roomMonitor = monitorMain.getRoomMonitor();
+            boolean open = roomMonitor.getIsOpenSubtitle();
+            if (flag == open) {
+                msg.setCode(1);
+                msg.setMessage(StrUtil.format("弹幕录制已{},请勿重复操作！", flag ? "开启" : "停止"));
+                return;
+            }
+            if (flag && !room.isLiving()) {
+                msg.setCode(1);
+                msg.setMessage("直播间未开播，无法开启弹幕录制！");
+                return;
+            }
+            // 和录制一样只操作运行状态：不改房间设置、不写房间文件
+            if (flag) {
+                roomMonitor.forceStartSubtitle();
+            } else {
+                roomMonitor.stopSubtitle();
+            }
+            boolean now = roomMonitor.getIsOpenSubtitle();
+            if (flag && !now) {
+                msg.setMessage("弹幕录制正在开启，弹幕连接建立后生效！");
+            } else {
+                msg.setMessage(StrUtil.format("弹幕录制{}！", now ? "已开启" : "已停止"));
+            }
         }
     }
 

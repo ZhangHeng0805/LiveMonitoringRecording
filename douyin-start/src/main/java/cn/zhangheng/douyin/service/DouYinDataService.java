@@ -172,8 +172,8 @@ public class DouYinDataService {
         candidates.sort(DouYinDataService::compareQuality);
         Map<String, String> map = new LinkedHashMap<>();
         for (QualityInfo info : candidates) {
-            log.debug("清晰度【{}】{}px/{}fps/声明码率{}kbps/实时码率{}kbps（level={}）",
-                    info.name, info.pixels, info.fps, info.vBitRate / 1000, info.realKbps, info.level);
+//            log.debug("清晰度【{}】{}px/{}fps/声明码率{}kbps/实时码率{}kbps（level={}）",
+//                    info.name, info.pixels, info.fps, info.vBitRate / 1000, info.realKbps, info.level);
             map.put(info.name, info.url);
         }
         return map;
@@ -193,8 +193,10 @@ public class DouYinDataService {
         }
         c = Long.compare(b.vBitRate, a.vBitRate);
         if (c != 0) return c;
-        c = Long.compare(b.realKbps, a.realKbps);
-        if (c != 0) return c;
+        if (a.realKbps > 0 && b.realKbps > 0) {
+            c = Long.compare(b.realKbps, a.realKbps);
+            if (c != 0) return c;
+        }
         return Integer.compare(b.level, a.level);
     }
 

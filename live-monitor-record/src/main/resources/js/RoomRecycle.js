@@ -334,7 +334,7 @@ async function renderRecycleDetail(wrapDom) {
     wrapDom.querySelector("button.recoverRoom-btn").addEventListener("click", async function () {
         const delay = wrapDom.querySelector("input.delayIntervalSec").value.trim();
         if (delay && (isNaN(delay) || Number(delay) < 10)) {
-            alert("刷新频率必须是大于等于10的数字");
+            notifyDialog("刷新频率必须是大于等于10的数字", {title:"填写有误", tone:"warn"});
             return;
         }
         room.setting = room.setting || {};
@@ -357,10 +357,10 @@ async function renderRecycleDetail(wrapDom) {
     });
 }
 
-function recoverRoom(path, data) {
+async function recoverRoom(path, data) {
     const rootDom = document.getElementById("roomRecycleList");
     const key = rootDom.dataset.key;
-    if (!confirm("恢复后该房间会重新加入监听列表并自动启用，确定恢复吗？")) return;
+    if (!(await confirmDialog("恢复后该房间会重新加入监听列表并自动启用，确定恢复吗？", {title:"恢复监听"}))) return;
     postRequest(`room-recycle/recover?actionKey=${encodeURIComponent(key)}&path=${encodeURIComponent(path)}`, data)
         .then(msg => {
             if (msg.success) {
@@ -368,24 +368,24 @@ function recoverRoom(path, data) {
                 renderRoomRecycleContent(rootDom, null, false);
                 handleManualRefresh();
             } else {
-                alert(msg.message);
+                notifyDialog(msg.message, {title:"恢复失败", tone:"danger"});
             }
         })
         .catch(() => {
         });
 }
 
-function deleteRoom(path) {
+async function deleteRoom(path) {
     const rootDom = document.getElementById("roomRecycleList");
     const key = rootDom.dataset.key;
-    if (!confirm("彻底删除后不可恢复，确定删除这条监听吗？")) return;
+    if (!(await confirmDialog("彻底删除后不可恢复，确定删除这条监听吗？", {title:"彻底删除", tone:"danger", danger:true, okText:"彻底删除"}))) return;
     getRequest("room-recycle/delete", {actionKey: key, path: path})
         .then(msg => {
             if (msg.success) {
                 rootDom.dataset.currentPage = "1";
                 renderRoomRecycleContent(rootDom, null, false);
             } else {
-                alert(msg.message);
+                notifyDialog(msg.message, {title:"删除失败", tone:"danger"});
             }
         })
         .catch(() => {
